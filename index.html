@@ -949,6 +949,19 @@
     @media(max-width:720px){.wf-grid{grid-template-columns:1fr}.wf-actions .btn{flex:1 1 auto}.wf-table-mini{min-width:620px}}
 
   </style>
+
+<style>
+/* [INTEGRITY_V3] mobile/table + service package */
+.staffgrid>div,.panel{min-width:0}
+.tablewrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl,.wf-table-mini{max-width:none}
+.v3-package-summary{border:1px solid var(--l);background:#f7faf8;border-radius:14px;padding:12px}
+.v3-package-summary>div{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.v3-package-summary p{margin:7px 0;color:var(--m)}
+.v3-package-summary ul{margin:7px 0 7px 18px;padding:0}
+.v3-package-summary small{color:var(--g);font-weight:750}
+@media(max-width:720px){html,body{max-width:100%;overflow-x:hidden}.staffgrid,.staffgrid>div,.panel{min-width:0;max-width:100%}.tablewrap{width:100%;overflow-x:auto}.tbl,.wf-table-mini{min-width:680px}.head{align-items:flex-start;gap:8px}.v3-package-summary>div{align-items:flex-start;flex-direction:column}}
+</style>
 </head>
 
 <body>
@@ -4020,6 +4033,497 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
        ====================================================================== */
 
   </script>
+
+<script>
+/* ======================================================================
+   [INTEGRITY_V3] — FRONTEND INTEGRITY PASS + SERVICE PACKAGES
+   Dibangun sebagai layer override di atas V1.7/V18 tanpa menghapus fitur lama.
+   ====================================================================== */
+const V3_SERVICE_PACKAGES = [
+  {
+    id:'PKG-RINGAN', name:'Servis Ringan', price:200000,
+    description:'Pemeriksaan rutin untuk pemakaian harian tanpa penggantian part.',
+    includes:['Pemeriksaan mesin & idle','Rem, ban, lampu & kelistrikan','Fluids & kebocoran','Pemeriksaan umum dan penyetelan ringan'],
+    items:[{kind:'labor',code:'SRV-PER-01',name:'Servis Ringan / Pemeriksaan Berkala',qty:1,unitPrice:200000,source:'PACKAGE',approval:'APPROVED'}]
+  },
+  {
+    id:'PKG-CVT', name:'Service CVT', price:150000,
+    description:'Pembersihan dan pemeriksaan area CVT. Penggantian komponen aus tidak termasuk.',
+    includes:['Bongkar & bersihkan CVT','Periksa V-Belt','Periksa roller & pulley','Pemeriksaan getaran/bunyi CVT'],
+    items:[{kind:'labor',code:'SRV-CVT-01',name:'Service CVT',qty:1,unitPrice:150000,source:'PACKAGE',approval:'APPROVED'}]
+  },
+  {
+    id:'PKG-BERKALA-OLI', name:'Servis Berkala + Oli', price:325000,
+    description:'Servis berkala dasar sekaligus penggantian oli mesin.',
+    includes:['Servis berkala','Pemeriksaan rem, ban & kelistrikan','Penggantian Engine Oil 4T','Pemeriksaan kebocoran & fluid'],
+    items:[
+      {kind:'labor',code:'SRV-PER-01',name:'Periodic Service',qty:1,unitPrice:200000,source:'PACKAGE',approval:'APPROVED'},
+      {kind:'part',sku:'VSP-OIL-001',name:'Engine Oil 4T',qty:1,unitPrice:125000,source:'PACKAGE',approval:'APPROVED'}
+    ]
+  },
+  {
+    id:'PKG-RUTIN-LENGKAP', name:'Paket Rutin Lengkap', price:475000,
+    description:'Paket perawatan rutin yang menggabungkan periodic service, CVT dan oli mesin.',
+    includes:['Periodic Service','Service CVT','Engine Oil 4T','Pemeriksaan rem, ban, kelistrikan & fluid'],
+    items:[
+      {kind:'labor',code:'SRV-PER-01',name:'Periodic Service',qty:1,unitPrice:200000,source:'PACKAGE',approval:'APPROVED'},
+      {kind:'labor',code:'SRV-CVT-01',name:'Service CVT',qty:1,unitPrice:150000,source:'PACKAGE',approval:'APPROVED'},
+      {kind:'part',sku:'VSP-OIL-001',name:'Engine Oil 4T',qty:1,unitPrice:125000,source:'PACKAGE',approval:'APPROVED'}
+    ]
+  }
+];
+
+const v3LegacySaveWorkflow = saveWorkflow;
+const v3LegacySyncWorkflowUI = syncWorkflowUI;
+const v3LegacyLoginStaff = loginStaff;
+const v3LegacyStaffLogout = staffLogout;
+
+function v3Clone(v){ return JSON.parse(JSON.stringify(v)); }
+function v3Package(id){ return V3_SERVICE_PACKAGES.find(p=>p.id===id) || V3_SERVICE_PACKAGES[0]; }
+function v3ItemTotal(item){ return Number(item.qty||1) * Number(item.unitPrice||0); }
+function v3ApprovedItems(estimate){ return (estimate?.items||[]).filter(i=>i.approval!=='DECLINED' && i.approval!=='PENDING'); }
+function v3ProposedTotal(estimate){ return (estimate?.items||[]).filter(i=>i.approval!=='DECLINED').reduce((s,i)=>s+v3ItemTotal(i),0); }
+function v3ApprovedTotal(estimate){ return v3ApprovedItems(estimate).reduce((s,i)=>s+v3ItemTotal(i),0); }
+function v3CaseKey(c){ return c?.caseId || c?.wo?.id || c?.booking?.code || ''; }
+function v3NewInternalCaseId(){ return 'CASE-'+Date.now()+'-'+Math.floor(Math.random()*10000); }
+
+function v3NormalizeEstimate(est, pkgId, woId){
+  const pkg=v3Package(pkgId);
+  const e={...(est||{})};
+  if(!Array.isArray(e.items) || !e.items.length){
+    e.items=v3Clone(pkg.items);
+  }
+  e.revision=Number.isFinite(+e.revision)?+e.revision:0;
+  e.id=e.id || (woId?estimateCodeFromWo(woId,e.revision):'');
+  e.total=v3ProposedTotal(e);
+  if(!e.status || e.status==='DRAFT') e.status='BASE_APPROVED';
+  if(!e.approval || e.approval==='PENDING') e.approval='APPROVED';
+  e.basePackageId=pkg.id;
+  e.pendingFindingId=e.pendingFindingId||'';
+  return e;
+}
+
+function v3BuildCaseFromCurrent(source='DEMO'){
+  const pkgId=workflowState.booking?.packageId || 'PKG-RUTIN-LENGKAP';
+  const estimate=v3NormalizeEstimate(workflowState.estimate,pkgId,workflowState.wo?.id);
+  const invoice={...(workflowState.invoice||{})};
+  invoice.items=Array.isArray(invoice.items)?invoice.items:v3Clone(v3ApprovedItems(estimate));
+  invoice.total=v3ApprovedTotal(estimate);
+  invoice.paid=Number(invoice.paid||0);
+  invoice.outstanding=Math.max(0,invoice.total-invoice.paid);
+  return {
+    caseId:v3NewInternalCaseId(), source,
+    booking:{packageId:pkgId,complaint:'',odometer:0,year:'',...(workflowState.booking||{})},
+    wo:{...(workflowState.wo||{})}, estimate,
+    invoice, release:{...(workflowState.release||{})},
+    serviceRecord:null, createdAt:new Date().toISOString()
+  };
+}
+
+function v3NormalizeCase(c){
+  c=c||{};
+  c.caseId=c.caseId||v3NewInternalCaseId();
+  c.source=c.source||'ONLINE';
+  c.booking={packageId:'PKG-RINGAN',complaint:'',odometer:0,year:'',status:'CONFIRMED',...(c.booking||{})};
+  c.wo={id:'',status:'BOOKED',mechanic:'Belum ditentukan',diagnosisStatus:'NOT_STARTED',diagnosis:'',jobStatus:'BOOKED',partsStatus:'NOT_REQUESTED',qcStatus:'PENDING',...(c.wo||{})};
+  c.estimate=v3NormalizeEstimate(c.estimate,c.booking.packageId,c.wo.id);
+  c.invoice={id:'',paymentId:'',items:[],total:0,paid:0,outstanding:0,status:'UNPAID',method:'',proofName:'',verification:'NONE',...(c.invoice||{})};
+  if(!Array.isArray(c.invoice.items)) c.invoice.items=[];
+  if(!c.invoice.items.length) c.invoice.items=v3Clone(v3ApprovedItems(c.estimate));
+  c.invoice.total=v3ApprovedTotal(c.estimate);
+  c.invoice.outstanding=Math.max(0,c.invoice.total-Number(c.invoice.paid||0));
+  c.release={status:'BLOCKED',receiver:'',note:'',releasedAt:'',...(c.release||{})};
+  c.serviceRecord=c.serviceRecord||null;
+  return c;
+}
+
+function v3MigrateWorkflow(){
+  workflowState.version=30;
+  if(!Array.isArray(workflowState.cases) || !workflowState.cases.length){
+    workflowState.cases=[v3BuildCaseFromCurrent('DEMO')];
+    workflowState.selectedCaseId=workflowState.cases[0].caseId;
+  }
+  workflowState.cases=workflowState.cases.map(v3NormalizeCase);
+  workflowState.selectedCaseId=workflowState.selectedCaseId||workflowState.cases[0].caseId;
+  workflowState.customerActiveCaseId=workflowState.customerActiveCaseId||workflowState.selectedCaseId;
+  workflowState.demoMechanic=workflowState.demoMechanic||'Rizky';
+  workflowState.serviceRecords=Array.isArray(workflowState.serviceRecords)?workflowState.serviceRecords:[];
+  workflowState.staffNotifications=Array.isArray(workflowState.staffNotifications)?workflowState.staffNotifications:(Array.isArray(notifData)?notifData.map((n,i)=>({...n,id:'SN-BOOT-'+String(i+1).padStart(3,'0'),ts:new Date().toISOString()})):[]);
+  (workflowState.customerNotifications||[]).forEach(n=>{if(!n.caseId)n.caseId=workflowState.customerActiveCaseId;});
+  const c=workflowState.cases.find(x=>x.caseId===workflowState.selectedCaseId)||workflowState.cases[0];
+  v3LoadCaseIntoCurrent(c,false);
+  v3LegacySaveWorkflow();
+}
+
+function v3UpsertCurrentCase(){
+  if(!Array.isArray(workflowState.cases)||!workflowState.selectedCaseId) return;
+  const idx=workflowState.cases.findIndex(c=>c.caseId===workflowState.selectedCaseId);
+  if(idx<0) return;
+  const old=workflowState.cases[idx];
+  workflowState.cases[idx]=v3NormalizeCase({
+    ...old,
+    booking:v3Clone(workflowState.booking), wo:v3Clone(workflowState.wo),
+    estimate:v3Clone(workflowState.estimate), invoice:v3Clone(workflowState.invoice),
+    release:v3Clone(workflowState.release), serviceRecord:old.serviceRecord||null
+  });
+}
+
+saveWorkflow = function(){ v3UpsertCurrentCase(); v3LegacySaveWorkflow(); };
+
+function v3LoadCaseIntoCurrent(c,doSync=true){
+  if(!c)return;
+  workflowState.selectedCaseId=c.caseId;
+  workflowState.booking=v3Clone(c.booking);
+  workflowState.wo=v3Clone(c.wo);
+  workflowState.estimate=v3Clone(c.estimate);
+  workflowState.invoice=v3Clone(c.invoice);
+  workflowState.release=v3Clone(c.release);
+  v3LegacySaveWorkflow();
+  if(doSync) syncWorkflowUI();
+}
+function v3SelectCase(caseId,doSync=true){
+  v3UpsertCurrentCase();
+  const c=(workflowState.cases||[]).find(x=>x.caseId===caseId);
+  if(!c)return false;
+  v3LoadCaseIntoCurrent(c,doSync);return true;
+}
+function v3FindCaseByCode(code){
+  const q=String(code||'').trim().toUpperCase();
+  return (workflowState.cases||[]).find(c=>String(c.booking?.code||'').toUpperCase()===q || String(c.wo?.id||'').toUpperCase()===q) || null;
+}
+function v3CurrentCase(){ return (workflowState.cases||[]).find(c=>c.caseId===workflowState.selectedCaseId)||null; }
+function v3AddCase(c){
+  c=v3NormalizeCase(c);workflowState.cases.unshift(c);workflowState.selectedCaseId=c.caseId;v3LoadCaseIntoCurrent(c,false);saveWorkflow();return c;
+}
+
+function v3PackageOptions(selected){
+  return V3_SERVICE_PACKAGES.map(p=>`<option value="${p.id}" ${p.id===selected?'selected':''}>${p.name} — ${rup(p.price)}</option>`).join('');
+}
+function v3PackageSummaryHtml(pkg){
+  return `<div class="v3-package-summary"><div><b>${safeText(pkg.name)}</b><span>${rup(pkg.price)}</span></div><p>${safeText(pkg.description)}</p><ul>${pkg.includes.map(x=>`<li>${safeText(x)}</li>`).join('')}</ul><small>Komponen/pekerjaan tambahan di luar paket hanya dikerjakan setelah customer menyetujui Estimate Revisi.</small></div>`;
+}
+function v3RefreshBookingPackage(){
+  const sel=document.getElementById('bPackage');const box=document.getElementById('v3BookingPackageSummary');if(box&&sel)box.innerHTML=v3PackageSummaryHtml(v3Package(sel.value));
+}
+function v3RefreshWalkPackage(){
+  const sel=document.getElementById('v3WalkPackage');const box=document.getElementById('v3WalkPackageSummary');if(box&&sel)box.innerHTML=v3PackageSummaryHtml(v3Package(sel.value));
+}
+
+function v3InstallPackageUI(){
+  const complaint=document.getElementById('bc')?.closest('.field');
+  if(complaint && !document.getElementById('bPackage')){
+    complaint.insertAdjacentHTML('beforebegin',`<div class="field full"><label>Paket servis rutin *</label><select id="bPackage" required onchange="v3RefreshBookingPackage()">${v3PackageOptions('PKG-RINGAN')}</select><div id="v3BookingPackageSummary" style="margin-top:8px"></div></div>`);
+  }
+  v3RefreshBookingPackage();
+
+  const walk=document.getElementById('p-walk');
+  if(walk){
+    walk.innerHTML=`<div class="head"><div><div class="k">Walk-In Customer</div><h2>Registrasi Walk-In</h2></div></div>
+      <div class="card form">
+        <div class="field"><label>Nama *</label><input id="v3WalkName"></div>
+        <div class="field"><label>WhatsApp *</label><input id="v3WalkPhone" placeholder="08xxxxxxxxxx"></div>
+        <div class="field"><label>Plat *</label><input id="v3WalkPlate"></div>
+        <div class="field"><label>Model Vespa *</label><select id="v3WalkModel"><option>Sprint 150</option><option>Primavera 150</option><option>GTS 150</option><option>GTS Super 300</option><option>Vespa LX</option><option>Vespa S</option><option>Vespa Klasik / Lainnya</option></select></div>
+        <div class="field"><label>Tahun</label><input id="v3WalkYear"></div>
+        <div class="field"><label>Odometer (km)</label><input id="v3WalkOdo" type="number" min="0"></div>
+        <div class="field full"><label>Paket servis *</label><select id="v3WalkPackage" onchange="v3RefreshWalkPackage()">${v3PackageOptions('PKG-RINGAN')}</select><div id="v3WalkPackageSummary" style="margin-top:8px"></div></div>
+        <div class="field full"><label>Keluhan / catatan *</label><textarea id="v3WalkComplaint" placeholder="Keluhan customer atau permintaan tambahan"></textarea></div>
+        <button class="btn full" onclick="v3CreateWalkIn()">BUAT WORK ORDER WALK-IN</button>
+      </div>`;
+    v3RefreshWalkPackage();
+  }
+
+  const catalog=document.getElementById('o-catalog');
+  if(catalog && !document.getElementById('v3PackageCatalog')){
+    catalog.insertAdjacentHTML('beforeend',`<div class="card tablewrap" id="v3PackageCatalog" style="margin-top:13px"><div class="k">Routine Service Packages</div><h3>Paket Dasar Customer</h3><table class="wf-table-mini"><tr><th>Paket</th><th>Harga</th><th>Isi Utama</th><th>Aturan</th></tr>${V3_SERVICE_PACKAGES.map(p=>`<tr><td><b>${safeText(p.name)}</b><br><small>${safeText(p.id)}</small></td><td>${rup(p.price)}</td><td>${p.includes.map(safeText).join('<br>')}</td><td>Dipilih customer = base scope approved. Temuan tambahan → Estimate Revisi.</td></tr>`).join('')}</table></div>`);
+  }
+}
+
+function v3CreateBaseCase({source,bookingData,woId=''}){
+  const pkg=v3Package(bookingData.packageId);
+  const estimate={id:woId?estimateCodeFromWo(woId,0):'',revision:0,status:'BASE_APPROVED',approval:'APPROVED',approvalSource:'PACKAGE_SELECTION',basePackageId:pkg.id,pendingFindingId:'',items:v3Clone(pkg.items),total:pkg.price};
+  const invoice={id:woId?generateDocumentCode('INV'):'',paymentId:'',items:v3Clone(pkg.items),total:pkg.price,paid:0,outstanding:pkg.price,status:'UNPAID',method:'',proofName:'',verification:'NONE'};
+  return v3NormalizeCase({caseId:v3NewInternalCaseId(),source,booking:bookingData,wo:{id:woId,status:woId?'WAITING_DIAGNOSIS':'BOOKED',mechanic:'Belum ditentukan',diagnosisStatus:'NOT_STARTED',diagnosis:'',jobStatus:woId?'ASSIGNED':'BOOKED',partsStatus:'NOT_REQUESTED',qcStatus:'PENDING'},estimate,invoice,release:{status:'BLOCKED',receiver:'',note:'',releasedAt:''},serviceRecord:null,createdAt:new Date().toISOString()});
+}
+
+function v3CaptureOnlineBooking(){
+  const code=booking?.code||workflowState.booking?.code||generateDocumentCode('BKG');
+  const data={code,name:bn.value.trim(),phone:bp.value.trim(),model:bm.value,plate:bpl.value.toUpperCase(),year:by.value,odometer:+bo.value||0,date:bd.value,slot:(bs.value||'').split('—')[0].trim(),complaint:bc.value.trim(),packageId:document.getElementById('bPackage')?.value||'PKG-RINGAN',status:'CONFIRMED'};
+  const c=v3CreateBaseCase({source:'ONLINE',bookingData:data});
+  const existing=(workflowState.cases||[]).findIndex(x=>x.booking?.code===code);
+  if(existing>=0)workflowState.cases.splice(existing,1);
+  v3AddCase(c);workflowState.customerActiveCaseId=c.caseId;
+  (workflowState.customerNotifications||[]).forEach(n=>{if(!n.caseId)n.caseId=c.caseId;});
+  auditWorkflow('CUSTOMER_BOOKING_CREATED',code,`${data.name} · ${v3Package(data.packageId).name}`,'CUSTOMER');
+  pushCustomerNotification('Booking berhasil',`${code} · ${v3Package(data.packageId).name} sudah tercatat.`,'booking','tracking');
+  syncWorkflowUI();
+}
+
+function v3CreateWalkIn(){
+  const name=document.getElementById('v3WalkName')?.value.trim(),phone=document.getElementById('v3WalkPhone')?.value.trim(),plate=document.getElementById('v3WalkPlate')?.value.trim().toUpperCase(),model=document.getElementById('v3WalkModel')?.value,complaint=document.getElementById('v3WalkComplaint')?.value.trim();
+  if(!name||!phone||!plate||!complaint){toast('Nama, WhatsApp, plat dan keluhan wajib diisi');return;}
+  const woId=generateDocumentCode('WO');
+  const data={code:'',name,phone,model,plate,year:document.getElementById('v3WalkYear')?.value||'',odometer:+document.getElementById('v3WalkOdo')?.value||0,date:new Date().toISOString().slice(0,10),slot:'WALK-IN',complaint,packageId:document.getElementById('v3WalkPackage')?.value||'PKG-RINGAN',status:'CHECKED_IN'};
+  const c=v3CreateBaseCase({source:'WALK_IN',bookingData:data,woId});
+  c.wo.status='WAITING_DIAGNOSIS';c.wo.jobStatus='ASSIGNED';
+  v3AddCase(c);
+  auditWorkflow('WALK_IN_WO_CREATED',woId,`${name} · ${v3Package(data.packageId).name}`,'ADVISOR');
+  pushCustomerNotification('Work Order dibuat',`${woId} · ${v3Package(data.packageId).name}. Gunakan kode WO untuk tracking.`,'service','tracking');
+  toast('Walk-In berhasil — '+woId);stabId('queue');syncWorkflowUI();
+}
+
+function v3CheckInCase(caseId){
+  v3SelectCase(caseId,false);
+  if(workflowState.wo.id){toast('Work Order sudah dibuat: '+workflowState.wo.id);syncWorkflowUI();return;}
+  workflowState.wo.id=generateDocumentCode('WO');workflowState.wo.status='WAITING_DIAGNOSIS';workflowState.wo.jobStatus='ASSIGNED';workflowState.booking.status='CHECKED_IN';
+  workflowState.estimate.id=estimateCodeFromWo(workflowState.wo.id,0);workflowState.estimate.status='BASE_APPROVED';workflowState.estimate.approval='APPROVED';
+  workflowState.invoice.id=generateDocumentCode('INV');workflowState.invoice.items=v3Clone(v3ApprovedItems(workflowState.estimate));workflowState.invoice.total=v3ApprovedTotal(workflowState.estimate);workflowState.invoice.outstanding=workflowState.invoice.total;
+  commitWorkflow('BOOKING_CHECKED_IN',workflowState.booking.code,'Work Order '+workflowState.wo.id+' aktif · '+v3Package(workflowState.booking.packageId).name,'ADVISOR');
+  pushCustomerNotification('Vespa sudah diterima',`Work Order ${workflowState.wo.id} aktif. Paket: ${v3Package(workflowState.booking.packageId).name}.`,'service','tracking');
+  toast('Check-in berhasil — '+workflowState.wo.id);
+}
+checkInDemoBooking=function(){v3CheckInCase(workflowState.selectedCaseId);};
+
+function v3RescheduleCase(caseId){v3SelectCase(caseId,false);const next=prompt('Jam booking baru',workflowState.booking.slot||'09:00');if(!next)return;workflowState.booking.slot=next;workflowState.booking.status='RESCHEDULED';commitWorkflow('BOOKING_RESCHEDULED',workflowState.booking.code,'Jadwal baru '+next,'ADVISOR');pushCustomerNotification('Jadwal booking berubah','Jadwal booking menjadi '+next+'.','booking','tracking');}
+function v3SetBookingStatus(caseId,status){v3SelectCase(caseId,false);workflowState.booking.status=status;commitWorkflow('BOOKING_'+status,workflowState.booking.code,status,'ADVISOR');pushCustomerNotification(status==='CANCELLED'?'Booking dibatalkan':'Status booking berubah',workflowState.booking.code+' · '+status.replaceAll('_',' '),'booking',status==='NO_SHOW'?'booking':'tracking');}
+
+track=function(){
+  const q=document.getElementById('tc')?.value.trim();if(!q){toast('Masukkan kode Booking / Work Order');return;}
+  const c=v3FindCaseByCode(q);const tr=document.getElementById('tr');
+  if(!c){if(tr)tr.style.display='none';toast('Kode tidak ditemukan');return;}
+  v3SelectCase(c.caseId,false);workflowState.customerActiveCaseId=c.caseId;v3LegacySaveWorkflow();if(tr)tr.style.display='block';v3RenderTracking();syncWorkflowUI();
+};
+
+function v3StatusStep(){
+  const w=workflowState.wo;
+  if(!w.id)return 0;
+  if(w.status==='CLOSED')return 6;
+  if(w.qcStatus==='PASSED')return 5;
+  if(w.jobStatus==='WAITING_QC'||w.qcStatus==='FAILED')return 4;
+  if(['IN_PROGRESS','STARTED','PAUSED','REWORK'].includes(w.jobStatus)||w.status==='IN_PROGRESS')return 3;
+  if(workflowState.estimate?.approval==='PENDING')return 2;
+  if(['DIAGNOSIS','DIAGNOSIS_COMPLETED','ASSIGNED','WAITING_DIAGNOSIS'].includes(w.status))return 1;
+  return 0;
+}
+function v3RenderTracking(){
+  const tr=document.getElementById('tr');if(!tr||tr.style.display==='none')return;
+  const h=tr.querySelector('h2');if(h)h.textContent=workflowState.wo.id||workflowState.booking.code;
+  const meta=tr.querySelector('p.muted');if(meta)meta.textContent=`${workflowState.booking.name} · ${workflowState.booking.model} · ${workflowState.booking.plate}`;
+  const pill=document.getElementById('trackpill');if(pill)pill.textContent=workflowState.wo.id?workflowState.wo.status.replaceAll('_',' '):workflowState.booking.status.replaceAll('_',' ');
+  const notice=tr.querySelector('.notice');if(notice)notice.innerHTML=`<b>Paket:</b> ${safeText(v3Package(workflowState.booking.packageId).name)} · ${rup(v3Package(workflowState.booking.packageId).price)}<br><b>Status diagnosis:</b> ${safeText(workflowState.wo.diagnosisStatus.replaceAll('_',' '))}${workflowState.wo.diagnosis?'<br><b>Catatan:</b> '+safeText(workflowState.wo.diagnosis):''}`;
+  const step=v3StatusStep();tr.querySelectorAll('.progress .step').forEach((el,i)=>{el.classList.toggle('done',i<step);el.classList.toggle('now',i===step);});
+  const act=tr.querySelector('.actions');if(act){
+    act.innerHTML=(workflowState.estimate.approval==='PENDING'?'<button class="btn" onclick="go(\'approval\');syncWorkflowUI()">LIHAT & SETUJUI ESTIMASI TAMBAHAN</button>':'')+(workflowState.wo.qcStatus==='PASSED'?'<button class="btn alt" onclick="go(\'completed\');syncWorkflowUI()">STATUS PENGAMBILAN</button>':'');
+  }
+}
+
+function v3RenderApproval(){
+  const sec=document.getElementById('approval');if(!sec)return;
+  const title=sec.querySelector('.head h2');if(title)title.textContent=workflowState.estimate.id||'ESTIMATE';
+  const badge=sec.querySelector('.head .pill');if(badge)badge.textContent=workflowState.estimate.approval==='PENDING'?'MENUNGGU ANDA':'TIDAK ADA APPROVAL BARU';
+  const card=sec.querySelector('.card');if(!card)return;
+  const pkg=v3Package(workflowState.booking.packageId);const items=workflowState.estimate.items||[];const pending=items.filter(i=>i.approval==='PENDING');
+  const approved=items.filter(i=>i.approval==='APPROVED');
+  card.innerHTML=`<div class="notice"><b>Paket dasar sudah disetujui saat booking:</b> ${safeText(pkg.name)} · ${rup(pkg.price)}</div>
+    <h3 style="margin-top:16px">Scope yang sudah disetujui</h3>${approved.map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}</span><b>${rup(v3ItemTotal(i))}</b></div>`).join('')||'<div class="muted">-</div>'}
+    ${pending.length?`<h3 style="margin-top:16px">Temuan tambahan — butuh keputusan Anda</h3>${pending.map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}</span><b>${rup(v3ItemTotal(i))}</b></div>`).join('')}<div class="line"><b>Total jika disetujui</b><span class="money">${rup(v3ProposedTotal(workflowState.estimate))}</span></div><div class="notice" style="margin-top:12px">Jika ditolak, paket dasar tetap dapat dilanjutkan. Item tambahan tidak dikerjakan.</div><div class="actions"><button class="btn" onclick="ask(true)">SETUJUI TAMBAHAN</button><button class="btn bad" onclick="ask(false)">TOLAK TAMBAHAN</button></div>`:`<div class="notice" style="margin-top:14px">Tidak ada biaya tambahan yang menunggu persetujuan.</div>`}`;
+}
+
+ask=function(ok){
+  const pending=(workflowState.estimate.items||[]).filter(i=>i.approval==='PENDING');
+  if(!pending.length){toast('Tidak ada Estimate Revisi yang menunggu keputusan');return;}
+  mt.textContent=ok?'Setujui pekerjaan tambahan?':'Tolak pekerjaan tambahan?';
+  mx.textContent=ok?`Tambahan ${rup(pending.reduce((s,i)=>s+v3ItemTotal(i),0))} akan masuk scope pekerjaan.`:'Paket dasar tetap berjalan; item tambahan tidak dikerjakan.';
+  my.onclick=()=>{
+    modal.classList.remove('on');pending.forEach(i=>i.approval=ok?'APPROVED':'DECLINED');workflowState.estimate.pendingFindingId='';
+    workflowState.estimate.approval='APPROVED';workflowState.estimate.status=ok?'REVISION_APPROVED':'REVISION_DECLINED';workflowState.estimate.total=v3ApprovedTotal(workflowState.estimate);
+    workflowState.invoice.items=v3Clone(v3ApprovedItems(workflowState.estimate));workflowState.invoice.total=v3ApprovedTotal(workflowState.estimate);workflowState.invoice.outstanding=Math.max(0,workflowState.invoice.total-workflowState.invoice.paid);
+    workflowState.wo.status='IN_PROGRESS';if(!['STARTED','IN_PROGRESS','PAUSED'].includes(workflowState.wo.jobStatus))workflowState.wo.jobStatus='APPROVED';
+    commitWorkflow(ok?'ESTIMATE_REVISION_APPROVED':'ESTIMATE_REVISION_DECLINED',workflowState.estimate.id,rup(workflowState.estimate.total),'CUSTOMER');
+    pushNotification('advisor',ok?'Additional Work Approved':'Additional Work Declined',workflowState.estimate.id,'approval');pushNotification('mechanic',ok?'Additional Work Approved':'Additional Work Declined',workflowState.estimate.id,'approval');
+    pushCustomerNotification(ok?'Tambahan disetujui':'Tambahan ditolak',ok?'Pekerjaan tambahan sudah masuk scope servis.':'Paket dasar tetap dilanjutkan tanpa item tambahan.','estimate','tracking');toast(ok?'Tambahan disetujui':'Tambahan ditolak');go('tracking');v3RenderTracking();
+  };modal.classList.add('on');
+};
+
+function v3CreateAdditionalFinding(){
+  if(!workflowState.wo.id){toast('Pilih Work Order terlebih dahulu');return;}
+  if(workflowState.wo.status==='CLOSED'||workflowState.release?.status==='RELEASED'){toast('Work Order sudah CLOSED; temuan baru harus dibuat melalui Warranty / Comeback');return;}
+  if(workflowState.wo.diagnosisStatus!=='COMPLETED'){toast('Selesaikan diagnosis terlebih dahulu');return;}
+  if((workflowState.estimate.items||[]).some(i=>i.approval==='PENDING')){toast('Masih ada revisi yang menunggu approval customer');return;}
+  const desc=document.getElementById('v3FindingDesc')?.value.trim();const sku=document.getElementById('v3FindingPart')?.value||'';const qty=Math.max(1,+document.getElementById('v3FindingQty')?.value||1);const labor=Math.max(0,+document.getElementById('v3FindingLabor')?.value||0);
+  if(!desc){toast('Temuan / rekomendasi wajib diisi');return;}
+  if(!sku && !labor){toast('Pilih part atau isi biaya labor tambahan');return;}
+  const rev=(+workflowState.estimate.revision||0)+1;const findingId='FND-'+wfDateCode()+'-'+String(Date.now()).slice(-4);const newItems=[];
+  if(sku){const p=invData.find(x=>x.sku===sku);if(p)newItems.push({kind:'part',sku:p.sku,name:p.name,qty,unitPrice:p.sell,source:'FINDING',findingId,revision:rev,approval:'PENDING',note:desc});}
+  if(labor)newItems.push({kind:'labor',code:'LAB-ADD',name:'Labor Tambahan — '+desc,qty:1,unitPrice:labor,source:'FINDING',findingId,revision:rev,approval:'PENDING',note:desc});
+  workflowState.estimate.items.push(...newItems);workflowState.estimate.revision=rev;workflowState.estimate.id=estimateCodeFromWo(workflowState.wo.id,rev);workflowState.estimate.status='SENT';workflowState.estimate.approval='PENDING';workflowState.estimate.pendingFindingId=findingId;workflowState.estimate.total=v3ProposedTotal(workflowState.estimate);workflowState.wo.status='WAITING_APPROVAL';
+  commitWorkflow('ADDITIONAL_FINDING_CREATED',workflowState.estimate.id,desc+' · tambahan '+rup(newItems.reduce((s,i)=>s+v3ItemTotal(i),0)),'MECHANIC');pushNotification('advisor','Additional Finding',workflowState.estimate.id+' · '+desc,'mechanic');pushCustomerNotification('Persetujuan tambahan diperlukan',workflowState.estimate.id+' memiliki temuan baru sebesar '+rup(newItems.reduce((s,i)=>s+v3ItemTotal(i),0))+'. Ketuk untuk review.','estimate','approval');toast('Estimate Revisi '+rev+' dikirim ke customer');
+}
+additionalFinding=function(){const el=document.getElementById('v3FindingBox');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});};
+
+function v3RenderEstimatePanel(){
+  const p=document.getElementById('p-estimate');if(!p)return;const pkg=v3Package(workflowState.booking.packageId);const items=workflowState.estimate.items||[];
+  p.innerHTML=`<div class="head"><div><div class="k">Estimate / Scope</div><h2>${safeText(workflowState.estimate.id||'ESTIMATE DRAFT')}</h2></div>${wfPill(workflowState.estimate.status)}</div>
+    <div class="card"><div class="notice"><b>Paket dasar:</b> ${safeText(pkg.name)} · ${rup(pkg.price)}<br>Dipilih customer saat booking / registrasi walk-in, sehingga scope dasar tidak membutuhkan approval ulang.</div>
+    <h3 style="margin-top:16px">Scope & biaya</h3>${items.map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}<br><small class="muted">${safeText(i.source||'')} · ${safeText(i.approval||'')}</small></span><b>${rup(v3ItemTotal(i))}</b></div>`).join('')}
+    <div class="line"><b>Total approved saat ini</b><span class="money">${rup(v3ApprovedTotal(workflowState.estimate))}</span></div>${items.some(i=>i.approval==='PENDING')?`<div class="line"><b>Total jika revisi disetujui</b><span class="money">${rup(v3ProposedTotal(workflowState.estimate))}</span></div><div class="notice">Menunggu keputusan customer untuk Estimate Revisi.</div>`:'<div class="notice">Tidak ada revisi yang menunggu approval.</div>'}</div>`;
+}
+
+sendEstimate=function(){toast('Paket dasar sudah approved. Estimate Revisi dibuat oleh mekanik melalui Additional Finding bila ada temuan baru.');v3RenderEstimatePanel();};
+
+function v3RenderInvoice(){
+  const box=document.querySelector('#customerPayment .invoicebox');if(!box)return;box.querySelectorAll(':scope > .line').forEach(x=>x.style.display='none');let c=document.getElementById('v3InvoiceItems');if(!c){c=document.createElement('div');c.id='v3InvoiceItems';box.insertBefore(c,box.querySelector('h3'));}
+  const items=workflowState.invoice.items||[];c.innerHTML=items.map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}</span><b>${rup(v3ItemTotal(i))}</b></div>`).join('')+`<div class="line"><b>Total Tagihan</b><span class="money">${rup(workflowState.invoice.total)}</span></div><div class="line"><span>Sudah Dibayar</span><b>${rup(workflowState.invoice.paid)}</b></div><div class="line"><span>Sisa Tagihan</span><b>${rup(workflowState.invoice.outstanding)}</b></div>`;
+}
+
+function v3RenderPartsCatalog(){
+  const q=(document.getElementById('ps')?.value||'').toLowerCase();const model=document.getElementById('pm')?.value||'Semua model';const list=invData.filter(x=>(x.name.toLowerCase().includes(q)||x.sku.toLowerCase().includes(q))&&(model==='Semua model'||x.model.includes(model.split(' ')[0])||x.model==='All'));
+  const grid=document.getElementById('pg');if(!grid)return;grid.innerHTML=list.map(x=>{const available=Math.max(0,x.on-x.res);return `<div class="card"><div class="k">${x.sku}</div><h3>${safeText(x.name)}</h3><div class="muted">${safeText(x.model)}</div><div class="money" style="font-size:19px;margin-top:8px">${rup(x.sell)}</div><p>${available?`<span class="pill">Tersedia · ${available}</span>`:'<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>'}</p><button class="btn alt" onclick="openPartInquiry('${x.sku}')">TANYA KETERSEDIAAN</button></div>`}).join('')||'<div class="card">Part tidak ditemukan.</div>';
+  parts.splice(0,parts.length,...invData.map(x=>[x.name,x.model==='All'?'Semua model':x.model,x.sell,Math.max(0,x.on-x.res)]));
+}
+filterParts=v3RenderPartsCatalog;
+
+const v3LegacyOpenPartInquiry=openPartInquiry;
+openPartInquiry=function(token){const p=invData.find(x=>x.sku===token)||invData.find(x=>x.name===token);if(!p){toast('Part tidak ditemukan');return;}activePartName=p.name;lastPartInquiryId='';go('partInquiry');const s=document.getElementById('wfPartSelectedSummary');if(s)s.innerHTML=`<b>${safeText(p.name)}</b><br>${safeText(p.model)} · ${rup(p.sell)} · Available ${Math.max(0,p.on-p.res)}`;const r=document.getElementById('wfPartInquiryResult');if(r){r.style.display='none';r.innerHTML='';}const a=document.getElementById('wfPartInquiryActions');if(a)a.style.display='none';};
+
+function v3PartForRequest(token){return invData.find(x=>x.sku===token)||invData.find(x=>x.name===token)||invData.find(x=>x.name.toLowerCase().includes(String(token||'').toLowerCase()));}
+requestPart=function(btn,token,qty=1){
+  if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}
+  if(workflowState.estimate.approval!=='APPROVED'){toast('Masih ada tambahan biaya yang belum diputuskan customer');return;}
+  const p=v3PartForRequest(token);if(!p){toast('Part tidak ditemukan');return;}qty=Math.max(1,+qty||1);
+  const allowed=(workflowState.estimate.items||[]).find(i=>i.sku===p.sku&&i.approval==='APPROVED');if(!allowed){toast('Part ini belum termasuk scope yang disetujui customer');return;}
+  const existing=(workflowState.partRequests||[]).find(r=>r.woId===workflowState.wo.id&&r.sku===p.sku&&['REQUESTED','ISSUED'].includes(r.status));if(existing){toast('Request '+existing.id+' sudah '+existing.status);return;}
+  const id=generateDocumentCode('PRQ');const req={id,woId:workflowState.wo.id,caseId:workflowState.selectedCaseId,mechanic:workflowState.wo.mechanic,sku:p.sku,part:p.name,qty,status:'REQUESTED',createdAt:new Date().toISOString()};workflowState.partRequests.unshift(req);workflowState.wo.partsStatus='REQUESTED';if(btn){btn.disabled=true;btn.textContent='REQUESTED';}
+  commitWorkflow('PART_REQUESTED',id,`${workflowState.wo.id} · ${p.sku} ×${qty}`,'MECHANIC');pushNotification('inventory','Part Request',`${id} · ${p.name} ×${qty} untuk ${workflowState.wo.id}`,'part');toast('Part Request '+id+' dibuat');
+};
+
+function v3IssueRequest(id){
+  const r=(workflowState.partRequests||[]).find(x=>x.id===id);if(!r)return;const p=invData.find(x=>x.sku===r.sku);if(!p){toast('SKU tidak ditemukan');return;}const available=Math.max(0,p.on-p.res);if(available<r.qty){r.status='OUT_OF_STOCK';commitWorkflow('PART_OUT_OF_STOCK',r.id,`${r.sku} available ${available}`,'INVENTORY');toast('Stok tidak cukup');return;}
+  p.on-=r.qty;if(p.res>0)p.res=Math.max(0,p.res-r.qty);r.status='ISSUED';r.issuedAt=new Date().toISOString();syncInventorySnapshot();v3RecalcPartStatus(r.woId);commitWorkflow('PART_ISSUED',r.id,`${r.sku} ×${r.qty} untuk ${r.woId}`,'INVENTORY');pushNotification('mechanic','Part Issued',`${r.part} ×${r.qty} untuk ${r.woId} sudah di-issue.`,'part');v3RenderPartsCatalog();toast(r.id+' ISSUED');
+}
+function v3RejectRequest(id){const r=workflowState.partRequests.find(x=>x.id===id);if(!r)return;r.status='REJECTED';v3RecalcPartStatus(r.woId);commitWorkflow('PART_REQUEST_REJECTED',r.id,r.part,'INVENTORY');pushNotification('mechanic','Part Request Rejected',r.id+' · '+r.part,'part');}
+function v3OutStockRequest(id){const r=workflowState.partRequests.find(x=>x.id===id);if(!r)return;r.status='OUT_OF_STOCK';v3RecalcPartStatus(r.woId);commitWorkflow('PART_OUT_OF_STOCK',r.id,r.part,'INVENTORY');pushNotification('mechanic','Part Out of Stock',r.id+' · '+r.part,'stock');pushNotification('advisor','Part Out of Stock',r.woId+' · '+r.part,'stock');}
+function v3RecalcPartStatus(woId){const reqs=(workflowState.partRequests||[]).filter(r=>r.woId===woId);if(workflowState.wo.id!==woId)return;workflowState.wo.partsStatus=reqs.some(r=>r.status==='REQUESTED')?'REQUESTED':reqs.some(r=>r.status==='OUT_OF_STOCK')?'OUT_OF_STOCK':reqs.length&&reqs.every(r=>r.status==='ISSUED')?'ISSUED':reqs.some(r=>r.status==='REJECTED')?'REJECTED':'NOT_REQUESTED';}
+
+function v3RenderInventoryRequests(){
+  const p=document.getElementById('i-requests');if(!p)return;const reqs=workflowState.partRequests||[];p.innerHTML=`<div class="head"><div><div class="k">Mechanic Requests</div><h2>Part Requests</h2></div><span class="pill">${reqs.filter(r=>r.status==='REQUESTED').length} PENDING</span></div><div class="card tablewrap"><table class="tbl"><tr><th>Request</th><th>WO</th><th>Mekanik</th><th>SKU / Part</th><th>Qty</th><th>Available</th><th>Status</th><th>Aksi</th></tr>${reqs.map(r=>{const part=invData.find(x=>x.sku===r.sku);const av=part?Math.max(0,part.on-part.res):0;return `<tr><td><b>${r.id}</b></td><td>${safeText(r.woId)}</td><td>${safeText(r.mechanic)}</td><td>${safeText(r.sku)}<br>${safeText(r.part)}</td><td>${r.qty}</td><td>${av}</td><td>${wfPill(r.status)}</td><td>${r.status==='REQUESTED'?`<button class="btn" onclick="v3IssueRequest('${r.id}')">ISSUE</button> <button class="btn alt" onclick="v3RejectRequest('${r.id}')">REJECT</button> <button class="btn bad" onclick="v3OutStockRequest('${r.id}')">OUT OF STOCK</button>`:'—'}</td></tr>`}).join('')||'<tr><td colspan="8">Belum ada request.</td></tr>'}</table></div>`;
+}
+
+function v3RequiredPartItems(){
+  const map=new Map();
+  v3ApprovedItems(workflowState.estimate).filter(i=>i.sku).forEach(i=>{const cur=map.get(i.sku)||{sku:i.sku,name:i.name,qty:0};cur.qty+=Number(i.qty||1);map.set(i.sku,cur);});
+  return [...map.values()];
+}
+function v3IssuedQtyForSku(sku){return (workflowState.partRequests||[]).filter(r=>r.woId===workflowState.wo.id&&r.sku===sku&&r.status==='ISSUED').reduce((s,r)=>s+Number(r.qty||0),0);}
+function v3AllRequiredPartsIssued(){return v3RequiredPartItems().every(i=>v3IssuedQtyForSku(i.sku)>=i.qty);}
+
+completeJob=function(){
+  if(workflowState.estimate.approval!=='APPROVED'){toast('Pekerjaan tambahan masih menunggu approval customer');return;}
+  if(!v3AllRequiredPartsIssued()){const missing=v3RequiredPartItems().filter(i=>v3IssuedQtyForSku(i.sku)<i.qty);if(missing.length){toast('Part approved belum di-issue: '+missing.map(x=>x.name).join(', '));return;}}
+  workflowState.wo.jobStatus='WAITING_QC';workflowState.wo.status='WAITING_QC';commitWorkflow('JOB_COMPLETED_WAITING_QC',workflowState.wo.id,'Dikirim ke QC','MECHANIC');pushNotification('qc','Waiting QC',workflowState.wo.id+' siap diperiksa QC.','qc');toast('Pekerjaan selesai → WAITING QC');
+};
+
+startDiag=function(){if(!workflowState.wo.id){toast('Pilih WO');return;}if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}workflowState.wo.diagnosisStatus='IN_PROGRESS';workflowState.wo.status='DIAGNOSIS';workflowState.wo.jobStatus='DIAGNOSIS';commitWorkflow('DIAGNOSIS_STARTED',workflowState.wo.id,'Diagnosis dimulai','MECHANIC');pushCustomerNotification('Pemeriksaan dimulai','Mekanik mulai memeriksa Vespa Anda.','service','tracking');toast('Diagnosis dimulai');};
+finishDiag=function(){if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}const note=document.getElementById('v3DiagSummary')?.value.trim()||'Pemeriksaan selesai. Tidak ada catatan tambahan.';workflowState.wo.diagnosisStatus='COMPLETED';workflowState.wo.diagnosis=note;workflowState.wo.status='DIAGNOSIS_COMPLETED';workflowState.wo.jobStatus='APPROVED';commitWorkflow('DIAGNOSIS_COMPLETED',workflowState.wo.id,note,'MECHANIC');pushNotification('advisor','Diagnosis Completed',workflowState.wo.id+' · '+note,'mechanic');pushCustomerNotification('Pemeriksaan selesai','Pemeriksaan selesai. Jika ditemukan kebutuhan tambahan, Anda akan menerima permintaan approval.','service','tracking');toast('Diagnosis selesai');};
+jobAction=function(st){const s=String(st).toUpperCase();workflowState.wo.jobStatus=s==='STARTED'?'IN_PROGRESS':s;workflowState.wo.status=workflowState.wo.jobStatus;commitWorkflow('JOB_'+workflowState.wo.jobStatus,workflowState.wo.id,st,'MECHANIC');if(workflowState.wo.jobStatus==='IN_PROGRESS')pushCustomerNotification('Pengerjaan dimulai','Paket servis yang Anda pilih sedang dikerjakan.','service','tracking');};
+
+function v3RenderMechanic(){
+  const mechanic=workflowState.demoMechanic||'Rizky';const jobs=(workflowState.cases||[]).filter(c=>c.wo?.id&&c.wo.mechanic===mechanic&&c.wo.status!=='CLOSED');
+  const jobsPanel=document.getElementById('m-jobs');if(jobsPanel)jobsPanel.innerHTML=`<div class="head"><div><div class="k">Mechanic Workspace</div><h2>My Jobs — ${safeText(mechanic)}</h2></div><button class="btn alt" onclick="staffLogout()">Logout</button></div><div class="metrics"><div class="metric"><span class="muted">Assigned</span><strong>${jobs.length}</strong></div><div class="metric"><span class="muted">In Progress</span><strong>${jobs.filter(c=>['IN_PROGRESS','DIAGNOSIS'].includes(c.wo.jobStatus)).length}</strong></div><div class="metric"><span class="muted">Waiting Approval</span><strong>${jobs.filter(c=>c.estimate.approval==='PENDING').length}</strong></div><div class="metric"><span class="muted">Waiting QC</span><strong>${jobs.filter(c=>c.wo.jobStatus==='WAITING_QC').length}</strong></div></div><div class="grid">${jobs.map(c=>`<div class="card"><span class="pill">${safeText(c.wo.status.replaceAll('_',' '))}</span><h3>${safeText(c.wo.id)}</h3><b>${safeText(c.booking.name)}</b><p class="muted">${safeText(c.booking.model)} · ${safeText(c.booking.plate)}<br>${safeText(v3Package(c.booking.packageId).name)}</p><button class="btn" onclick="v3OpenMechanicCase('${c.caseId}','detail')">BUKA JOB</button></div>`).join('')||'<div class="card"><b>Tidak ada job untuk mekanik ini.</b></div>'}</div>`;
+  const c=v3CurrentCase();if(!c)return;
+  const detail=document.getElementById('m-detail');if(detail)detail.innerHTML=`<div class="head"><div><div class="k">Work Order</div><h2>${safeText(c.wo.id||'-')}</h2></div>${wfPill(c.wo.status)}</div><div class="grid"><div class="card"><h3>Customer</h3><b>${safeText(c.booking.name)}</b><p class="muted">${safeText(c.booking.model)} · ${safeText(c.booking.plate)}<br>${Number(c.booking.odometer||0).toLocaleString('id-ID')} km</p></div><div class="card"><h3>Paket</h3><b>${safeText(v3Package(c.booking.packageId).name)}</b><p class="muted">${rup(v3Package(c.booking.packageId).price)}</p></div><div class="card"><h3>Keluhan</h3><p>${safeText(c.booking.complaint||'-')}</p></div></div><div class="card" style="margin-top:13px"><h3>Job Instruction</h3><p>Kerjakan scope paket dasar. Temuan baru di luar paket wajib dibuat sebagai Additional Finding dan menunggu approval customer.</p><button class="btn" onclick="mtabId('diagnosis')">BUKA DIAGNOSIS</button></div>`;
+  const diag=document.getElementById('m-diagnosis');if(diag)diag.innerHTML=`<div class="head"><div><div class="k">Diagnosis</div><h2>${safeText(c.wo.id||'-')}</h2></div>${wfPill(c.wo.diagnosisStatus)}</div><div class="card"><div class="actions"><button class="btn" onclick="startDiag()" ${c.wo.diagnosisStatus==='IN_PROGRESS'||c.wo.diagnosisStatus==='COMPLETED'?'disabled':''}>MULAI DIAGNOSIS</button></div><div class="tablewrap"><table class="tbl"><tr><th>Area</th><th>Kondisi</th><th>Catatan</th></tr>${['Engine','CVT','Brake','Suspension','Electrical','Tires / Fluid / Body'].map(a=>`<tr><td>${a}</td><td><select><option>Normal</option><option>Perlu Perhatian</option><option>Perlu Perbaikan</option></select></td><td><input placeholder="Catatan"></td></tr>`).join('')}</table></div><div class="field" style="margin-top:12px"><label>Ringkasan diagnosis</label><textarea id="v3DiagSummary">${safeText(c.wo.diagnosis||'')}</textarea></div><div class="actions"><button class="btn" onclick="finishDiag()">SELESAIKAN DIAGNOSIS</button></div></div>`;
+  const work=document.getElementById('m-work');if(work)work.innerHTML=`<div class="head"><div><div class="k">Job Execution</div><h2>${safeText(c.wo.id||'-')}</h2></div>${wfPill(c.wo.jobStatus)}</div><div class="card"><h3>Approved Scope</h3>${v3ApprovedItems(c.estimate).map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}</span><b>APPROVED</b></div>`).join('')}<div class="actions"><button class="btn" onclick="jobAction('STARTED')">START / RESUME</button><button class="btn alt" onclick="jobAction('PAUSED')">PAUSE</button><button class="btn alt" onclick="mtabId('parts')">REQUEST PART</button></div><div class="notice" style="margin-top:13px">Temuan baru yang menambah biaya wajib masuk Estimate Revisi dan customer approval.</div><div class="card" id="v3FindingBox" style="margin-top:13px;background:#f8faf9"><h3>+ Additional Finding</h3><div class="form"><div class="field full"><label>Temuan / rekomendasi *</label><textarea id="v3FindingDesc" placeholder="Contoh: V-Belt retak dan harus diganti"></textarea></div><div class="field"><label>Part tambahan</label><select id="v3FindingPart"><option value="">Tanpa part / labor saja</option>${invData.map(x=>`<option value="${x.sku}">${x.sku} · ${safeText(x.name)} · ${rup(x.sell)}</option>`).join('')}</select></div><div class="field"><label>Qty</label><input id="v3FindingQty" type="number" min="1" value="1"></div><div class="field"><label>Labor tambahan (Rp)</label><input id="v3FindingLabor" type="number" min="0" value="0"></div><button class="btn full" onclick="v3CreateAdditionalFinding()">BUAT ESTIMATE REVISI & KIRIM APPROVAL</button></div></div><div class="actions"><button class="btn" onclick="completeJob()">SELESAIKAN PEKERJAAN</button></div></div>`;
+  const partsPanel=document.getElementById('m-parts');if(partsPanel){const reqs=(workflowState.partRequests||[]).filter(r=>r.woId===c.wo.id);partsPanel.innerHTML=`<div class="head"><div><div class="k">Part Request</div><h2>${safeText(c.wo.id||'-')} · Approved Parts</h2></div></div><div class="card tablewrap"><table class="tbl"><tr><th>SKU</th><th>Part</th><th>Qty</th><th>Available</th><th>Status</th><th>Aksi</th></tr>${(()=>{const mm=new Map();v3ApprovedItems(c.estimate).filter(i=>i.sku).forEach(i=>{const z=mm.get(i.sku)||{sku:i.sku,name:i.name,qty:0};z.qty+=Number(i.qty||1);mm.set(i.sku,z);});return [...mm.values()]})().map(i=>{const p=invData.find(x=>x.sku===i.sku);const av=p?Math.max(0,p.on-p.res):0;const issued=reqs.filter(x=>x.sku===i.sku&&x.status==='ISSUED').reduce((s,r)=>s+Number(r.qty||0),0);const pending=reqs.find(x=>x.sku===i.sku&&x.status==='REQUESTED');const done=issued>=i.qty;return `<tr><td>${i.sku}</td><td>${safeText(i.name)}</td><td>${i.qty}</td><td>${av}</td><td>${done?wfPill('ISSUED'):pending?wfPill('REQUESTED'):wfPill('NOT REQUESTED')}</td><td>${done||pending?'-':`<button class="btn" onclick="requestPart(this,'${i.sku}',${Math.max(1,i.qty-issued)})">REQUEST</button>`}</td></tr>`}).join('')||'<tr><td colspan="6">Paket ini tidak membutuhkan part yang harus di-issue.</td></tr>'}</table></div><div class="notice">Part hanya dapat diminta jika sudah termasuk package atau Estimate Revisi yang disetujui customer.</div>`;}
+  const history=document.getElementById('m-history');if(history){const closed=(workflowState.cases||[]).filter(x=>x.wo?.mechanic===mechanic&&x.wo?.status==='CLOSED');history.innerHTML=`<div class="head"><h2>Riwayat Pekerjaan — ${safeText(mechanic)}</h2></div><div class="card tablewrap"><table class="tbl"><tr><th>WO</th><th>Vespa</th><th>Paket</th><th>Status</th></tr>${closed.map(x=>`<tr><td>${x.wo.id}</td><td>${safeText(x.booking.model)} · ${safeText(x.booking.plate)}</td><td>${safeText(v3Package(x.booking.packageId).name)}</td><td>CLOSED</td></tr>`).join('')||'<tr><td colspan="4">Belum ada riwayat closed.</td></tr>'}</table></div>`;}
+}
+function v3OpenMechanicCase(caseId,tab){if(!v3SelectCase(caseId,false))return;v3RenderMechanic();mtabId(tab||'detail');}
+
+function v3RenderAdvisor(){
+  const bookings=(workflowState.cases||[]).filter(c=>c.source==='ONLINE');
+  const pbook=document.getElementById('p-book');if(pbook)pbook.innerHTML=`<div class="head"><h2>Booking Management</h2><span class="pill">${bookings.length} DATA</span></div><div class="card tablewrap"><table class="tbl"><tr><th>Kode</th><th>Jam</th><th>Customer</th><th>Vespa</th><th>Paket</th><th>Status</th><th>Aksi</th></tr>${bookings.map(c=>`<tr><td><b>${c.booking.code}</b></td><td>${safeText(c.booking.slot)}</td><td>${safeText(c.booking.name)}</td><td>${safeText(c.booking.model)}</td><td>${safeText(v3Package(c.booking.packageId).name)}</td><td>${wfPill(c.booking.status)}</td><td><div class="wf-actions" style="margin-top:0"><button class="btn" onclick="v3CheckInCase('${c.caseId}')" ${c.wo.id?'disabled':''}>${c.wo.id?'CHECKED-IN':'CHECK-IN'}</button><button class="btn alt" onclick="v3RescheduleCase('${c.caseId}')">RESCHEDULE</button><button class="btn alt" onclick="v3SetBookingStatus('${c.caseId}','NO_SHOW')">NO-SHOW</button><button class="btn bad" onclick="v3SetBookingStatus('${c.caseId}','CANCELLED')">CANCEL</button></div></td></tr>`).join('')||'<tr><td colspan="7">Belum ada booking.</td></tr>'}</table></div>`;
+  const queue=document.getElementById('p-queue');if(queue){const cases=(workflowState.cases||[]).filter(c=>c.wo?.id&&c.wo.status!=='CLOSED');queue.innerHTML=`<div class="head"><h2>Queue Board</h2><span class="pill">${cases.length} ACTIVE</span></div><div class="grid">${cases.map(c=>`<div class="card"><span class="pill">${safeText(c.wo.status.replaceAll('_',' '))}</span><h3>${c.wo.id}</h3><b>${safeText(c.booking.name)}</b><p>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}<br>${safeText(v3Package(c.booking.packageId).name)}</p><button class="btn" onclick="v3OpenAdvisorCase('${c.caseId}','wo')">BUKA WO</button></div>`).join('')||'<div class="card">Tidak ada antrean.</div>'}</div>`;}
+  const cust=document.getElementById('p-cust');if(cust)cust.innerHTML=`<div class="head"><h2>Customer Database</h2></div><div class="card tablewrap"><table class="tbl"><tr><th>Customer</th><th>WhatsApp</th><th>Vehicle</th><th>Plate</th><th>Source</th><th>Aksi</th></tr>${(workflowState.cases||[]).map(c=>`<tr><td>${safeText(c.booking.name)}</td><td>${safeText(c.booking.phone)}</td><td>${safeText(c.booking.model)}</td><td>${safeText(c.booking.plate)}</td><td>${safeText(c.source)}</td><td><button class="btn alt" onclick="v3OpenAdvisorCase('${c.caseId}','vehicle')">DETAIL</button></td></tr>`).join('')}</table></div>`;
+  const c=v3CurrentCase();if(!c)return;
+  const veh=document.getElementById('p-vehicle');if(veh)veh.innerHTML=`<div class="head"><div><div class="k">Vehicle Detail</div><h2>${safeText(c.booking.plate)} · ${safeText(c.booking.model)}</h2></div><span class="pill">${safeText(c.source)}</span></div><div class="grid"><div class="card"><h3>Pemilik</h3><b>${safeText(c.booking.name)}</b><p class="muted">${safeText(c.booking.phone)}</p></div><div class="card"><h3>Identitas Vespa</h3><b>${safeText(c.booking.model)}</b><p class="muted">${safeText(c.booking.year||'-')} · ${Number(c.booking.odometer||0).toLocaleString('id-ID')} km</p></div><div class="card"><h3>Active Work Order</h3><b>${safeText(c.wo.id||'-')}</b><p class="muted">${safeText(c.wo.status.replaceAll('_',' '))} · ${safeText(c.wo.mechanic)}</p></div></div><div class="card" style="margin-top:13px"><h3>Paket & Keluhan</h3><div class="line"><span>Paket</span><b>${safeText(v3Package(c.booking.packageId).name)}</b></div><p>${safeText(c.booking.complaint||'-')}</p><button class="btn" onclick="stabId('wo')">BUKA ACTIVE WO</button></div>`;
+  const wo=document.getElementById('p-wo');if(wo)wo.innerHTML=`<div class="head"><div><div class="k">Work Order</div><h2>${safeText(c.wo.id||'BELUM CHECK-IN')}</h2></div>${wfPill(c.wo.status)}</div><div class="grid"><div class="card"><h3>Customer</h3><b>${safeText(c.booking.name)}</b><p>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}</p></div><div class="card"><h3>Paket Dasar</h3><b>${safeText(v3Package(c.booking.packageId).name)}</b><p>${rup(v3Package(c.booking.packageId).price)} · PRE-APPROVED</p></div><div class="card"><h3>Mekanik</h3><b>${safeText(c.wo.mechanic)}</b><p>${safeText(c.wo.diagnosisStatus.replaceAll('_',' '))}</p></div></div><div class="card" style="margin-top:13px"><h3>Diagnosis</h3><p>${safeText(c.wo.diagnosis||'Belum ada diagnosis.')}</p><div class="actions"><button class="btn" onclick="stabId('estimate')">LIHAT ESTIMATE / SCOPE</button><button class="btn alt" onclick="stabId('assign')">ASSIGN MEKANIK</button></div></div>`;
+  v3RenderEstimatePanel();
+  const assign=document.getElementById('p-assign');if(assign)assign.innerHTML=`<div class="head"><div><div class="k">Assignment</div><h2>Assign Mechanic — ${safeText(c.wo.id||'-')}</h2></div></div><div class="mechanic-choice">${['Rizky','Bayu','Arif'].map(n=>`<div class="mechanic-card ${c.wo.mechanic===n?'on':''}" onclick="selectedMechanic='${n}';document.querySelectorAll('#p-assign .mechanic-card').forEach(x=>x.classList.remove('on'));this.classList.add('on')"><b>${n}</b><p class="muted">Mechanic</p></div>`).join('')}</div><div class="actions"><button class="btn" onclick="confirmMechanic()">CONFIRM ASSIGNMENT</button></div>`;
+}
+function v3OpenAdvisorCase(caseId,tab){if(!v3SelectCase(caseId,false))return;v3RenderAdvisor();stabId(tab||'wo');}
+confirmMechanic=function(){if(!workflowState.wo.id){toast('Work Order belum dibuat');return;}workflowState.wo.mechanic=selectedMechanic;workflowState.wo.status='ASSIGNED';workflowState.wo.jobStatus='ASSIGNED';commitWorkflow('MECHANIC_ASSIGNED',workflowState.wo.id,selectedMechanic,'ADVISOR');pushNotification('mechanic','New Assignment',workflowState.wo.id+' ditugaskan ke '+selectedMechanic,'assignment');toast('WO ditugaskan ke '+selectedMechanic);stabId('wo');};
+
+function v3RenderQc(){
+  const q=document.getElementById('q-queue');if(q){const cases=(workflowState.cases||[]).filter(c=>c.wo?.jobStatus==='WAITING_QC'||c.wo?.qcStatus==='FAILED');q.innerHTML=`<div class="head"><div><div class="k">Quality Control</div><h2>QC Queue</h2></div><button class="btn alt" onclick="staffLogout()">Logout</button></div><div class="card tablewrap"><table class="tbl"><tr><th>WO</th><th>Vehicle</th><th>Mechanic</th><th>Scope</th><th>Status</th><th>Aksi</th></tr>${cases.map(c=>`<tr><td>${c.wo.id}</td><td>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}</td><td>${safeText(c.wo.mechanic)}</td><td>${safeText(v3Package(c.booking.packageId).name)}</td><td>${wfPill(c.wo.qcStatus==='FAILED'?'REWORK':'WAITING_QC')}</td><td><button class="btn" onclick="v3OpenQcCase('${c.caseId}')">INSPECT</button></td></tr>`).join('')||'<tr><td colspan="6">Tidak ada WO menunggu QC.</td></tr>'}</table></div>`;}
+  const c=v3CurrentCase();const ins=document.getElementById('q-inspect');if(ins&&c)ins.innerHTML=`<div class="head"><div><div class="k">QC Inspection</div><h2 id="qcWo">${safeText(c.wo.id||'-')}</h2></div>${wfPill(c.wo.qcStatus)}</div><div class="grid"><div class="card"><h3>Vehicle</h3><b>${safeText(c.booking.model)}</b><p>${safeText(c.booking.plate)}</p></div><div class="card"><h3>Mechanic</h3><b id="qcMechanic">${safeText(c.wo.mechanic)}</b></div><div class="card"><h3>Approved Scope</h3><p>${v3ApprovedItems(c.estimate).map(i=>safeText(i.name)).join('<br>')}</p></div></div><div class="card" style="margin-top:13px"><h3>QC Checklist</h3><div class="qcchecks">${['Approved work completed','Tidak ada kebocoran / abnormal noise','Brake & safety check','Electrical / lights check','Road / function test','Area kerja bersih'].map(x=>`<label class="qccheck"><input class="qcbox" type="checkbox"><span><b>${x}</b></span></label>`).join('')}</div><div class="field" style="margin-top:12px"><label>QC Note / failure reason</label><textarea id="qcNote"></textarea></div><div id="selfQcWarning" class="notice" style="display:none;margin-top:12px">Self-QC diblokir.</div><div class="actions"><button class="btn" onclick="qcPass()">PASS QC</button><button class="btn bad" onclick="qcFail()">FAIL / REWORK</button></div></div>`;
+  const hist=document.getElementById('q-history');if(hist){const cases=(workflowState.cases||[]).filter(c=>['PASSED','FAILED'].includes(c.wo?.qcStatus));hist.innerHTML=`<div class="head"><h2>QC History</h2></div><div class="card tablewrap"><table class="tbl"><tr><th>WO</th><th>Vehicle</th><th>Mechanic</th><th>QC</th></tr>${cases.map(c=>`<tr><td>${c.wo.id}</td><td>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}</td><td>${safeText(c.wo.mechanic)}</td><td>${wfPill(c.wo.qcStatus)}</td></tr>`).join('')||'<tr><td colspan="4">Belum ada history.</td></tr>'}</table></div>`;}
+}
+function v3OpenQcCase(caseId){if(!v3SelectCase(caseId,false))return;currentQcMechanic=workflowState.wo.mechanic;v3RenderQc();qtabId('inspect');}
+qcPass=function(){if(workflowState.wo.jobStatus!=='WAITING_QC'){toast('Job belum WAITING QC');return;}const boxes=[...document.querySelectorAll('#q-inspect .qcbox')];if(boxes.length&&!boxes.every(x=>x.checked)){toast('Selesaikan semua checklist QC');return;}workflowState.wo.qcStatus='PASSED';workflowState.wo.status='READY_FOR_PICKUP';workflowState.invoice.status=workflowState.invoice.paid>=workflowState.invoice.total?'PAID':'UNPAID';commitWorkflow('QC_PASSED',workflowState.wo.id,'Ready for Pickup','QC');pushNotification('advisor','QC Passed',workflowState.wo.id+' siap diambil.','qc');pushCustomerNotification('Vespa siap diambil','QC selesai. Silakan cek tagihan dan pengambilan.','ready','completed');toast('QC PASSED');};
+qcFail=function(){const note=document.getElementById('qcNote')?.value.trim();if(!note){toast('Failure reason wajib diisi');return;}workflowState.wo.qcStatus='FAILED';workflowState.wo.status='REWORK';workflowState.wo.jobStatus='REWORK';commitWorkflow('QC_FAILED',workflowState.wo.id,note,'QC');pushNotification('mechanic','QC Failed — Rework',workflowState.wo.id+': '+note,'qc');pushNotification('advisor','QC Failed',workflowState.wo.id+' masuk rework.','qc');pushCustomerNotification('Pengerjaan memerlukan pengecekan tambahan','Tim workshop melakukan rework sebelum kendaraan siap.','service','tracking');toast('QC FAILED → REWORK');};
+
+function v3CreateServiceRecord(){
+  const c=v3CurrentCase();if(!c)return null;const rec={id:'SR-'+workflowState.wo.id,date:new Date().toISOString(),woId:workflowState.wo.id,invoiceId:workflowState.invoice.id,customer:workflowState.booking.name,vehicle:workflowState.booking.model,plate:workflowState.booking.plate,odometer:workflowState.booking.odometer||0,packageId:workflowState.booking.packageId,mechanic:workflowState.wo.mechanic,items:v3Clone(v3ApprovedItems(workflowState.estimate)),total:workflowState.invoice.total};c.serviceRecord=rec;const idx=(workflowState.serviceRecords||[]).findIndex(x=>x.woId===rec.woId);if(idx>=0)workflowState.serviceRecords[idx]=rec;else workflowState.serviceRecords.unshift(rec);return rec;
+}
+const v3LegacyReleaseVehicle=releaseVehicle;
+releaseVehicle=function(){const receiver=document.getElementById('wfReceiver')?.value.trim();const note=document.getElementById('wfReleaseNote')?.value.trim();if(workflowState.wo.qcStatus!=='PASSED'){toast('Release diblokir: QC belum PASSED');return;}if(workflowState.invoice.status!=='PAID'){toast('Release diblokir: invoice belum PAID');return;}if(!receiver){toast('Nama penerima wajib diisi');return;}workflowState.release={status:'RELEASED',receiver,note,releasedAt:new Date().toISOString()};workflowState.wo.status='CLOSED';workflowState.wo.jobStatus='CLOSED';const rec=v3CreateServiceRecord();commitWorkflow('VEHICLE_RELEASED',workflowState.wo.id,'Penerima: '+receiver,'ADVISOR');pushCustomerNotification('Servis selesai','Kendaraan sudah diserahkan. Service Record tersedia.','completed','record');toast('Vehicle released — WO CLOSED');v3RenderRecord();};
+function v3RenderRecord(){
+  const sec=document.getElementById('record');if(!sec)return;const c=v3CurrentCase();const rec=c?.serviceRecord || (workflowState.serviceRecords||[]).find(x=>x.woId===workflowState.wo.id);if(!c)return;sec.innerHTML=`<div class="head"><div><div class="k">Digital Service Record</div><h2>${safeText(c.booking.plate)} · ${safeText(c.booking.model)}</h2></div></div><div class="card">${rec?`<div class="line"><span>Work Order</span><b>${rec.woId}</b></div><div class="line"><span>Invoice</span><b>${rec.invoiceId}</b></div><div class="line"><span>Tanggal</span><b>${new Date(rec.date).toLocaleString('id-ID')}</b></div><div class="line"><span>Odometer</span><b>${Number(rec.odometer||0).toLocaleString('id-ID')} km</b></div><div class="line"><span>Mekanik</span><b>${safeText(rec.mechanic)}</b></div><h3 style="margin-top:16px">Pekerjaan & Part</h3>${rec.items.map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}</span><b>${rup(v3ItemTotal(i))}</b></div>`).join('')}<div class="line"><b>Total</b><span class="money">${rup(rec.total)}</span></div>`:'<div class="notice">Service Record dibuat otomatis setelah kendaraan direlease dan WO CLOSED.</div>'}<div class="actions"><button class="btn" onclick="go('booking')">BOOKING SERVIS LAGI</button></div></div>`;
+}
+
+function v3RenderCompleted(){const sec=document.getElementById('completed');if(!sec)return;const lines=sec.querySelectorAll('.line');if(lines[0])lines[0].innerHTML=`<span>QC</span><b>${safeText(workflowState.wo.qcStatus)}</b>`;if(lines[1])lines[1].innerHTML=`<span>Invoice</span><b>${safeText(workflowState.invoice.id||'-')}</b>`;if(lines[2])lines[2].innerHTML=`<span>Total</span><b>${rup(workflowState.invoice.total)}</b>`;}
+
+function v3RenderReports(){
+  const p=document.getElementById('o-reports');if(!p)return;const cases=workflowState.cases||[];
+  const paidCases=cases.filter(c=>c.invoice?.status==='PAID');const revenue=paidCases.reduce((s,c)=>s+Number(c.invoice.paid||0),0);
+  const labor=paidCases.reduce((s,c)=>s+(c.invoice.items||[]).filter(i=>i.kind==='labor').reduce((a,i)=>a+v3ItemTotal(i),0),0);
+  const partSales=paidCases.reduce((s,c)=>s+(c.invoice.items||[]).filter(i=>i.kind==='part').reduce((a,i)=>a+v3ItemTotal(i),0),0);
+  const avg=paidCases.length?Math.round(revenue/paidCases.length):0;
+  p.innerHTML=`<div class="head"><div><div class="k">Financial & Operational</div><h2>Reports — Local Workflow</h2></div><span class="pill">PRE-BACKEND</span></div>
+    <div class="metrics"><div class="metric"><span class="muted">Confirmed Revenue</span><strong style="font-size:20px">${rup(revenue)}</strong></div><div class="metric"><span class="muted">Service / Labor</span><strong style="font-size:20px">${rup(labor)}</strong></div><div class="metric"><span class="muted">Parts</span><strong style="font-size:20px">${rup(partSales)}</strong></div><div class="metric"><span class="muted">Paid Invoices</span><strong>${paidCases.length}</strong></div></div>
+    <div class="card tablewrap" style="margin-top:13px"><table class="tbl"><tr><th>WO</th><th>Customer</th><th>Paket</th><th>Status</th><th>Invoice</th><th>Total</th></tr>${cases.filter(c=>c.wo?.id).map(c=>`<tr><td>${c.wo.id}</td><td>${safeText(c.booking.name)}</td><td>${safeText(v3Package(c.booking.packageId).name)}</td><td>${wfPill(c.wo.status)}</td><td>${safeText(c.invoice.id||'-')} · ${wfPill(c.invoice.status)}</td><td>${rup(c.invoice.total||0)}</td></tr>`).join('')||'<tr><td colspan="6">Belum ada Work Order.</td></tr>'}</table></div>
+    <div class="wf-grid" style="margin-top:13px"><div class="wf-card"><span class="muted">Active WO</span><strong>${cases.filter(c=>c.wo?.id&&c.wo.status!=='CLOSED').length}</strong></div><div class="wf-card"><span class="muted">Closed WO</span><strong>${cases.filter(c=>c.wo?.status==='CLOSED').length}</strong></div><div class="wf-card"><span class="muted">Average Paid Invoice</span><strong>${rup(avg)}</strong></div><div class="wf-card"><span class="muted">Pending Approval</span><strong>${cases.filter(c=>c.estimate?.approval==='PENDING').length}</strong></div><div class="wf-card"><span class="muted">Warranty Cases</span><strong>${workflowState.warranties.length}</strong></div><div class="wf-card"><span class="muted">Audit Events</span><strong>${workflowState.audit.length}</strong></div></div>
+    <div class="notice" style="margin-top:13px">Semua angka di panel ini dihitung dari state transaksi lokal yang benar-benar terjadi saat testing, bukan angka laporan dummy. Setelah Supabase, sumbernya dipindahkan ke database.</div>`;
+}
+
+function v3RenderCustomerNotifications(){
+  const active=workflowState.customerActiveCaseId;const arr=(workflowState.customerNotifications||[]).filter(n=>!active||!n.caseId||n.caseId===active);const count=document.getElementById('customerNotifCount');if(count){const un=arr.filter(n=>!n.read).length;count.textContent=un;count.style.display=un?'inline':'none';}const list=document.getElementById('customerNotifList');if(!list)return;list.innerHTML=arr.length?arr.map(n=>`<div class="notifitem ${n.read?'':'unread'}" onclick="v3OpenCustomerNotif('${n.id}')"><b>${safeText(n.title)}</b><div class="muted">${safeText(n.text)}</div><small>${new Date(n.ts).toLocaleString('id-ID')}</small></div>`).join(''):'<div class="muted">Belum ada notifikasi untuk service ini.</div>';
+}
+pushCustomerNotification=function(title,text,type,target){const id='CN-'+Date.now()+'-'+Math.floor(Math.random()*1000);const caseId=workflowState.selectedCaseId||workflowState.customerActiveCaseId||'';workflowState.customerNotifications.unshift({id,caseId,ts:new Date().toISOString(),title,text,type:type||'update',target:target||'tracking',read:false});workflowState.customerNotifications=workflowState.customerNotifications.slice(0,100);saveWorkflow();v3RenderCustomerNotifications();};
+function v3OpenCustomerNotif(id){const n=(workflowState.customerNotifications||[]).find(x=>x.id===id);if(!n)return;n.read=true;if(n.caseId){workflowState.customerActiveCaseId=n.caseId;v3SelectCase(n.caseId,false);}saveWorkflow();v3RenderCustomerNotifications();const target=n.target||'tracking';if(target==='tracking'){const t=document.getElementById('tc');if(t)t.value=workflowState.wo.id||workflowState.booking.code;go('tracking');track();}else{go(target);syncWorkflowUI();}}
+renderCustomerNotifications=v3RenderCustomerNotifications;
+
+function v3StaffRoleNotifs(){const a=workflowState.staffNotifications||[];return a.filter(n=>n.role===currentStaffRole||currentStaffRole==='owner');}
+function v3RenderStaffNotifications(){const a=v3StaffRoleNotifs();const c=document.getElementById('notifCount');if(c)c.textContent=a.filter(x=>!x.read).length;const list=document.getElementById('notifList');if(!list)return;list.innerHTML=a.length?a.map(n=>`<div class="notifitem ${n.read?'':'unread'}" onclick="v3ReadStaffNotif('${n.id}')">${n.read?'':'<span class="notifdot"></span>'}<b>${safeText(n.title)}</b><div class="muted">${safeText(n.text)}</div><small class="muted">${safeText(String(n.type||'update').toUpperCase())} · ${new Date(n.ts).toLocaleString('id-ID')}</small></div>`).join(''):'<div class="muted">Belum ada notifikasi.</div>';}
+pushNotification=function(role,title,text,type){if(!workflowState.staffNotifications)workflowState.staffNotifications=[];workflowState.staffNotifications.unshift({id:'SN-'+Date.now()+'-'+Math.floor(Math.random()*1000),ts:new Date().toISOString(),role,title,text,type:type||'update',read:false});workflowState.staffNotifications=workflowState.staffNotifications.slice(0,150);saveWorkflow();v3RenderStaffNotifications();};
+roleNotifs=v3StaffRoleNotifs;renderNotifications=v3RenderStaffNotifications;
+function v3ReadStaffNotif(id){const n=(workflowState.staffNotifications||[]).find(x=>x.id===id);if(n){n.read=true;saveWorkflow();v3RenderStaffNotifications();}}
+readNotif=function(i){const a=v3StaffRoleNotifs();const n=a[i];if(n)v3ReadStaffNotif(n.id);};
+markAllRead=function(){v3StaffRoleNotifs().forEach(n=>n.read=true);saveWorkflow();v3RenderStaffNotifications();toast('Semua notifikasi role ini sudah dibaca');};
+markAllCustomerRead=function(){const active=workflowState.customerActiveCaseId;(workflowState.customerNotifications||[]).forEach(n=>{if(!active||!n.caseId||n.caseId===active)n.read=true;});saveWorkflow();v3RenderCustomerNotifications();toast('Semua notifikasi service ini sudah dibaca');};
+
+function v3RenderDashboardMetrics(){
+  const cases=workflowState.cases||[];const m=document.querySelectorAll('#p-dash .metric strong');if(m[0])m[0].textContent=cases.filter(c=>c.source==='ONLINE'&&['CONFIRMED','RESCHEDULED'].includes(c.booking.status)).length;if(m[1])m[1].textContent=cases.filter(c=>c.wo?.id&&c.wo.status!=='CLOSED').length;if(m[2])m[2].textContent=cases.filter(c=>c.estimate?.approval==='PENDING').length;if(m[3])m[3].textContent=cases.filter(c=>c.wo?.qcStatus==='PASSED'&&c.release?.status!=='RELEASED').length;
+}
+
+function v3RenderAll(){v3RenderPartsCatalog();v3RenderAdvisor();v3RenderMechanic();v3RenderInventoryRequests();v3RenderQc();v3RenderTracking();v3RenderApproval();v3RenderInvoice();v3RenderRecord();v3RenderCompleted();v3RenderReports();v3RenderCustomerNotifications();v3RenderDashboardMetrics();}
+syncWorkflowUI=function(){v3LegacySyncWorkflowUI();v3RenderAll();};
+
+function v3InstallMechanicLogin(){
+  const role=document.getElementById('demoRole');if(!role)return;let field=document.getElementById('v3MechanicLoginField');if(!field){field=document.createElement('div');field.id='v3MechanicLoginField';field.className='field';field.style.marginTop='10px';field.innerHTML=`<label>Akun Mechanic Demo</label><select id="v3MechanicAccount"><option>Rizky</option><option>Bayu</option><option>Arif</option></select>`;role.closest('.field').insertAdjacentElement('afterend',field);}const toggle=()=>field.style.display=role.value==='mechanic'?'flex':'none';role.addEventListener('change',toggle);toggle();
+}
+loginStaff=function(){const r=document.getElementById('demoRole').value;if(r!=='mechanic'){v3LegacyLoginStaff();setTimeout(syncWorkflowUI,0);return;}const u=document.getElementById('su'),pw=document.getElementById('spw');if(!u?.value.trim()||!pw?.value){toast('Isi username dan password');return;}workflowState.demoMechanic=document.getElementById('v3MechanicAccount')?.value||'Rizky';currentStaffRole='mechanic';lastStaffPage='mechanic';const b=document.getElementById('notifBtn');if(b)b.style.display='inline-block';const cb=document.getElementById('customerNotifBtn');if(cb)cb.style.display='none';saveWorkflow();go('mechanic');mtabId('jobs');syncWorkflowUI();toast('Login demo: Mechanic — '+workflowState.demoMechanic);};
+staffLogout=function(){v3LegacyStaffLogout();setTimeout(syncWorkflowUI,0);};
+
+function v3Init(){
+  v3MigrateWorkflow();v3InstallPackageUI();v3InstallMechanicLogin();
+  const form=document.getElementById('bf');if(form&&!form.dataset.v3Hook){form.dataset.v3Hook='1';form.addEventListener('submit',()=>setTimeout(v3CaptureOnlineBooking,20));}
+  const invoiceBtn=[...document.querySelectorAll('#completed .actions button')].find(b=>b.textContent.includes('LIHAT INVOICE'));if(invoiceBtn){invoiceBtn.onclick=()=>{go('customerPayment');syncWorkflowUI();};invoiceBtn.textContent='LIHAT INVOICE';}
+  syncWorkflowUI();
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(v3Init,0));
+
+</script>
 </body>
 
 </html>
