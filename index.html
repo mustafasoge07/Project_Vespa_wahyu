@@ -4012,19 +4012,9 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       localStorage.removeItem(WORKFLOW_KEY);localStorage.removeItem('vespa_booking');location.reload();
     }
 
-    // Tangkap booking customer baru ke state bersama.
-    document.getElementById('bf')?.addEventListener('submit',()=>{
-      setTimeout(()=>{
-        workflowState.booking={code:booking?.code||workflowState.booking.code,name:bn.value.trim(),phone:bp.value.trim(),model:bm.value,plate:bpl.value.toUpperCase(),date:bd.value,slot:(bs.value||'').split('—')[0].trim(),status:'CONFIRMED'};
-        workflowState.wo={id:'',status:'BOOKED',mechanic:'Belum ditentukan',diagnosisStatus:'NOT_STARTED',diagnosis:'',jobStatus:'BOOKED',partsStatus:'NOT_REQUESTED',qcStatus:'PENDING'};
-        workflowState.estimate={id:'',status:'DRAFT',total:0,approval:'PENDING'};
-        workflowState.invoice={id:'',paymentId:'',total:0,paid:0,outstanding:0,status:'UNPAID',method:'',proofName:'',verification:'NONE'};
-        workflowState.release={status:'BLOCKED',receiver:'',note:'',releasedAt:''};
-        workflowState.partRequests=[];
-        commitWorkflow('CUSTOMER_BOOKING_CREATED',workflowState.booking.code,`${workflowState.booking.name} · ${workflowState.booking.model}`,'CUSTOMER');
-        pushCustomerNotification('Booking berhasil',workflowState.booking.code+' sudah dibuat. Ketuk untuk melihat status booking/servis.','booking','tracking');
-      },0);
-    });
+    // [INTEGRITY_FIX] Listener booking workflow legacy dinonaktifkan.
+    // Booking baru ditangani SATU KALI oleh v3CaptureOnlineBooking() pada layer V3,
+    // supaya case/part request lama tidak tertimpa atau terhapus.
 
     document.addEventListener('DOMContentLoaded',()=>{ installWorkflowUI(); syncWorkflowUI(); });
 
@@ -4096,8 +4086,12 @@ function v3NormalizeEstimate(est, pkgId, woId){
   e.revision=Number.isFinite(+e.revision)?+e.revision:0;
   e.id=e.id || (woId?estimateCodeFromWo(woId,e.revision):'');
   e.total=v3ProposedTotal(e);
-  if(!e.status || e.status==='DRAFT') e.status='BASE_APPROVED';
-  if(!e.approval || e.approval==='PENDING') e.approval='APPROVED';
+  const hasPending=e.items.some(i=>i.approval==='PENDING');
+  if(!e.status || e.status==='DRAFT') e.status=hasPending?'REVISION_PENDING':'BASE_APPROVED';
+  // [INTEGRITY_FIX] PENDING adalah keputusan bisnis yang valid dan tidak boleh
+  // otomatis berubah menjadi APPROVED saat case dinormalisasi/disimpan/dibuka ulang.
+  if(!e.approval) e.approval=hasPending?'PENDING':'APPROVED';
+  if(hasPending) e.approval='PENDING';
   e.basePackageId=pkg.id;
   e.pendingFindingId=e.pendingFindingId||'';
   return e;
@@ -4393,16 +4387,30 @@ requestPart=function(btn,token,qty=1){
   const p=v3PartForRequest(token);if(!p){toast('Part tidak ditemukan');return;}qty=Math.max(1,+qty||1);
   const allowed=(workflowState.estimate.items||[]).find(i=>i.sku===p.sku&&i.approval==='APPROVED');if(!allowed){toast('Part ini belum termasuk scope yang disetujui customer');return;}
   const existing=(workflowState.partRequests||[]).find(r=>r.woId===workflowState.wo.id&&r.sku===p.sku&&['REQUESTED','ISSUED'].includes(r.status));if(existing){toast('Request '+existing.id+' sudah '+existing.status);return;}
-  const id=generateDocumentCode('PRQ');const req={id,woId:workflowState.wo.id,caseId:workflowState.selectedCaseId,mechanic:workflowState.wo.mechanic,sku:p.sku,part:p.name,qty,status:'REQUESTED',createdAt:new Date().toISOString()};workflowState.partRequests.unshift(req);workflowState.wo.partsStatus='REQUESTED';if(btn){btn.disabled=true;btn.textContent='REQUESTED';}
-  commitWorkflow('PART_REQUESTED',id,`${workflowState.wo.id} · ${p.sku} ×${qty}`,'MECHANIC');pushNotification('inventory','Part Request',`${id} · ${p.name} ×${qty} untuk ${workflowState.wo.id}`,'part');toast('Part Request '+id+' dibuat');
+  const available=Math.max(0,p.on-p.res);
+  // [INTEGRITY_FIX] Request yang stoknya cukup langsung menjadi reservation.
+  // On Hand belum berubah; Available turun karena Reserved naik.
+  const reservedQty=available>=qty?qty:0;
+  if(reservedQty){p.res+=reservedQty;syncInventorySnapshot();}
+  const id=generateDocumentCode('PRQ');const req={id,woId:workflowState.wo.id,caseId:workflowState.selectedCaseId,mechanic:workflowState.wo.mechanic,sku:p.sku,part:p.name,qty,reservedQty,status:'REQUESTED',createdAt:new Date().toISOString()};workflowState.partRequests.unshift(req);workflowState.wo.partsStatus='REQUESTED';if(btn){btn.disabled=true;btn.textContent='REQUESTED';}
+  commitWorkflow('PART_REQUESTED',id,`${workflowState.wo.id} · ${p.sku} ×${qty}${reservedQty?' · RESERVED '+reservedQty:' · BELUM TER-RESERVE'}`,'MECHANIC');pushNotification('inventory','Part Request',`${id} · ${p.name} ×${qty} untuk ${workflowState.wo.id}`,'part');v3RenderPartsCatalog();toast('Part Request '+id+' dibuat'+(reservedQty?' · stok di-reserve':''));
 };
 
-function v3IssueRequest(id){
-  const r=(workflowState.partRequests||[]).find(x=>x.id===id);if(!r)return;const p=invData.find(x=>x.sku===r.sku);if(!p){toast('SKU tidak ditemukan');return;}const available=Math.max(0,p.on-p.res);if(available<r.qty){r.status='OUT_OF_STOCK';commitWorkflow('PART_OUT_OF_STOCK',r.id,`${r.sku} available ${available}`,'INVENTORY');toast('Stok tidak cukup');return;}
-  p.on-=r.qty;if(p.res>0)p.res=Math.max(0,p.res-r.qty);r.status='ISSUED';r.issuedAt=new Date().toISOString();syncInventorySnapshot();v3RecalcPartStatus(r.woId);commitWorkflow('PART_ISSUED',r.id,`${r.sku} ×${r.qty} untuk ${r.woId}`,'INVENTORY');pushNotification('mechanic','Part Issued',`${r.part} ×${r.qty} untuk ${r.woId} sudah di-issue.`,'part');v3RenderPartsCatalog();toast(r.id+' ISSUED');
+function v3ReleaseRequestReservation(r){
+  if(!r||!r.reservedQty)return;const p=invData.find(x=>x.sku===r.sku);if(p){p.res=Math.max(0,p.res-Number(r.reservedQty||0));}r.reservedQty=0;syncInventorySnapshot();v3RenderPartsCatalog();
 }
-function v3RejectRequest(id){const r=workflowState.partRequests.find(x=>x.id===id);if(!r)return;r.status='REJECTED';v3RecalcPartStatus(r.woId);commitWorkflow('PART_REQUEST_REJECTED',r.id,r.part,'INVENTORY');pushNotification('mechanic','Part Request Rejected',r.id+' · '+r.part,'part');}
-function v3OutStockRequest(id){const r=workflowState.partRequests.find(x=>x.id===id);if(!r)return;r.status='OUT_OF_STOCK';v3RecalcPartStatus(r.woId);commitWorkflow('PART_OUT_OF_STOCK',r.id,r.part,'INVENTORY');pushNotification('mechanic','Part Out of Stock',r.id+' · '+r.part,'stock');pushNotification('advisor','Part Out of Stock',r.woId+' · '+r.part,'stock');}
+function v3IssueRequest(id){
+  const r=(workflowState.partRequests||[]).find(x=>x.id===id);if(!r)return;const p=invData.find(x=>x.sku===r.sku);if(!p){toast('SKU tidak ditemukan');return;}
+  const ownReserved=Math.min(Number(r.reservedQty||0),Number(r.qty||0));
+  const available=Math.max(0,p.on-p.res);
+  if(ownReserved<r.qty && available<(r.qty-ownReserved)){r.status='OUT_OF_STOCK';v3ReleaseRequestReservation(r);v3RecalcPartStatus(r.woId);commitWorkflow('PART_OUT_OF_STOCK',r.id,`${r.sku} available ${available}`,'INVENTORY');toast('Stok tidak cukup');return;}
+  // Issue mengurangi stok fisik. Reservation milik request ini dilepas pada saat yang sama.
+  p.on=Math.max(0,p.on-r.qty);
+  if(ownReserved)p.res=Math.max(0,p.res-ownReserved);
+  r.reservedQty=0;r.status='ISSUED';r.issuedAt=new Date().toISOString();syncInventorySnapshot();v3RecalcPartStatus(r.woId);commitWorkflow('PART_ISSUED',r.id,`${r.sku} ×${r.qty} untuk ${r.woId}`,'INVENTORY');pushNotification('mechanic','Part Issued',`${r.part} ×${r.qty} untuk ${r.woId} sudah di-issue.`,'part');v3RenderPartsCatalog();toast(r.id+' ISSUED');
+}
+function v3RejectRequest(id){const r=workflowState.partRequests.find(x=>x.id===id);if(!r)return;v3ReleaseRequestReservation(r);r.status='REJECTED';v3RecalcPartStatus(r.woId);commitWorkflow('PART_REQUEST_REJECTED',r.id,r.part,'INVENTORY');pushNotification('mechanic','Part Request Rejected',r.id+' · '+r.part,'part');}
+function v3OutStockRequest(id){const r=workflowState.partRequests.find(x=>x.id===id);if(!r)return;v3ReleaseRequestReservation(r);r.status='OUT_OF_STOCK';v3RecalcPartStatus(r.woId);commitWorkflow('PART_OUT_OF_STOCK',r.id,r.part,'INVENTORY');pushNotification('mechanic','Part Out of Stock',r.id+' · '+r.part,'stock');pushNotification('advisor','Part Out of Stock',r.woId+' · '+r.part,'stock');}
 function v3RecalcPartStatus(woId){const reqs=(workflowState.partRequests||[]).filter(r=>r.woId===woId);if(workflowState.wo.id!==woId)return;workflowState.wo.partsStatus=reqs.some(r=>r.status==='REQUESTED')?'REQUESTED':reqs.some(r=>r.status==='OUT_OF_STOCK')?'OUT_OF_STOCK':reqs.length&&reqs.every(r=>r.status==='ISSUED')?'ISSUED':reqs.some(r=>r.status==='REJECTED')?'REJECTED':'NOT_REQUESTED';}
 
 function v3RenderInventoryRequests(){
@@ -4420,12 +4428,13 @@ function v3AllRequiredPartsIssued(){return v3RequiredPartItems().every(i=>v3Issu
 completeJob=function(){
   if(workflowState.estimate.approval!=='APPROVED'){toast('Pekerjaan tambahan masih menunggu approval customer');return;}
   if(!v3AllRequiredPartsIssued()){const missing=v3RequiredPartItems().filter(i=>v3IssuedQtyForSku(i.sku)<i.qty);if(missing.length){toast('Part approved belum di-issue: '+missing.map(x=>x.name).join(', '));return;}}
-  workflowState.wo.jobStatus='WAITING_QC';workflowState.wo.status='WAITING_QC';commitWorkflow('JOB_COMPLETED_WAITING_QC',workflowState.wo.id,'Dikirim ke QC','MECHANIC');pushNotification('qc','Waiting QC',workflowState.wo.id+' siap diperiksa QC.','qc');toast('Pekerjaan selesai → WAITING QC');
+  // [INTEGRITY_FIX] Setiap pengiriman (termasuk setelah rework) membuka siklus QC baru.
+  workflowState.wo.qcStatus='PENDING';workflowState.wo.jobStatus='WAITING_QC';workflowState.wo.status='WAITING_QC';commitWorkflow('JOB_COMPLETED_WAITING_QC',workflowState.wo.id,'Dikirim ke QC / re-inspection','MECHANIC');pushNotification('qc','Waiting QC',workflowState.wo.id+' siap diperiksa QC.','qc');toast('Pekerjaan selesai → WAITING QC');
 };
 
 startDiag=function(){if(!workflowState.wo.id){toast('Pilih WO');return;}if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}workflowState.wo.diagnosisStatus='IN_PROGRESS';workflowState.wo.status='DIAGNOSIS';workflowState.wo.jobStatus='DIAGNOSIS';commitWorkflow('DIAGNOSIS_STARTED',workflowState.wo.id,'Diagnosis dimulai','MECHANIC');pushCustomerNotification('Pemeriksaan dimulai','Mekanik mulai memeriksa Vespa Anda.','service','tracking');toast('Diagnosis dimulai');};
 finishDiag=function(){if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}const note=document.getElementById('v3DiagSummary')?.value.trim()||'Pemeriksaan selesai. Tidak ada catatan tambahan.';workflowState.wo.diagnosisStatus='COMPLETED';workflowState.wo.diagnosis=note;workflowState.wo.status='DIAGNOSIS_COMPLETED';workflowState.wo.jobStatus='APPROVED';commitWorkflow('DIAGNOSIS_COMPLETED',workflowState.wo.id,note,'MECHANIC');pushNotification('advisor','Diagnosis Completed',workflowState.wo.id+' · '+note,'mechanic');pushCustomerNotification('Pemeriksaan selesai','Pemeriksaan selesai. Jika ditemukan kebutuhan tambahan, Anda akan menerima permintaan approval.','service','tracking');toast('Diagnosis selesai');};
-jobAction=function(st){const s=String(st).toUpperCase();workflowState.wo.jobStatus=s==='STARTED'?'IN_PROGRESS':s;workflowState.wo.status=workflowState.wo.jobStatus;commitWorkflow('JOB_'+workflowState.wo.jobStatus,workflowState.wo.id,st,'MECHANIC');if(workflowState.wo.jobStatus==='IN_PROGRESS')pushCustomerNotification('Pengerjaan dimulai','Paket servis yang Anda pilih sedang dikerjakan.','service','tracking');};
+jobAction=function(st){const s=String(st).toUpperCase();const wasRework=workflowState.wo.jobStatus==='REWORK'||workflowState.wo.status==='REWORK'||workflowState.wo.qcStatus==='FAILED';workflowState.wo.jobStatus=s==='STARTED'?'IN_PROGRESS':s;workflowState.wo.status=workflowState.wo.jobStatus;if(wasRework&&workflowState.wo.jobStatus==='IN_PROGRESS')workflowState.wo.qcStatus='PENDING';commitWorkflow('JOB_'+workflowState.wo.jobStatus,workflowState.wo.id,st+(wasRework?' · REWORK CYCLE':''),'MECHANIC');if(workflowState.wo.jobStatus==='IN_PROGRESS')pushCustomerNotification(wasRework?'Rework sedang dikerjakan':'Pengerjaan dimulai',wasRework?'Perbaikan hasil QC sedang dikerjakan ulang.':'Paket servis yang Anda pilih sedang dikerjakan.','service','tracking');};
 
 function v3RenderMechanic(){
   const mechanic=workflowState.demoMechanic||'Rizky';const jobs=(workflowState.cases||[]).filter(c=>c.wo?.id&&c.wo.mechanic===mechanic&&c.wo.status!=='CLOSED');
@@ -4448,13 +4457,17 @@ function v3RenderAdvisor(){
   const veh=document.getElementById('p-vehicle');if(veh)veh.innerHTML=`<div class="head"><div><div class="k">Vehicle Detail</div><h2>${safeText(c.booking.plate)} · ${safeText(c.booking.model)}</h2></div><span class="pill">${safeText(c.source)}</span></div><div class="grid"><div class="card"><h3>Pemilik</h3><b>${safeText(c.booking.name)}</b><p class="muted">${safeText(c.booking.phone)}</p></div><div class="card"><h3>Identitas Vespa</h3><b>${safeText(c.booking.model)}</b><p class="muted">${safeText(c.booking.year||'-')} · ${Number(c.booking.odometer||0).toLocaleString('id-ID')} km</p></div><div class="card"><h3>Active Work Order</h3><b>${safeText(c.wo.id||'-')}</b><p class="muted">${safeText(c.wo.status.replaceAll('_',' '))} · ${safeText(c.wo.mechanic)}</p></div></div><div class="card" style="margin-top:13px"><h3>Paket & Keluhan</h3><div class="line"><span>Paket</span><b>${safeText(v3Package(c.booking.packageId).name)}</b></div><p>${safeText(c.booking.complaint||'-')}</p><button class="btn" onclick="stabId('wo')">BUKA ACTIVE WO</button></div>`;
   const wo=document.getElementById('p-wo');if(wo)wo.innerHTML=`<div class="head"><div><div class="k">Work Order</div><h2>${safeText(c.wo.id||'BELUM CHECK-IN')}</h2></div>${wfPill(c.wo.status)}</div><div class="grid"><div class="card"><h3>Customer</h3><b>${safeText(c.booking.name)}</b><p>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}</p></div><div class="card"><h3>Paket Dasar</h3><b>${safeText(v3Package(c.booking.packageId).name)}</b><p>${rup(v3Package(c.booking.packageId).price)} · PRE-APPROVED</p></div><div class="card"><h3>Mekanik</h3><b>${safeText(c.wo.mechanic)}</b><p>${safeText(c.wo.diagnosisStatus.replaceAll('_',' '))}</p></div></div><div class="card" style="margin-top:13px"><h3>Diagnosis</h3><p>${safeText(c.wo.diagnosis||'Belum ada diagnosis.')}</p><div class="actions"><button class="btn" onclick="stabId('estimate')">LIHAT ESTIMATE / SCOPE</button><button class="btn alt" onclick="stabId('assign')">ASSIGN MEKANIK</button></div></div>`;
   v3RenderEstimatePanel();
-  const assign=document.getElementById('p-assign');if(assign)assign.innerHTML=`<div class="head"><div><div class="k">Assignment</div><h2>Assign Mechanic — ${safeText(c.wo.id||'-')}</h2></div></div><div class="mechanic-choice">${['Rizky','Bayu','Arif'].map(n=>`<div class="mechanic-card ${c.wo.mechanic===n?'on':''}" onclick="selectedMechanic='${n}';document.querySelectorAll('#p-assign .mechanic-card').forEach(x=>x.classList.remove('on'));this.classList.add('on')"><b>${n}</b><p class="muted">Mechanic</p></div>`).join('')}</div><div class="actions"><button class="btn" onclick="confirmMechanic()">CONFIRM ASSIGNMENT</button></div>`;
+  const assign=document.getElementById('p-assign');if(assign){
+    // [INTEGRITY_FIX] selectedMechanic selalu disinkronkan dari WO yang sedang dibuka.
+    const validMechanics=['Rizky','Bayu','Arif'];selectedMechanic=validMechanics.includes(c.wo.mechanic)?c.wo.mechanic:'Rizky';
+    assign.innerHTML=`<div class="head"><div><div class="k">Assignment</div><h2>Assign Mechanic — ${safeText(c.wo.id||'-')}</h2></div></div><div class="mechanic-choice">${validMechanics.map(n=>`<div class="mechanic-card ${selectedMechanic===n?'on':''}" onclick="selectedMechanic='${n}';document.querySelectorAll('#p-assign .mechanic-card').forEach(x=>x.classList.remove('on'));this.classList.add('on')"><b>${n}</b><p class="muted">Mechanic</p></div>`).join('')}</div><div class="actions"><button class="btn" onclick="confirmMechanic()">CONFIRM ASSIGNMENT</button></div>`;
+  }
 }
 function v3OpenAdvisorCase(caseId,tab){if(!v3SelectCase(caseId,false))return;v3RenderAdvisor();stabId(tab||'wo');}
-confirmMechanic=function(){if(!workflowState.wo.id){toast('Work Order belum dibuat');return;}workflowState.wo.mechanic=selectedMechanic;workflowState.wo.status='ASSIGNED';workflowState.wo.jobStatus='ASSIGNED';commitWorkflow('MECHANIC_ASSIGNED',workflowState.wo.id,selectedMechanic,'ADVISOR');pushNotification('mechanic','New Assignment',workflowState.wo.id+' ditugaskan ke '+selectedMechanic,'assignment');toast('WO ditugaskan ke '+selectedMechanic);stabId('wo');};
+confirmMechanic=function(){if(!workflowState.wo.id){toast('Work Order belum dibuat');return;}const activeName=document.querySelector('#p-assign .mechanic-card.on b')?.textContent.trim();const target=activeName||selectedMechanic||workflowState.wo.mechanic;if(!target||target==='Belum ditentukan'){toast('Pilih mekanik terlebih dahulu');return;}selectedMechanic=target;workflowState.wo.mechanic=target;workflowState.wo.status='ASSIGNED';workflowState.wo.jobStatus='ASSIGNED';commitWorkflow('MECHANIC_ASSIGNED',workflowState.wo.id,target,'ADVISOR');pushNotification('mechanic','New Assignment',workflowState.wo.id+' ditugaskan ke '+target,'assignment');toast('WO ditugaskan ke '+target);stabId('wo');};
 
 function v3RenderQc(){
-  const q=document.getElementById('q-queue');if(q){const cases=(workflowState.cases||[]).filter(c=>c.wo?.jobStatus==='WAITING_QC'||c.wo?.qcStatus==='FAILED');q.innerHTML=`<div class="head"><div><div class="k">Quality Control</div><h2>QC Queue</h2></div><button class="btn alt" onclick="staffLogout()">Logout</button></div><div class="card tablewrap"><table class="tbl"><tr><th>WO</th><th>Vehicle</th><th>Mechanic</th><th>Scope</th><th>Status</th><th>Aksi</th></tr>${cases.map(c=>`<tr><td>${c.wo.id}</td><td>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}</td><td>${safeText(c.wo.mechanic)}</td><td>${safeText(v3Package(c.booking.packageId).name)}</td><td>${wfPill(c.wo.qcStatus==='FAILED'?'REWORK':'WAITING_QC')}</td><td><button class="btn" onclick="v3OpenQcCase('${c.caseId}')">INSPECT</button></td></tr>`).join('')||'<tr><td colspan="6">Tidak ada WO menunggu QC.</td></tr>'}</table></div>`;}
+  const q=document.getElementById('q-queue');if(q){const cases=(workflowState.cases||[]).filter(c=>c.wo?.jobStatus==='WAITING_QC');q.innerHTML=`<div class="head"><div><div class="k">Quality Control</div><h2>QC Queue</h2></div><button class="btn alt" onclick="staffLogout()">Logout</button></div><div class="card tablewrap"><table class="tbl"><tr><th>WO</th><th>Vehicle</th><th>Mechanic</th><th>Scope</th><th>Status</th><th>Aksi</th></tr>${cases.map(c=>`<tr><td>${c.wo.id}</td><td>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}</td><td>${safeText(c.wo.mechanic)}</td><td>${safeText(v3Package(c.booking.packageId).name)}</td><td>${wfPill(c.wo.qcStatus==='FAILED'?'REWORK':'WAITING_QC')}</td><td><button class="btn" onclick="v3OpenQcCase('${c.caseId}')">INSPECT</button></td></tr>`).join('')||'<tr><td colspan="6">Tidak ada WO menunggu QC.</td></tr>'}</table></div>`;}
   const c=v3CurrentCase();const ins=document.getElementById('q-inspect');if(ins&&c)ins.innerHTML=`<div class="head"><div><div class="k">QC Inspection</div><h2 id="qcWo">${safeText(c.wo.id||'-')}</h2></div>${wfPill(c.wo.qcStatus)}</div><div class="grid"><div class="card"><h3>Vehicle</h3><b>${safeText(c.booking.model)}</b><p>${safeText(c.booking.plate)}</p></div><div class="card"><h3>Mechanic</h3><b id="qcMechanic">${safeText(c.wo.mechanic)}</b></div><div class="card"><h3>Approved Scope</h3><p>${v3ApprovedItems(c.estimate).map(i=>safeText(i.name)).join('<br>')}</p></div></div><div class="card" style="margin-top:13px"><h3>QC Checklist</h3><div class="qcchecks">${['Approved work completed','Tidak ada kebocoran / abnormal noise','Brake & safety check','Electrical / lights check','Road / function test','Area kerja bersih'].map(x=>`<label class="qccheck"><input class="qcbox" type="checkbox"><span><b>${x}</b></span></label>`).join('')}</div><div class="field" style="margin-top:12px"><label>QC Note / failure reason</label><textarea id="qcNote"></textarea></div><div id="selfQcWarning" class="notice" style="display:none;margin-top:12px">Self-QC diblokir.</div><div class="actions"><button class="btn" onclick="qcPass()">PASS QC</button><button class="btn bad" onclick="qcFail()">FAIL / REWORK</button></div></div>`;
   const hist=document.getElementById('q-history');if(hist){const cases=(workflowState.cases||[]).filter(c=>['PASSED','FAILED'].includes(c.wo?.qcStatus));hist.innerHTML=`<div class="head"><h2>QC History</h2></div><div class="card tablewrap"><table class="tbl"><tr><th>WO</th><th>Vehicle</th><th>Mechanic</th><th>QC</th></tr>${cases.map(c=>`<tr><td>${c.wo.id}</td><td>${safeText(c.booking.model)} · ${safeText(c.booking.plate)}</td><td>${safeText(c.wo.mechanic)}</td><td>${wfPill(c.wo.qcStatus)}</td></tr>`).join('')||'<tr><td colspan="4">Belum ada history.</td></tr>'}</table></div>`;}
 }
