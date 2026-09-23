@@ -23,46 +23,39 @@
     }
 
     body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--t);
+      --margin: 0;
+      --background: var(--bg);
+      --color: var(--t);
       font: 15px/1.45 system-ui, -apple-system, Segoe UI, Arial
     }
 
     .top {
-      position: sticky;
+      --position: sticky;
       top: 0;
       z-index: 9;
-      background: rgba(245,246,244,.92);
-      border-bottom: 1px solid var(--l);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px)
+      --background: #f5f6f4eF;
+      --border-bottom: 1px solid var(--l);
+      --backdrop-filter: blur(12px)
     }
 
     .topin {
-      max-width: 1100px;
-      margin: auto;
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      gap: 11px
+      --max-width: 1100px;
+      --margin: auto;
+      --padding: 12px 16px;
+      --display: flex;
+      --align-items: center;
+      --gap: 11px
     }
 
     .logo {
-      width: 46px;
-      height: 46px;
-      flex: 0 0 46px;
+      --width: 42px;
+      height: 42px;
       border-radius: 14px;
-      background: linear-gradient(145deg,var(--g),var(--gd));
+      background: var(--g);
       color: #fff;
       display: grid;
       place-items: center;
-      font-weight: 950;
-      font-size: 18px;
-      letter-spacing: -.04em;
-      box-shadow: 0 7px 18px rgba(23,76,58,.18);
-      user-select: none;
-      cursor: default
+      font-weight: 900
     }
 
     .status {
@@ -289,7 +282,7 @@
       max-width: 700px;
       margin: auto;
       display: grid;
-      grid-template-columns: repeat(5, 1fr)
+      grid-template-columns: repeat(4, 1fr)
     }
 
     .nav button {
@@ -537,74 +530,21 @@
         grid-column: 2
       }
     }
-  
-    /* Customer dashboard background.
-       Taruh foto pilihan Anda di folder yang sama dengan index.html dan beri nama: workshop-bg.jpg */
-    #home::before{
-      content:"";
-      position:fixed;
-      inset:0;
-      z-index:-2;
-      background:
-        linear-gradient(rgba(245,246,244,.78),rgba(245,246,244,.90)),
-        url("workshop-bg.jpg") center/cover no-repeat;
-    }
-    #home .hero{
-      background:linear-gradient(135deg,rgba(23,62,50,.91),rgba(40,109,83,.86));
-      backdrop-filter:blur(3px);
-      -webkit-backdrop-filter:blur(3px);
-    }
-    #home .card{
-      background:rgba(255,255,255,.78);
-      backdrop-filter:blur(9px);
-      -webkit-backdrop-filter:blur(9px);
-      border-color:rgba(255,255,255,.7);
-      box-shadow:0 10px 28px rgba(18,45,35,.08);
-    }
-    .brandcopy{min-width:0}
-    .brandcopy b{display:block;font-size:15px;line-height:1.15}
-    .brandcopy .muted{white-space:nowrap}
-    @media(max-width:520px){
-      .topin{padding:9px 12px}
-      .logo{width:42px;height:42px;flex-basis:42px;font-size:16px}
-      .brandcopy b{font-size:14px}
-      .status{font-size:11px;padding:5px 8px}
-    }
-
-  
-    /* Vespa Second / Used Unit */
-    .used-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
-    .used-card{overflow:hidden;padding:0}
-    .used-photo{height:190px;background:linear-gradient(145deg,#dfe8e3,#f5f6f4);display:grid;place-items:center;font-size:58px;position:relative}
-    .used-photo .pill{position:absolute;top:12px;left:12px}
-    .used-body{padding:17px}
-    .used-price{font-size:22px;font-weight:950;margin:8px 0}
-    .used-spec{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
-    .used-spec span{font-size:12px;background:#f2f5f3;border:1px solid var(--l);padding:5px 8px;border-radius:99px}
-    .unit-gallery{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:14px}
-    .unit-gallery div{min-height:120px;background:#e9efeb;border-radius:16px;display:grid;place-items:center;font-size:42px}
-    .unit-gallery div:first-child{grid-row:span 2;min-height:248px;font-size:72px}
-    @media(max-width:720px){
-      .used-grid{grid-template-columns:1fr}
-      .used-photo{height:210px}
-      .unit-gallery{grid-template-columns:1fr 1fr}
-      .unit-gallery div:first-child{grid-column:1/-1;grid-row:auto;min-height:210px}
-      .nav button{font-size:10px}
-    }
-
   </style>
 </head>
 
 <body>
   <header class="top">
     <div class="topin">
-      <div class="logo" id="brandLogo" title="Vespa Wahyu">VW</div>
-      <div class="brandcopy">
-        <b>Vespa Wahyu</b>
+      <div class="logo">Project Wahyu VW "Vespa Wahyu"</div>
+      <div><b>Vespa Wahyu</b>
         <div class="muted" style="font-size:12px">Workshop • Parts • Service</div>
       </div>
       <div class="status">● BUKA</div>
-      <button class="btn alt" id="notifBtn" style="padding:8px 11px;display:none" onclick="openNotifications()">🔔 <span id="notifCount">5</span></button>
+      <button class="btn alt" id="notifBtn" style="padding:8px 11px;display:none" onclick="openNotifications()">🔔 <span
+          id="notifCount">5</span>
+      </button>
+      <button class="btn ghost" style="padding:8px 11px" onclick="go('staffLogin')">STAFF</button>
     </div>
   </header>
 
@@ -859,38 +799,6 @@
       <div class="parts" id="pg"></div>
     </section>
 
-
-    <section id="usedVespa" class="page">
-      <div class="head">
-        <div><div class="k">Vespa Second</div><h2>Unit Vespa Pilihan</h2></div>
-        <span class="pill">SHOWROOM</span>
-      </div>
-      <div class="card" style="margin-bottom:13px">
-        <div class="form">
-          <div class="field"><label>Cari unit</label><input id="uvSearch" placeholder="Sprint, Primavera, GTS..." oninput="renderUsedVespa()"></div>
-          <div class="field"><label>Status</label><select id="uvStatus" onchange="renderUsedVespa()"><option>Semua</option><option>TERSEDIA</option><option>BOOKED</option><option>TERJUAL</option></select></div>
-        </div>
-      </div>
-      <div class="used-grid" id="usedVespaGrid"></div>
-    </section>
-
-    <section id="usedVespaDetail" class="page">
-      <div class="head">
-        <div><div class="k">Detail Unit</div><h2 id="uvdName">Vespa</h2></div>
-        <button class="btn alt" onclick="go('usedVespa');renderUsedVespa()">← KEMBALI</button>
-      </div>
-      <div class="unit-gallery"><div>🛵</div><div>📷</div><div>📷</div></div>
-      <div class="grid">
-        <div class="card"><div class="k">Harga</div><div class="used-price" id="uvdPrice"></div><span class="pill" id="uvdStatus"></span></div>
-        <div class="card"><h3>Spesifikasi</h3><p id="uvdSpecs"></p></div>
-        <div class="card"><h3>Dokumen & Kondisi</h3><p id="uvdCondition"></p></div>
-      </div>
-      <div class="card" style="margin-top:13px">
-        <h3>Catatan Unit</h3><p id="uvdDesc"></p>
-        <div class="actions"><button class="btn" onclick="toast('Nanti terhubung ke WhatsApp bengkel')">💬 TANYA VIA WHATSAPP</button></div>
-      </div>
-    </section>
-
     <section id="staffLogin" class="page">
       <div class="card" style="max-width:520px;margin:28px auto">
         <div class="k">Staff System</div>
@@ -902,10 +810,10 @@
 
         <div class="field" style="margin-top:10px"><label>Demo Role</label><select id="demoRole">
             <option value="advisor">Service Advisor / Kasir</option>
-            <option value="mechanic">Mechanic — Rizky</option>
-            <option value="inventory">Parts / Inventory — Deni</option>
-            <option value="owner">Owner / Admin — Mustafa</option>
-            <option value="qc">QC Inspector — Andi</option>
+            <option value="mechanic">Mechanic</option>
+            <option value="inventory">Parts / Inventory</option>
+            <option value="owner">Owner / Admin — Wahyu</option>
+            <option value="qc">QC Inspector</option>
           </select></div>
 
         <div class="actions"><button class="btn" onclick="loginStaff()">LOGIN</button><button class="btn alt"
@@ -1705,8 +1613,6 @@
           <button onclick="otab('catalog',this)">Service & Labor</button>
           <button onclick="otab('settings',this)">Workshop Settings</button>
           <button onclick="otab('audit',this)">Audit Log</button>
-        
-          <button onclick="otab('units',this)">Unit Vespa</button>
         </aside>
         <div>
           <div id="o-dash" class="panel on">
@@ -2006,37 +1912,6 @@
               berasal dari konfirmasi server/provider, bukan hanya karena QR ditampilkan.</div>
           </div>
 
-          
-          <div id="o-units" class="panel">
-            <div class="head">
-              <div><div class="k">Used Vespa Inventory</div><h2>Unit Vespa Second</h2></div>
-              <button class="btn" onclick="toggleUnitForm()">+ TAMBAH UNIT</button>
-            </div>
-            <div id="unitForm" class="card" style="display:none;margin-bottom:13px">
-              <h3>Tambah Unit Vespa</h3>
-              <div class="form">
-                <div class="field"><label>Nama / Model *</label><input id="ouName" placeholder="Vespa Sprint 150 i-get ABS"></div>
-                <div class="field"><label>Tahun *</label><input id="ouYear" type="number" placeholder="2022"></div>
-                <div class="field"><label>Harga *</label><input id="ouPrice" type="number" placeholder="42500000"></div>
-                <div class="field"><label>Odometer (km)</label><input id="ouKm" type="number" placeholder="12450"></div>
-                <div class="field"><label>Warna</label><input id="ouColor" placeholder="Verde"></div>
-                <div class="field"><label>Status</label><select id="ouStatus"><option>TERSEDIA</option><option>BOOKED</option><option>TERJUAL</option></select></div>
-                <div class="field"><label>Plat / Identitas</label><input id="ouPlate" placeholder="B 1234 XX / bisa disamarkan"></div>
-                <div class="field"><label>Pajak sampai</label><input id="ouTax" placeholder="Mei 2027"></div>
-                <div class="field full"><label>Kondisi / Catatan</label><textarea id="ouDesc" placeholder="Kondisi mesin, body, kelengkapan surat, riwayat servis..."></textarea></div>
-                <div class="field full"><label>Foto Unit</label><input type="file" multiple accept="image/*" onchange="toast('Preview upload foto akan dihubungkan ke Storage saat Supabase')"><small class="muted">Frontend: input foto disiapkan. Penyimpanan permanen nanti melalui Supabase Storage.</small></div>
-                <button class="btn full" onclick="addUsedUnit()">SIMPAN UNIT</button>
-              </div>
-            </div>
-            <div class="card tablewrap">
-              <table class="tbl">
-                <thead><tr><th>Unit</th><th>Tahun</th><th>KM</th><th>Harga</th><th>Status</th><th>Aksi</th></tr></thead>
-                <tbody id="ownerUnitRows"></tbody>
-              </table>
-            </div>
-            <div class="notice" style="margin-top:12px">Unit yang berstatus TERSEDIA / BOOKED / TERJUAL otomatis mengikuti katalog customer pada demo frontend ini. Data permanen nanti dipindahkan ke Supabase.</div>
-          </div>
-
           <div id="o-audit" class="panel">
             <div class="head">
               <div>
@@ -2265,13 +2140,10 @@
     </section>
   </main>
   <div class="navbox">
-    <div class="nav">
-      <button class="on" onclick="go('home',this)"><b>⌂</b>Beranda</button>
-      <button onclick="go('booking',this)"><b>🔧</b>Booking</button>
-      <button onclick="go('tracking',this)"><b>⚡</b>Lacak</button>
-      <button onclick="go('parts',this)"><b>⚙️</b>Sparepart</button>
-      <button onclick="go('usedVespa',this);renderUsedVespa()"><b>🛵</b>Vespa Second</button>
-    </div>
+    <div class="nav"><button data-p="home" class="on" onclick="go('home')"><b>⌂</b>Beranda</button><button
+        data-p="booking" onclick="go('booking')"><b>🔧</b>Booking</button><button data-p="tracking"
+        onclick="go('tracking')"><b>⚡</b>Lacak</button><button data-p="parts"
+        onclick="go('parts')"><b>⚙</b>Sparepart</button></div>
   </div>
   <div class="modal" id="modal">
     <div class="sheet">
@@ -2283,22 +2155,188 @@
   </div>
   <div class="toast" id="toast"></div>
   <script>
-    let booking = null; const parts = [['V-Belt Sprint / Primavera', 'Sprint 150', 450000, 3], ['Roller CVT Set', 'Sprint 150', 180000, 6], ['Brake Pad Front', 'Primavera 150', 225000, 2], ['Engine Oil 4T', 'Semua model', 125000, 12], ['Oil Filter GTS', 'GTS 150', 95000, 0], ['Spark Plug', 'Semua model', 85000, 8]]; function go(id) { const target = document.getElementById(id); if (!target) { console.error('Page not found:', id); return } document.querySelectorAll('.page').forEach(x => x.classList.remove('on')); target.classList.add('on'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('on', x.dataset.p === id)); window.scrollTo({ top: 0, behavior: 'smooth' }) } bf.onsubmit = e => { e.preventDefault(); booking = { name: bn.value, phone: bp.value, plate: bpl.value.toUpperCase(), model: bm.value, date: bd.value, slot: bs.value }; booking.code = 'BKG-' + new Date().toISOString().slice(2, 10).replaceAll('-', '') + '-' + String(Math.floor(Math.random() * 900) + 100); localStorage.setItem('vespa_booking', JSON.stringify(booking)); scode.textContent = booking.code; sinfo.innerHTML = '<b>' + booking.name + '</b><br>' + booking.model + ' · ' + booking.plate + '<br>' + booking.date + ' · ' + booking.slot.split('—')[0]; go('success') }; function bookTrack() { tc.value = booking?.code || ''; go('tracking'); track() } function track() { if (!tc.value.trim()) return toast('Masukkan kode booking / WO'); tr.style.display = 'block' } function ask(ok) { mt.textContent = ok ? 'Setujui pekerjaan?' : 'Tolak pekerjaan?'; mx.textContent = ok ? 'Anda menyetujui estimate Rp780.000.' : 'Estimate akan ditandai declined dan temuan tetap tercatat.'; my.onclick = () => { modal.classList.remove('on'); trackpill.textContent = ok ? 'DISETUJUI — MENUNGGU PENGERJAAN' : 'ESTIMASI DITOLAK'; toast(ok ? 'Estimate disetujui' : 'Estimate ditolak'); go('tracking') }; modal.classList.add('on') } function toast(s) { const x = document.getElementById('toast'); x.textContent = s; x.classList.add('on'); setTimeout(() => x.classList.remove('on'), 1800) } function rup(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n) } function render(a) { pg.innerHTML = a.map(p => '<div class="card"><div class="k">PART</div><h3>' + p[0] + '</h3><div class="muted">' + p[1] + '</div><div class="money" style="font-size:19px;margin-top:8px">' + rup(p[2]) + '</div><p>' + (p[3] ? '<span class="pill">Tersedia · ' + p[3] + '</span>' : '<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>') + '</p><button class="btn alt" onclick="toast(\'Hubungi workshop untuk ketersediaan\')">TANYA KETERSEDIAAN</button></div>').join('') } function filterParts() { let q = ps.value.toLowerCase(), m = pm.value; render(parts.filter(p => (p[0].toLowerCase().includes(q)) && (m === 'Semua model' || p[1] === m || p[1] === 'Semua model'))) } render(parts); try { booking = JSON.parse(localStorage.getItem('vespa_booking')) || null } catch (e) { } let d = new Date(); d.setDate(d.getDate() + 1); bd.min = d.toISOString().slice(0, 10);
+    let booking = null; 
+    const parts = [['V-Belt Sprint / Primavera', 'Sprint 150', 450000, 3],
+     ['Roller CVT Set', 'Sprint 150', 180000, 6],
+      ['Brake Pad Front', 'Primavera 150', 225000, 2],
+       ['Engine Oil 4T', 'Semua model', 125000, 12],
+        ['Oil Filter GTS', 'GTS 150', 95000, 0],
+         ['Spark Plug', 'Semua model', 85000, 8]
+        ]; 
+        function go(id) {
+          const target = document.getElementById(id);
+           if (!target) { console.error('Page not found:', id); return }
+            document.querySelectorAll('.page').forEach(x => x.classList.remove('on'));
+            target.classList.add('on'); 
+            document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('on', x.dataset.p === id)); 
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+           } 
+
+    bf.onsubmit = e => {
+      e.preventDefault();
+      booking = {
+        name: bn.value,
+        phone: bp.value,
+        plate: bpl.value.toUpperCase(),
+        model: bm.value,
+        date: bd.value,
+        slot: bs.value
+      };
+      booking.code = 'BKG-' + new Date().toISOString().slice(2, 10).replaceAll('-', '') + '-' + String(Math.floor(Math.random() * 900) + 100);
+      localStorage.setItem('vespa_booking', JSON.stringify(booking));
+      scode.textContent = booking.code;
+      sinfo.innerHTML = '<b>' + booking.name + '</b><br>' + booking.model + ' · ' + booking.plate + '<br>' + booking.date + ' · ' + booking.slot.split('—')[0];
+      go('success')
+    };
+
+    function bookTrack() {
+      tc.value = booking?.code || '';
+      go('tracking');
+      track()
+    }
+
+    function track() {
+      if (!tc.value.trim()) return toast('Masukkan kode booking / WO');
+      tr.style.display = 'block'
+    }
+
+    function ask(ok) {
+      mt.textContent = ok ? 'Setujui pekerjaan?' : 'Tolak pekerjaan?';
+      mx.textContent = ok ? 'Anda menyetujui estimate Rp780.000.' : 'Estimate akan ditandai declined dan temuan tetap tercatat.';
+      my.onclick = () => {
+        modal.classList.remove('on');
+        trackpill.textContent = ok ? 'DISETUJUI — MENUNGGU PENGERJAAN' : 'ESTIMASI DITOLAK';
+        toast(ok ? 'Estimate disetujui' : 'Estimate ditolak');
+        go('tracking')
+      };
+      modal.classList.add('on')
+    }
+
+    function toast(s) {
+      const x = document.getElementById('toast');
+      x.textContent = s;
+      x.classList.add('on');
+      setTimeout(() => x.classList.remove('on'), 1800)
+    }
+
+    function rup(n) {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
+    }
+
+    function render(a) {
+      pg.innerHTML = a.map(p => '<div class="card"><div class="k">PART</div><h3>' + p[0] + '</h3><div class="muted">' + p[1] + '</div><div class="money" style="font-size:19px;margin-top:8px">' + rup(p[2]) + '</div><p>' + (p[3] ? '<span class="pill">Tersedia · ' + p[3] + '</span>' : '<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>') + '</p><button class="btn alt" onclick="toast(\'Hubungi workshop untuk ketersediaan\')">TANYA KETERSEDIAAN</button></div>').join('')
+    }
+
+    function filterParts() {
+      let q = ps.value.toLowerCase(),
+        m = pm.value;
+      render(parts.filter(p => (p[0].toLowerCase().includes(q)) && (m === 'Semua model' || p[1] === m || p[1] === 'Semua model')))
+    }
+
+    render(parts);
+
+    try {
+      booking = JSON.parse(localStorage.getItem('vespa_booking')) || null
+    } catch (e) { }
+    let d = new Date();
+    d.setDate(d.getDate() + 1);
+    bd.min = d.toISOString().slice(0, 10);
 
     let currentStaffRole = 'public', lastStaffPage = 'staffLogin';
-    function setStaffSession(role, page) { currentStaffRole = role; lastStaffPage = page; const b = document.getElementById('notifBtn'); if (b) b.style.display = 'inline-block'; renderNotifications() }
-    function staffLogout() { currentStaffRole = 'public'; const b = document.getElementById('notifBtn'); if (b) b.style.display = 'none'; go('staffLogin') }
-    function loginStaff() { if (!document.getElementById('su').value.trim() || !document.getElementById('spw').value) { toast('Isi username dan password'); return } const r = document.getElementById('demoRole').value; if (r === 'mechanic') { setStaffSession('mechanic', 'mechanic'); go('mechanic'); mtabId('jobs'); toast('Login demo: Mechanic — Rizky') } else if (r === 'inventory') { setStaffSession('inventory', 'inventory'); go('inventory'); itabId('dash'); toast('Login demo: Parts / Inventory — Deni') } else if (r === 'owner') { setStaffSession('owner', 'owner'); go('owner'); otabId('dash'); toast('Login demo: Owner / Admin') } else if (r === 'qc') { setStaffSession('qc', 'qc'); go('qc'); qtabId('queue'); toast('Login demo: QC Inspector — Andi') } else { setStaffSession('advisor', 'advisor'); go('advisor'); stabId('dash'); toast('Login demo: Service Advisor / Kasir') } }
-    function stab(id, btn) { document.querySelectorAll('.panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('p-' + id); if (p) p.classList.add('on'); document.querySelectorAll('.side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    function stabId(id) { const btn = [...document.querySelectorAll('.side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); stab(id, btn) }
-    document.addEventListener('DOMContentLoaded', () => { if (!document.querySelector('.page.on')) document.getElementById('home').classList.add('on') });
+    function setStaffSession(role, page) {
+      currentStaffRole = role;
+      lastStaffPage = page;
+      const b = document.getElementById('notifBtn');
+      if (b) b.style.display = 'inline-block';
+      renderNotifications()
+    }
 
-    function mtab(id, btn) { document.querySelectorAll('#mechanic .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('m-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#mechanic .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    function mtabId(id) { const btn = [...document.querySelectorAll('#mechanic .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); mtab(id, btn) }
-    function startDiag() { document.getElementById('diagStatus').textContent = 'IN PROGRESS'; document.getElementById('diagStart').disabled = true; toast('Diagnosis dimulai') }
-    function finishDiag() { document.getElementById('diagStatus').textContent = 'COMPLETED'; toast('Diagnosis selesai — Service Advisor mendapat notifikasi') }
-    function jobAction(st) { document.getElementById('jobStatus').textContent = st; toast('Job ' + st.toLowerCase()) }
-    function requestPart(btn, name) { btn.disabled = true; btn.textContent = 'REQUESTED'; toast(name + ' diminta ke Parts / Inventory') }
+    function staffLogout() {
+      currentStaffRole = 'public';
+      const b = document.getElementById('notifBtn');
+      if (b) b.style.display = 'none';
+      go('staffLogin')
+    }
+
+    function loginStaff() {
+      if (!document.getElementById('su').value.trim() || !document.getElementById('spw').value) { toast('Isi username dan password'); return }
+      const r = document.getElementById('demoRole').value;
+      if (r === 'mechanic') {
+        setStaffSession('mechanic', 'mechanic');
+        go('mechanic');
+        stabId('jobs');
+        toast('Login demo: Mechanic — Rizky')
+      } else if (r === 'inventory') {
+        setStaffSession('inventory', 'inventory');
+        go('inventory');
+        itabId('dash');
+        toast('Login demo: Parts / Inventory — Deni')
+      } else if (r === 'owner') {
+        setStaffSession('owner', 'owner');
+        go('owner');
+        otabId('dash');
+        toast('Login demo: Owner / Admin')
+      } else if (r === 'qc') {
+        setStaffSession('qc', 'qc');
+        go('qc');
+        qtabId('queue');
+        toast('Login demo: QC Inspector — Andi')
+      } else {
+        setStaffSession('advisor', 'advisor');
+        go('advisor');
+        stabId('dash');
+        toast('Login demo: Service Advisor / Kasir')
+      }
+    }
+
+    function stab(id, btn) {
+      document.querySelectorAll('.panel').forEach(x => x.classList.remove('on'));
+      const p = document.getElementById('p-' + id);
+      if (p) p.classList.add('on');
+      document.querySelectorAll('.side button').forEach(x => x.classList.remove('on'));
+      if (btn) btn.classList.add('on');
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    function stabId(id) {
+      const btn = [...document.querySelectorAll('.side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'"));
+      stab(id, btn)
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!document.querySelector('.page.on')) document.getElementById('home').classList.add('on')
+    });
+
+    function mtab(id, btn)  {
+      document.querySelectorAll('#mechanic .panel').forEach(x => x.classList.remove('on'));
+      const p = document.getElementById('m-' + id);
+      if (p) p.classList.add('on');
+      document.querySelectorAll('#mechanic .side button').forEach(x => x.classList.remove('on'));
+      if (btn) btn.classList.add('on');
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    function mtabId(id) {
+      const btn = [...document.querySelectorAll('#mechanic .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'"));
+      mtab(id, btn)
+    }
+    function startDiag() {
+      document.getElementById('diagStatus').textContent = 'IN PROGRESS';
+      document.getElementById('diagStart').disabled = true;
+      toast('Diagnosis dimulai')
+    }
+    function finishDiag() {
+      document.getElementById('diagStatus').textContent = 'COMPLETED';
+      toast('Diagnosis selesai — Service Advisor mendapat notifikasi')
+    }
+    function jobAction(st) {
+      document.getElementById('jobStatus').textContent = st;
+      toast('Job ' + st.toLowerCase())
+    }
+    function requestPart(btn, name) {
+      btn.disabled = true;
+      btn.textContent = 'REQUESTED';
+      toast(name + ' diminta ke Parts / Inventory')
+    }
     function additionalFinding() { toast('Additional Finding dibuat — menunggu estimate & approval customer') }
     function completeJob() { document.getElementById('jobStatus').textContent = 'WAITING QC'; toast('Pekerjaan selesai dan dikirim ke QC') }
 
@@ -2310,19 +2348,54 @@
       { sku: 'VSP-FLT-001', name: 'Oil Filter GTS', model: 'GTS 150', on: 0, res: 0, min: 2, cost: 60000, sell: 95000 },
       { sku: 'VSP-SPK-001', name: 'Spark Plug', model: 'All', on: 8, res: 0, min: 3, cost: 52000, sell: 85000 }
     ];
-    function itab(id, btn) { document.querySelectorAll('#inventory .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('i-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#inventory .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); if (id === 'stock') renderInventory(invData); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    function itabId(id) { const btn = [...document.querySelectorAll('#inventory .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); itab(id, btn) }
-    function invStatus(x) { const av = x.on - x.res; if (av <= 0) return 'Out of Stock'; if (av <= x.min) return 'Low Stock'; return 'In Stock' }
-    function renderInventory(a) { const tb = document.getElementById('inventoryRows'); if (!tb) return; tb.innerHTML = a.map(x => { const av = x.on - x.res, st = invStatus(x), style = st === 'Out of Stock' ? 'background:#fff0ef;color:#a33a32' : st === 'Low Stock' ? 'background:#fff8e8;color:#8b6200' : ''; return `<tr><td>${x.sku}</td><td><b>${x.name}</b></td><td>${x.model}</td><td>${x.on}</td><td>${x.res}</td><td><b>${av}</b></td><td>${x.min}</td><td><span class="pill" style="${style}">${st}</span></td><td>${rup(x.cost)}</td><td>${rup(x.sell)}</td></tr>` }).join('') }
-    function filterInventory() { const q = (document.getElementById('isearch')?.value || '').toLowerCase(), st = document.getElementById('istatus')?.value || 'Semua'; renderInventory(invData.filter(x => (x.sku.toLowerCase().includes(q) || x.name.toLowerCase().includes(q)) && (st === 'Semua' || invStatus(x) === st))) }
-    function issuePart(btn) { btn.disabled = true; btn.textContent = 'ISSUED'; toast('Part issued: On Hand dan Reserved diperbarui; movement dibuat') }
-    function rejectPart(btn) { btn.parentElement.innerHTML = '<span class="pill">REJECTED</span>'; toast('Part request ditolak') }
-    function outStock(btn) { btn.disabled = true; toast('Request ditandai OUT OF STOCK; mekanik & advisor dinotifikasi') }
-    function receiveGoods() { const a = +document.getElementById('recv1').value, b = +document.getElementById('recv2').value; toast(`Goods received: ${a + b} unit — stock movement PURCHASE dibuat`) }
+    function itab(id, btn) {
+      document.querySelectorAll('#inventory .panel').forEach(x => x.classList.remove('on'));
+      const p = document.getElementById('i-' + id); if (p) p.classList.add('on');
+      document.querySelectorAll('#inventory .side button').forEach(x => x.classList.remove('on'));
+      if (btn) btn.classList.add('on');
+      if (id === 'stock') renderInventory(invData);
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    function itabId(id) {
+      const btn = [...document.querySelectorAll('#inventory .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'"));
+      itab(id, btn)
+    }
+    function invStatus(x) {
+      const av = x.on - x.res; if (av <= 0) return 'Out of Stock'; if (av <= x.min) return 'Low Stock'; return 'In Stock'
+    }
+    function renderInventory(a) {
+      const tb = document.getElementById('inventoryRows'); if (!tb) return; tb.innerHTML = a.map(x => { const av = x.on - x.res, st = invStatus(x), style = st === 'Out of Stock' ? 'background:#fff0ef;color:#a33a32' : st === 'Low Stock' ? 'background:#fff8e8;color:#8b6200' : ''; return `<tr><td>${x.sku}</td><td><b>${x.name}</b></td><td>${x.model}</td><td>${x.on}</td><td>${x.res}</td><td><b>${av}</b></td><td>${x.min}</td><td><span class="pill" style="${style}">${st}</span></td><td>${rup(x.cost)}</td><td>${rup(x.sell)}</td></tr>` }).join('')
+    }
+    function filterInventory() {
+      const q = (document.getElementById('isearch')?.value || '').toLowerCase(), st = document.getElementById('istatus')?.value || 'Semua'; renderInventory(invData.filter(x => (x.sku.toLowerCase().includes(q) || x.name.toLowerCase().includes(q)) && (st === 'Semua' || invStatus(x) === st)))
+    }
+    function issuePart(btn) {
+      btn.disabled = true; btn.textContent = 'ISSUED'; toast('Part issued: On Hand dan Reserved diperbarui; movement dibuat')
+    }
+    function rejectPart(btn)  {
+      btn.parentElement.innerHTML = '<span class="pill">REJECTED</span>'; toast('Part request ditolak')
+    }
+    function outStock(btn) {
+      btn.disabled = true; toast('Request ditandai OUT OF STOCK; mekanik & advisor dinotifikasi')
+    }
+    function receiveGoods() {
+      const a = +document.getElementById('recv1').value,
+      b = +document.getElementById('recv2').value;
+      toast(`Goods received: ${a + b} unit — stock movement PURCHASE dibuat`)
+    }
     renderInventory(invData);
 
-    function otab(id, btn) { document.querySelectorAll('#owner .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('o-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#owner .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    function otabId(id) { const btn = [...document.querySelectorAll('#owner .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); otab(id, btn) }
+    function otab(id, btn) {
+      document.querySelectorAll('#owner .panel').forEach(x => x.classList.remove('on'));
+      const p = document.getElementById('o-' + id); if (p) p.classList.add('on');
+      document.querySelectorAll('#owner .side button').forEach(x => x.classList.remove('on'));
+      if (btn) btn.classList.add('on');
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    function otabId(id) {
+      const btn = [...document.querySelectorAll('#owner .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'"));
+      otab(id, btn)
+    }
 
     let inventoryOpenedByOwner = false;
     function openInventoryFromOwner() {
@@ -2334,11 +2407,38 @@
     }
 
     let currentQcMechanic = 'Rizky';
-    function qtab(id, btn) { document.querySelectorAll('#qc .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('q-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#qc .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    function qtabId(id) { const btn = [...document.querySelectorAll('#qc .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); qtab(id, btn) }
-    function openQC(wo, mechanic) { document.getElementById('qcWo').textContent = wo; document.getElementById('qcMechanic').textContent = mechanic; currentQcMechanic = mechanic; document.getElementById('qcState').textContent = 'IN PROGRESS'; document.querySelectorAll('.qcbox').forEach(x => x.checked = false); document.getElementById('qcNote').value = ''; document.getElementById('selfQcWarning').style.display = (currentStaffRole === 'mechanic' && mechanic === 'Rizky') ? 'block' : 'none'; qtabId('inspect') }
-    function qcPass() { if (currentStaffRole === 'mechanic' && currentQcMechanic === 'Rizky') { document.getElementById('selfQcWarning').style.display = 'block'; toast('Self-QC diblokir — butuh Owner override'); return } const boxes = [...document.querySelectorAll('#q-inspect .qcbox')]; if (!boxes.every(x => x.checked)) { toast('Selesaikan semua checklist QC'); return } document.getElementById('qcState').textContent = 'PASSED → READY'; pushNotification('advisor', 'QC Passed', 'WO ' + document.getElementById('qcWo').textContent.replace('WO-', '') + ' siap diproses ke Ready for Pickup.', 'qc'); toast('QC PASSED — kendaraan dapat masuk READY FOR PICKUP') }
-    function qcFail() { const note = document.getElementById('qcNote').value.trim(); if (!note) { toast('Failure reason wajib diisi'); return } document.getElementById('qcState').textContent = 'FAILED → REWORK'; pushNotification('mechanic', 'QC Failed — Rework', document.getElementById('qcWo').textContent + ' dikembalikan untuk rework: ' + note, 'qc'); pushNotification('advisor', 'QC Failed', document.getElementById('qcWo').textContent + ' masuk rework.', 'qc'); toast('QC FAILED — job dikembalikan ke REWORK') }
+    function qtab(id, btn) {
+      document.querySelectorAll('#qc .panel').forEach(x => x.classList.remove('on'));
+      const p = document.getElementById('q-' + id); if (p) p.classList.add('on');
+      document.querySelectorAll('#qc .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on');
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    function qtabId(id) {
+      const btn = [...document.querySelectorAll('#qc .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'"));
+      qtab(id, btn)
+    }
+    function openQC(wo, mechanic) {
+      document.getElementById('qcWo').textContent = wo;
+      document.getElementById('qcMechanic').textContent = mechanic; currentQcMechanic = mechanic; document.getElementById('qcState').textContent = 'IN PROGRESS';
+      document.querySelectorAll('.qcbox').forEach(x => x.checked = false);
+      document.getElementById('qcNote').value = ''; document.getElementById('selfQcWarning').style.display = (currentStaffRole === 'mechanic' && mechanic === 'Rizky') ? 'block' : 'none'; qtabId('inspect')
+    }
+    function qcPass() {
+      if (currentStaffRole === 'mechanic' && currentQcMechanic === 'Rizky') {
+        document.getElementById('selfQcWarning').style.display = 'block'; toast('Self-QC diblokir — butuh Owner override'); return
+      }
+      const boxes = [...document.querySelectorAll('#q-inspect .qcbox')]; if (!boxes.every(x => x.checked)) { toast('Selesaikan semua checklist QC'); return }
+      document.getElementById('qcState').textContent = 'PASSED → READY';
+      pushNotification('advisor', 'QC Passed', 'WO ' + document.getElementById('qcWo').textContent.replace('WO-', '') + ' siap diproses ke Ready for Pickup.', 'qc');
+      toast('QC PASSED — kendaraan dapat masuk READY FOR PICKUP')
+    }
+    function qcFail() {
+      const note = document.getElementById('qcNote').value.trim(); if (!note) { toast('Failure reason wajib diisi'); return }
+      document.getElementById('qcState').textContent = 'FAILED → REWORK';
+      pushNotification('mechanic', 'QC Failed — Rework', document.getElementById('qcWo').textContent + ' dikembalikan untuk rework: ' + note, 'qc');
+      pushNotification('advisor', 'QC Failed', document.getElementById('qcWo').textContent + ' masuk rework.', 'qc');
+      toast('QC FAILED — job dikembalikan ke REWORK')
+    }
 
     let notifData = [
       { role: 'advisor', title: 'Diagnosis Completed', text: 'WO-260923-032 selesai diagnosis oleh Rizky.', type: 'mechanic', read: false },
@@ -2348,95 +2448,29 @@
       { role: 'owner', title: 'Low Stock Alert', text: '7 SKU berada pada batas minimum stok.', type: 'stock', read: false },
       { role: 'advisor', title: 'Customer Approval', text: 'EST-260923-032-R0 disetujui customer.', type: 'approval', read: true }
     ];
-    function roleNotifs() { return notifData.filter(n => n.role === currentStaffRole || currentStaffRole === 'owner') }
-    function renderNotifications() { const a = roleNotifs(), un = a.filter(x => !x.read).length, c = document.getElementById('notifCount'); if (c) c.textContent = un; const list = document.getElementById('notifList'); if (!list) return; list.innerHTML = a.length ? a.map((n, i) => `<div class="notifitem ${n.read ? '' : 'unread'}" onclick="readNotif(${notifData.indexOf(n)})">${n.read ? '' : '<span class="notifdot"></span>'}<b>${n.title}</b><div class="muted">${n.text}</div><small class="muted">${n.type.toUpperCase()}</small></div>`).join('') : '<div class="muted">Belum ada notifikasi.</div>' }
-    function openNotifications() { if (currentStaffRole === 'public') { go('staffLogin'); return } const active = [...document.querySelectorAll('.page.on')][0]; if (active && active.id !== 'notifications') lastStaffPage = active.id; go('notifications'); renderNotifications() }
+    function roleNotifs() {
+      return notifData.filter(n => n.role === currentStaffRole || currentStaffRole === 'owner')
+    }
+    function renderNotifications() {
+      const a = roleNotifs(), un = a.filter(x => !x.read).length, c = document.getElementById('notifCount');
+      if (c) c.textContent = un; const list = document.getElementById('notifList'); if (!list) return;
+      list.innerHTML = a.length ? a.map((n, i) => `<div class="notifitem ${n.read ? '' : 'unread'}" onclick="readNotif(${notifData.indexOf(n)})">${n.read ? '' : '<span class="notifdot"></span>'}<b>${n.title}</b><div class="muted">${n.text}</div><small class="muted">${n.type.toUpperCase()}</small></div>`).join('') : '<div class="muted">Belum ada notifikasi.</div>'
+    }
+    function openNotifications() {
+      if (currentStaffRole === 'public') { go('staffLogin'); return }
+      const active = [...document.querySelectorAll('.page.on')][0]; if (active && active.id !== 'notifications') lastStaffPage = active.id;
+      go('notifications'); renderNotifications()
+    }
     function returnFromNotifications() { go(lastStaffPage || 'staffLogin') }
-    function readNotif(i) { if (notifData[i]) notifData[i].read = true; renderNotifications() }
-    function markAllRead() { roleNotifs().forEach(n => n.read = true); renderNotifications(); toast('Semua notifikasi ditandai sudah dibaca') }
-    function pushNotification(role, title, text, type) { notifData.unshift({ role, title, text, type, read: false }); renderNotifications() }
-  
-    // Staff access sengaja tidak ditampilkan di portal customer.
-    // Staff: klik/tap logo VW 5x dalam 3 detik, atau Ctrl+Shift+S di desktop.
-    let staffTapCount=0, staffTapTimer=null;
-    const brandLogo=document.getElementById('brandLogo');
-    if(brandLogo){
-      brandLogo.addEventListener('click',()=>{
-        staffTapCount++;
-        clearTimeout(staffTapTimer);
-        staffTapTimer=setTimeout(()=>staffTapCount=0,3000);
-        if(staffTapCount>=5){
-          staffTapCount=0;
-          clearTimeout(staffTapTimer);
-          go('staffLogin');
-        }
-      });
+    function readNotif(i) {
+      if (notifData[i]) notifData[i].read = true; renderNotifications()
     }
-    document.addEventListener('keydown',e=>{
-      if(e.ctrlKey && e.shiftKey && (e.key==='s'||e.key==='S')){
-        e.preventDefault();
-        go('staffLogin');
-      }
-    });
-
-  
-    // ===== USED VESPA / VESPA SECOND =====
-    let usedVespaUnits = [
-      {id:'UV-001',name:'Vespa Sprint 150 i-get ABS',year:2022,price:42500000,km:12450,color:'Verde',plate:'B 12•• XX',tax:'Mei 2027',status:'TERSEDIA',condition:'Surat lengkap · Pajak aktif',desc:'Unit contoh frontend. Mesin halus, body terawat, siap inspeksi di workshop.'},
-      {id:'UV-002',name:'Vespa Primavera 150',year:2021,price:38500000,km:18600,color:'Bianco',plate:'B 34•• YY',tax:'Jan 2027',status:'BOOKED',condition:'Surat lengkap · Pajak aktif',desc:'Unit contoh frontend. Kondisi standar, tersedia riwayat pemeriksaan workshop.'},
-      {id:'UV-003',name:'Vespa GTS 150 Super',year:2020,price:46500000,km:22100,color:'Nero',plate:'B 56•• ZZ',tax:'Nov 2026',status:'TERJUAL',condition:'Surat lengkap',desc:'Contoh unit terjual agar customer dapat melihat status unit.'}
-    ];
-
-    function rupiah(n){return 'Rp'+Number(n||0).toLocaleString('id-ID')}
-    function renderUsedVespa(){
-      const grid=document.getElementById('usedVespaGrid'); if(!grid)return;
-      const q=(document.getElementById('uvSearch')?.value||'').toLowerCase();
-      const st=document.getElementById('uvStatus')?.value||'Semua';
-      const arr=usedVespaUnits.filter(u=>(u.name+' '+u.year+' '+u.color).toLowerCase().includes(q)&&(st==='Semua'||u.status===st));
-      grid.innerHTML=arr.length?arr.map(u=>`
-        <article class="card used-card">
-          <div class="used-photo"><span class="pill">${u.status}</span>🛵</div>
-          <div class="used-body">
-            <div class="k">${u.id}</div><h3>${u.name}</h3>
-            <div class="used-price">${rupiah(u.price)}</div>
-            <div class="used-spec"><span>${u.year}</span><span>${Number(u.km).toLocaleString('id-ID')} km</span><span>${u.color}</span></div>
-            <button class="btn" onclick="openUsedUnit('${u.id}')">LIHAT DETAIL</button>
-          </div>
-        </article>`).join(''):'<div class="card"><b>Unit tidak ditemukan.</b></div>';
+    function markAllRead() {
+      roleNotifs().forEach(n => n.read = true); renderNotifications(); toast('Semua notifikasi ditandai sudah dibaca')
     }
-    function openUsedUnit(id){
-      const u=usedVespaUnits.find(x=>x.id===id); if(!u)return;
-      document.getElementById('uvdName').textContent=u.name;
-      document.getElementById('uvdPrice').textContent=rupiah(u.price);
-      document.getElementById('uvdStatus').textContent=u.status;
-      document.getElementById('uvdSpecs').innerHTML=`Tahun: <b>${u.year}</b><br>Odometer: <b>${Number(u.km).toLocaleString('id-ID')} km</b><br>Warna: <b>${u.color}</b><br>Plat: <b>${u.plate}</b>`;
-      document.getElementById('uvdCondition').innerHTML=`${u.condition}<br>Pajak: <b>${u.tax||'-'}</b>`;
-      document.getElementById('uvdDesc').textContent=u.desc||'-';
-      go('usedVespaDetail');
+    function pushNotification(role, title, text, type) {
+      notifData.unshift({ role, title, text, type, read: false }); renderNotifications()
     }
-    function renderOwnerUnits(){
-      const tb=document.getElementById('ownerUnitRows'); if(!tb)return;
-      tb.innerHTML=usedVespaUnits.map(u=>`<tr><td><b>${u.name}</b><br><small>${u.id}</small></td><td>${u.year}</td><td>${Number(u.km).toLocaleString('id-ID')}</td><td>${rupiah(u.price)}</td><td><span class="pill">${u.status}</span></td><td><button class="btn alt" onclick="cycleUnitStatus('${u.id}')">UBAH STATUS</button></td></tr>`).join('');
-    }
-    function toggleUnitForm(){const f=document.getElementById('unitForm');f.style.display=f.style.display==='none'?'block':'none'}
-    function addUsedUnit(){
-      const name=document.getElementById('ouName').value.trim(),year=+document.getElementById('ouYear').value,price=+document.getElementById('ouPrice').value;
-      if(!name||!year||!price){toast('Nama, tahun dan harga wajib diisi');return}
-      usedVespaUnits.unshift({
-        id:'UV-'+String(usedVespaUnits.length+1).padStart(3,'0'),name,year,price,
-        km:+document.getElementById('ouKm').value||0,color:document.getElementById('ouColor').value||'-',
-        plate:document.getElementById('ouPlate').value||'-',tax:document.getElementById('ouTax').value||'-',
-        status:document.getElementById('ouStatus').value,condition:'Data unit baru',desc:document.getElementById('ouDesc').value||'-'
-      });
-      renderOwnerUnits();renderUsedVespa();toggleUnitForm();toast('Unit ditambahkan ke katalog frontend');
-    }
-    function cycleUnitStatus(id){
-      const u=usedVespaUnits.find(x=>x.id===id);if(!u)return;
-      u.status=u.status==='TERSEDIA'?'BOOKED':u.status==='BOOKED'?'TERJUAL':'TERSEDIA';
-      renderOwnerUnits();renderUsedVespa();toast('Status unit: '+u.status);
-    }
-    document.addEventListener('DOMContentLoaded',()=>{renderUsedVespa();renderOwnerUnits()});
-
   </script>
 </body>
 
