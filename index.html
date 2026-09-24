@@ -1136,7 +1136,7 @@
               <div class="dot"></div>Pengerjaan
             </div>
             <div class="step">
-              <div class="dot"></div>QC
+              <div class="dot"></div>Final QC
             </div>
 
             <div class="step">
@@ -1362,7 +1362,6 @@
             <option value="mechanic">Mechanic — Rizky</option>
             <option value="inventory">Parts / Inventory — Deni</option>
             <option value="owner">Owner / Admin — Wahyu</option>
-            <option value="qc">QC Inspector — Andi</option>
           </select></div>
 
         <div class="actions"><button class="btn" onclick="loginStaff()">LOGIN</button><button class="btn alt"
@@ -1661,6 +1660,7 @@
           <button onclick="mtab('diagnosis',this)">Diagnosis</button>
           <button onclick="mtab('work',this)">Job Execution</button>
           <button onclick="mtab('parts',this)">Part Request</button>
+          <button onclick="mtab('finalqc',this)">Final QC</button>
           <button onclick="mtab('history',this)">Riwayat</button>
         </aside>
         <div>
@@ -1879,6 +1879,8 @@
             <div class="notice" style="margin-top:12px">Mekanik hanya melihat compatibility + available stock. Cost
               price tidak ditampilkan. Request belum mengurangi stok fisik.</div>
           </div>
+
+          <div id="m-finalqc" class="panel"></div>
 
           <div id="m-history" class="panel">
             <div class="head">
@@ -2290,7 +2292,7 @@
                 <div class="line"><span>Waiting Diagnosis</span><b>2</b></div>
                 <div class="line"><span>Waiting Approval</span><b>2</b></div>
                 <div class="line"><span>In Progress</span><b>4</b></div>
-                <div class="line"><span>Waiting QC</span><b>1</b></div>
+                <div class="line"><span>Waiting Final QC</span><b>1</b></div>
                 <div class="line"><span>Ready</span><b>2</b></div>
               </div>
               <div class="card">
@@ -2477,16 +2479,15 @@
                   <td>—</td>
                 </tr>
                 <tr>
-                  <td>Perform QC</td>
-                  <td>✓</td>
-                  <td>Optional</td>
-                  <td>Optional*</td>
+                  <td>Final QC / Self Check</td>
+                  <td>View</td>
+                  <td>—</td>
+                  <td>✓ Wajib pada job sendiri</td>
                   <td>—</td>
                 </tr>
               </table>
             </div>
-            <div class="notice" style="margin-top:12px">* Mechanic tidak boleh QC pekerjaannya sendiri secara default.
-              Override Owner harus eksplisit dan tercatat di Audit Log.</div>
+            <div class="notice" style="margin-top:12px">Final QC merupakan bagian dari workflow mechanic. Mechanic yang mengerjakan WO wajib menyelesaikan checklist Final QC sebelum kendaraan dapat menjadi READY FOR PICKUP.</div>
           </div>
 
           <div id="o-catalog" class="panel">
@@ -3581,7 +3582,7 @@
             <div class="card form" style="margin-top:13px">
               <div class="field"><label>Nama penerima *</label><input id="wfReceiver" placeholder="Nama customer / penerima"></div>
               <div class="field"><label>Identitas / catatan</label><input id="wfReleaseNote" placeholder="Contoh: diterima pemilik langsung"></div>
-              <div class="full notice" id="wfReleaseGate">QC dan pembayaran harus selesai sebelum kendaraan dapat diserahkan.</div>
+              <div class="full notice" id="wfReleaseGate">Final QC dan pembayaran harus selesai sebelum kendaraan dapat diserahkan.</div>
               <button class="btn full" id="wfReleaseBtn" onclick="releaseVehicle()">RELEASE VEHICLE & CLOSE WO</button>
             </div>
           </div>`);
@@ -4537,6 +4538,368 @@ function v3Init(){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(v3Init,0));
 
 </script>
+<style>
+/* ======================================================================
+   [MEDIA_UPLOAD_FIX] Diagnosis / Finding Photos + Payment Proof Preview
+   ====================================================================== */
+.media-upload-box{margin-top:12px;padding:12px;border:1px dashed #bdd1c6;border-radius:14px;background:#f7faf8}
+.media-upload-box input[type=file]{background:#fff}
+.media-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:10px}
+.media-thumb{position:relative;border:1px solid var(--l);border-radius:14px;overflow:hidden;background:#f4f6f5;min-width:0}
+.media-thumb img{width:100%;height:130px;display:block;object-fit:cover;cursor:pointer}
+.media-thumb .media-meta{padding:7px 8px;font-size:11px;color:var(--m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.media-thumb .media-remove{position:absolute;top:6px;right:6px;border:0;border-radius:999px;width:28px;height:28px;background:#171918cc;color:#fff;font-weight:900;cursor:pointer}
+.media-proof-card{display:grid;grid-template-columns:minmax(150px,260px) 1fr;gap:14px;align-items:start;margin-top:10px}
+.media-proof-card img{width:100%;max-height:280px;object-fit:contain;border:1px solid var(--l);border-radius:14px;background:#f4f6f5;cursor:pointer}
+#v4ImageViewer{position:fixed;inset:0;z-index:100;background:#0b0e0ccc;display:none;align-items:center;justify-content:center;padding:18px}
+#v4ImageViewer.on{display:flex}
+#v4ImageViewer .viewer-sheet{width:min(980px,100%);max-height:94vh;background:#fff;border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px}
+#v4ImageViewer img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:12px;background:#111}
+#v4ImageViewer .viewer-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+@media(max-width:720px){.media-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.media-thumb img{height:110px}.media-proof-card{grid-template-columns:1fr}}
+</style>
+<script>
+/* ======================================================================
+   [MEDIA_UPLOAD_FIX] Diagnosis / Finding Photos + Payment Proof Preview
+   Frontend-only: images are compressed and stored as Data URL in localStorage.
+   Supabase Storage will replace this storage mechanism later.
+   ====================================================================== */
+const V4_MEDIA_MAX_DIAG = 5;
+const V4_MEDIA_MAX_FINDING = 4;
+let v4FindingDraftPhotos = [];
+let v4FindingDraftCaseId = '';
+let v4PaymentDraft = null;
+let v4PaymentDraftCaseId = '';
+
+function v4EnsureViewer(){
+  if(document.getElementById('v4ImageViewer')) return;
+  document.body.insertAdjacentHTML('beforeend',`<div id="v4ImageViewer" onclick="if(event.target===this)v4CloseImageViewer()"><div class="viewer-sheet"><div class="viewer-head"><b id="v4ViewerTitle">Foto</b><button class="btn alt" onclick="v4CloseImageViewer()">TUTUP</button></div><img id="v4ViewerImg" alt="Preview foto"></div></div>`);
+}
+function v4CloseImageViewer(){const v=document.getElementById('v4ImageViewer');if(v)v.classList.remove('on');}
+function v4AllCurrentPhotos(){
+  const out=[];
+  (workflowState.wo?.diagnosisPhotos||[]).forEach(p=>out.push(p));
+  (workflowState.wo?.findings||[]).forEach(f=>(f.photos||[]).forEach(p=>out.push(p)));
+  v4FindingDraftPhotos.forEach(p=>out.push(p));
+  if(v4PaymentDraft && v4PaymentDraftCaseId===workflowState.selectedCaseId) out.push(v4PaymentDraft);
+  if(workflowState.invoice?.proofData) out.push({id:workflowState.invoice.proofId||'PAYMENT-PROOF',name:workflowState.invoice.proofName||'Bukti pembayaran',data:workflowState.invoice.proofData});
+  return out;
+}
+function v4OpenImage(id){
+  v4EnsureViewer();
+  const p=v4AllCurrentPhotos().find(x=>x.id===id);
+  if(!p||!p.data){toast('Foto tidak ditemukan');return;}
+  document.getElementById('v4ViewerImg').src=p.data;
+  document.getElementById('v4ViewerTitle').textContent=p.name||'Foto';
+  document.getElementById('v4ImageViewer').classList.add('on');
+}
+
+function v4CompressImage(file,maxDim=900,quality=.58){
+  return new Promise((resolve,reject)=>{
+    if(!file || !String(file.type||'').startsWith('image/')){reject(new Error('File bukan gambar'));return;}
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('Gagal membaca file'));
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('Gagal membaca gambar'));
+      img.onload=()=>{
+        let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+        const scale=Math.min(1,maxDim/Math.max(w,h));w=Math.max(1,Math.round(w*scale));h=Math.max(1,Math.round(h*scale));
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+        const data=canvas.toDataURL('image/jpeg',quality);
+        resolve({id:'IMG-'+Date.now()+'-'+Math.floor(Math.random()*10000),name:file.name||'foto.jpg',type:'image/jpeg',size:data.length,data,createdAt:new Date().toISOString()});
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function v4PhotoGridHtml(photos,{removable=false,removeFn=''}={}){
+  if(!photos?.length)return '<div class="muted">Belum ada foto.</div>';
+  return `<div class="media-grid">${photos.map(p=>`<div class="media-thumb">${removable?`<button class="media-remove" type="button" onclick="${removeFn}('${p.id}')">×</button>`:''}<img src="${p.data}" alt="${safeText(p.name||'Foto')}" onclick="v4OpenImage('${p.id}')"><div class="media-meta">${safeText(p.name||'Foto')}</div></div>`).join('')}</div>`;
+}
+
+function v4DiagnosisPhotos(){if(!Array.isArray(workflowState.wo.diagnosisPhotos))workflowState.wo.diagnosisPhotos=[];return workflowState.wo.diagnosisPhotos;}
+async function v4HandleDiagnosisPhotos(input){
+  const current=v4DiagnosisPhotos();const slots=Math.max(0,V4_MEDIA_MAX_DIAG-current.length);const files=[...(input?.files||[])].slice(0,slots);
+  if(!slots){toast('Maksimal '+V4_MEDIA_MAX_DIAG+' foto diagnosis');if(input)input.value='';return;}
+  if(!files.length)return;
+  try{for(const f of files)current.push(await v4CompressImage(f));saveWorkflow();v4RenderDiagnosisPhotoPreview();toast(files.length+' foto diagnosis ditambahkan');}
+  catch(e){toast(e.message||'Gagal memproses foto');}
+  if(input)input.value='';
+}
+function v4RemoveDiagnosisPhoto(id){workflowState.wo.diagnosisPhotos=v4DiagnosisPhotos().filter(p=>p.id!==id);saveWorkflow();v4RenderDiagnosisPhotoPreview();}
+function v4RenderDiagnosisPhotoPreview(){const box=document.getElementById('v4DiagnosisPhotoPreview');if(box)box.innerHTML=v4PhotoGridHtml(v4DiagnosisPhotos(),{removable:true,removeFn:'v4RemoveDiagnosisPhoto'});}
+
+function v4FindingPhotos(){if(v4FindingDraftCaseId!==workflowState.selectedCaseId){v4FindingDraftCaseId=workflowState.selectedCaseId;v4FindingDraftPhotos=[];}return v4FindingDraftPhotos;}
+async function v4HandleFindingPhotos(input){
+  const current=v4FindingPhotos();const slots=Math.max(0,V4_MEDIA_MAX_FINDING-current.length);const files=[...(input?.files||[])].slice(0,slots);
+  if(!slots){toast('Maksimal '+V4_MEDIA_MAX_FINDING+' foto per temuan');if(input)input.value='';return;}
+  try{for(const f of files)current.push(await v4CompressImage(f));v4RenderFindingPhotoPreview();toast(files.length+' foto temuan ditambahkan');}
+  catch(e){toast(e.message||'Gagal memproses foto');}
+  if(input)input.value='';
+}
+function v4RemoveFindingPhoto(id){v4FindingDraftPhotos=v4FindingPhotos().filter(p=>p.id!==id);v4RenderFindingPhotoPreview();}
+function v4RenderFindingPhotoPreview(){const box=document.getElementById('v4FindingPhotoPreview');if(box)box.innerHTML=v4PhotoGridHtml(v4FindingPhotos(),{removable:true,removeFn:'v4RemoveFindingPhoto'});}
+
+function v4InjectMechanicMedia(){
+  const diag=document.getElementById('m-diagnosis');
+  const summary=document.getElementById('v3DiagSummary');
+  if(diag&&summary&&!document.getElementById('v4DiagnosisMedia')){
+    summary.closest('.field')?.insertAdjacentHTML('afterend',`<div class="field media-upload-box" id="v4DiagnosisMedia"><label>📷 Foto diagnosis / kondisi (maks. ${V4_MEDIA_MAX_DIAG})</label><input id="v4DiagnosisFiles" type="file" accept="image/*" multiple onchange="v4HandleDiagnosisPhotos(this)"><small class="muted">Foto dikompres untuk simulasi frontend dan melekat ke Work Order. Klik foto untuk melihat ukuran besar.</small><div id="v4DiagnosisPhotoPreview"></div></div>`);
+  }
+  v4RenderDiagnosisPhotoPreview();
+  const findingForm=document.querySelector('#v3FindingBox .form');
+  if(findingForm&&!document.getElementById('v4FindingMedia')){
+    const submit=[...findingForm.querySelectorAll('button')].find(b=>b.textContent.includes('BUAT ESTIMATE REVISI'));
+    const html=`<div class="field full media-upload-box" id="v4FindingMedia"><label>📷 Foto bukti temuan (opsional, maks. ${V4_MEDIA_MAX_FINDING})</label><input id="v4FindingFiles" type="file" accept="image/*" multiple onchange="v4HandleFindingPhotos(this)"><small class="muted">Foto ini ikut tampil ke customer saat review Estimate Revisi.</small><div id="v4FindingPhotoPreview"></div></div>`;
+    if(submit)submit.insertAdjacentHTML('beforebegin',html);else findingForm.insertAdjacentHTML('beforeend',html);
+  }
+  v4RenderFindingPhotoPreview();
+}
+
+const v4BaseRenderMechanic=v3RenderMechanic;
+v3RenderMechanic=function(){v4BaseRenderMechanic();v4InjectMechanicMedia();};
+
+const v4BaseCreateAdditionalFinding=v3CreateAdditionalFinding;
+v3CreateAdditionalFinding=function(){
+  const beforeRev=Number(workflowState.estimate.revision||0);const desc=document.getElementById('v3FindingDesc')?.value.trim()||'';const photos=v3Clone(v4FindingPhotos());
+  v4BaseCreateAdditionalFinding();
+  const newRev=Number(workflowState.estimate.revision||0);
+  if(newRev===beforeRev+1 && workflowState.estimate.pendingFindingId){
+    const fid=workflowState.estimate.pendingFindingId;if(!Array.isArray(workflowState.wo.findings))workflowState.wo.findings=[];
+    workflowState.wo.findings.push({id:fid,revision:newRev,description:desc,photos,createdAt:new Date().toISOString()});
+    (workflowState.estimate.items||[]).filter(i=>i.findingId===fid).forEach(i=>i.photos=v3Clone(photos));
+    v4FindingDraftPhotos=[];v4FindingDraftCaseId=workflowState.selectedCaseId;saveWorkflow();syncWorkflowUI();
+  }
+};
+
+function v4PendingFindingPhotos(){
+  const ids=new Set((workflowState.estimate.items||[]).filter(i=>i.approval==='PENDING'&&i.findingId).map(i=>i.findingId));
+  const photos=[];(workflowState.wo.findings||[]).filter(f=>ids.has(f.id)).forEach(f=>(f.photos||[]).forEach(p=>photos.push(p)));
+  return photos;
+}
+function v4InjectApprovalMedia(){
+  const card=document.querySelector('#approval .card');if(!card)return;
+  card.querySelector('#v4ApprovalMedia')?.remove();
+  if(workflowState.estimate.approval!=='PENDING')return;
+  const diag=workflowState.wo.diagnosisPhotos||[];const finding=v4PendingFindingPhotos();if(!diag.length&&!finding.length)return;
+  const actions=card.querySelector('.actions');const html=`<div id="v4ApprovalMedia" class="media-upload-box"><h3>Dokumentasi mekanik</h3>${diag.length?`<b>Foto diagnosis</b>${v4PhotoGridHtml(diag)}`:''}${finding.length?`<div style="margin-top:10px"><b>Foto temuan tambahan</b>${v4PhotoGridHtml(finding)}</div>`:''}<small class="muted">Klik foto untuk melihat ukuran lebih besar sebelum memberi keputusan.</small></div>`;
+  if(actions)actions.insertAdjacentHTML('beforebegin',html);else card.insertAdjacentHTML('beforeend',html);
+}
+const v4BaseRenderApproval=v3RenderApproval;
+v3RenderApproval=function(){v4BaseRenderApproval();v4InjectApprovalMedia();};
+
+function v4InjectAdvisorDiagnosisMedia(){
+  const wo=document.getElementById('p-wo');if(!wo)return;wo.querySelector('#v4AdvisorDiagnosisMedia')?.remove();
+  const photos=workflowState.wo.diagnosisPhotos||[];if(!photos.length)return;
+  wo.insertAdjacentHTML('beforeend',`<div class="card media-upload-box" id="v4AdvisorDiagnosisMedia" style="margin-top:13px"><h3>📷 Dokumentasi Diagnosis</h3>${v4PhotoGridHtml(photos)}<small class="muted">Dokumentasi dari mechanic untuk WO ini.</small></div>`);
+}
+const v4BaseRenderAdvisor=v3RenderAdvisor;
+v3RenderAdvisor=function(){v4BaseRenderAdvisor();v4InjectAdvisorDiagnosisMedia();};
+
+function v4InjectEstimateFindingMedia(){
+  const p=document.getElementById('p-estimate');if(!p)return;p.querySelector('#v4EstimateFindingMedia')?.remove();
+  const findings=(workflowState.wo.findings||[]).filter(f=>(f.photos||[]).length);if(!findings.length)return;
+  p.insertAdjacentHTML('beforeend',`<div class="card media-upload-box" id="v4EstimateFindingMedia" style="margin-top:13px"><h3>📷 Foto Temuan</h3>${findings.map(f=>`<div style="margin-top:10px"><b>${safeText(f.id)} · ${safeText(f.description||'Temuan')}</b>${v4PhotoGridHtml(f.photos||[])}</div>`).join('')}</div>`);
+}
+const v4BaseRenderEstimatePanel=v3RenderEstimatePanel;
+v3RenderEstimatePanel=function(){v4BaseRenderEstimatePanel();v4InjectEstimateFindingMedia();};
+
+function v4InstallPaymentProofPreview(){
+  const input=document.getElementById('paymentProof');if(!input)return;
+  input.onchange=()=>v4HandlePaymentProof(input);
+  const box=document.getElementById('payProofBox');if(box&&!document.getElementById('v4CustomerProofPreview'))box.insertAdjacentHTML('beforeend','<div id="v4CustomerProofPreview" style="margin-top:10px"></div>');
+  v4RenderCustomerPaymentProofPreview();
+}
+async function v4HandlePaymentProof(input){
+  const file=input?.files?.[0];if(!file){v4PaymentDraft=null;v4RenderCustomerPaymentProofPreview();return;}
+  try{v4PaymentDraft=await v4CompressImage(file,1000,.65);v4PaymentDraftCaseId=workflowState.selectedCaseId;v4RenderCustomerPaymentProofPreview();toast('Preview bukti pembayaran siap');}
+  catch(e){v4PaymentDraft=null;v4PaymentDraftCaseId='';toast(e.message||'Gagal memproses bukti pembayaran');}
+}
+function v4RenderCustomerPaymentProofPreview(){
+  const box=document.getElementById('v4CustomerProofPreview');if(!box)return;const draft=(v4PaymentDraftCaseId===workflowState.selectedCaseId?v4PaymentDraft:null);const p=draft||(workflowState.invoice?.proofData?{id:workflowState.invoice.proofId||'PAYMENT-PROOF',name:workflowState.invoice.proofName,data:workflowState.invoice.proofData}:null);
+  box.innerHTML=p?`<div class="notice"><b>Preview bukti pembayaran</b><div class="media-proof-card"><img src="${p.data}" alt="Bukti pembayaran" onclick="v4OpenImage('${p.id}')"><div><b>${safeText(p.name||'Bukti pembayaran')}</b><p class="muted">Klik gambar untuk melihat ukuran penuh. Setelah dikirim, kasir akan menerima preview yang sama.</p></div></div></div>`:'';
+}
+
+submitPaymentProof=async function(){
+  if(!customerPayMethod)return toast('Pilih metode pembayaran');
+  const input=document.getElementById('paymentProof');const file=input?.files?.[0];
+  if((!v4PaymentDraft || v4PaymentDraftCaseId!==workflowState.selectedCaseId) && file){try{v4PaymentDraft=await v4CompressImage(file,1000,.65);v4PaymentDraftCaseId=workflowState.selectedCaseId;}catch(e){return toast(e.message||'Gagal memproses bukti pembayaran');}}
+  if(!v4PaymentDraft || v4PaymentDraftCaseId!==workflowState.selectedCaseId)return toast('Pilih bukti pembayaran');
+  workflowState.invoice.proofId=v4PaymentDraft.id;workflowState.invoice.proofName=v4PaymentDraft.name;workflowState.invoice.proofData=v4PaymentDraft.data;workflowState.invoice.proofType=v4PaymentDraft.type;workflowState.invoice.proofSize=v4PaymentDraft.size;
+  workflowState.invoice.status='WAITING_VERIFICATION';workflowState.invoice.verification='PENDING';
+  commitWorkflow('PAYMENT_PROOF_SUBMITTED',workflowState.invoice.id,workflowState.invoice.method+' · '+workflowState.invoice.proofName,'CUSTOMER');
+  pushNotification('advisor','Payment Proof',workflowState.invoice.id+' menunggu verifikasi.','payment');
+  pushCustomerNotification('Bukti pembayaran terkirim','Bukti pembayaran sudah diterima sistem dan menunggu verifikasi kasir.','payment','customerPayment');
+  v4PaymentDraft=null;v4PaymentDraftCaseId='';syncWorkflowUI();toast('Bukti dikirim — kasir dapat melihat foto');
+};
+
+const v4BaseRenderPaymentWorkflow=renderPaymentWorkflow;
+renderPaymentWorkflow=function(){
+  v4BaseRenderPaymentWorkflow();v4InstallPaymentProofPreview();
+  const proof=document.getElementById('wfProofSummary');if(!proof)return;
+  const i=workflowState.invoice;
+  if(i.proofData){
+    const id=i.proofId||'PAYMENT-PROOF';
+    proof.innerHTML=`<b>Bukti pembayaran customer</b><div class="media-proof-card"><img src="${i.proofData}" alt="Bukti pembayaran ${safeText(i.proofName||'')}" onclick="v4OpenImage('${id}')"><div><div class="line"><span>File</span><b>${safeText(i.proofName||'-')}</b></div><div class="line"><span>Metode</span><b>${safeText(i.method||'-')}</b></div><div class="line"><span>Verifikasi</span>${wfPill(i.verification)}</div><button class="btn alt" type="button" onclick="v4OpenImage('${id}')">LIHAT FOTO PENUH</button></div></div>`;
+  }else{
+    proof.innerHTML=i.proofName?`<b>Bukti:</b> ${safeText(i.proofName)} · ${wfPill(i.verification)}<br><small class="muted">Data lama hanya menyimpan nama file; upload ulang untuk menampilkan gambar.</small>`:`<b>Verification:</b> ${wfPill(i.verification)}`;
+  }
+};
+
+// Pastikan media fields ikut muncul setelah seluruh layer lama selesai inisialisasi.
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{v4EnsureViewer();v4InstallPaymentProofPreview();syncWorkflowUI();},60));
+</script>
+
+
+<style>
+/* ======================================================================
+   [MECHANIC_FINAL_QC] — Final QC menjadi tanggung jawab mechanic
+   Role/page QC lama dinonaktifkan pada runtime agar tidak mengganggu legacy code.
+   ====================================================================== */
+#qc{display:none!important}
+.final-qc-card{border:1px solid var(--l);border-radius:16px;background:#fff;padding:14px}
+.final-qc-card+.final-qc-card{margin-top:10px}
+</style>
+<script>
+/* ======================================================================
+   [MECHANIC_FINAL_QC]
+   Flow: Complete Job -> WAITING_FINAL_QC -> Mechanic Final QC ->
+         PASS = READY_FOR_PICKUP / FAIL = REWORK -> Final QC ulang.
+   ====================================================================== */
+function v5FinalQcActor(){ return workflowState.demoMechanic || workflowState.wo?.mechanic || 'Mechanic'; }
+function v5IsAssignedMechanic(){ return currentStaffRole==='mechanic' && workflowState.wo?.mechanic===v5FinalQcActor(); }
+
+// QC role terpisah tidak dipakai lagi. Halaman legacy dihapus dari DOM setelah bootstrap,
+// tetapi fungsi legacy dibiarkan agar kompatibilitas kode lama tidak menyebabkan ReferenceError.
+function v5DisableSeparateQcRole(){
+  const role=document.getElementById('demoRole');
+  if(role){ [...role.options].filter(o=>o.value==='qc').forEach(o=>o.remove()); }
+  const page=document.getElementById('qc'); if(page) page.remove();
+}
+
+// Tahap selesai pengerjaan sekarang menuju Final QC milik mechanic, bukan role QC terpisah.
+completeJob=function(){
+  if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}
+  if(workflowState.estimate.approval!=='APPROVED'){toast('Pekerjaan tambahan masih menunggu approval customer');return;}
+  if(!v3AllRequiredPartsIssued()){
+    const missing=v3RequiredPartItems().filter(i=>v3IssuedQtyForSku(i.sku)<i.qty);
+    if(missing.length){toast('Part approved belum di-issue: '+missing.map(x=>x.name).join(', '));return;}
+  }
+  workflowState.wo.qcStatus='PENDING';
+  workflowState.wo.qcBy=''; workflowState.wo.qcAt=''; workflowState.wo.qcNote='';
+  workflowState.wo.jobStatus='WAITING_FINAL_QC'; workflowState.wo.status='WAITING_FINAL_QC';
+  commitWorkflow('JOB_COMPLETED_WAITING_FINAL_QC',workflowState.wo.id,'Pengerjaan selesai · menunggu Final QC mechanic','MECHANIC');
+  pushCustomerNotification('Pengerjaan utama selesai','Mechanic sedang melakukan pemeriksaan akhir / Final QC sebelum Vespa dinyatakan siap.','service','tracking');
+  toast('Pekerjaan selesai → FINAL QC wajib');
+  v3RenderMechanic(); mtabId('finalqc');
+};
+
+// Bila hasil Final QC sebelumnya FAIL, START/RESUME membuka siklus rework baru.
+const v5JobActionBase=jobAction;
+jobAction=function(st){
+  const s=String(st).toUpperCase();
+  const rework=workflowState.wo.qcStatus==='FAILED'||workflowState.wo.jobStatus==='REWORK'||workflowState.wo.status==='REWORK';
+  if(rework && s==='STARTED'){
+    workflowState.wo.qcStatus='PENDING'; workflowState.wo.qcBy=''; workflowState.wo.qcAt='';
+    workflowState.wo.qcNote='';
+  }
+  v5JobActionBase(st);
+};
+
+function v5OpenFinalQc(caseId){
+  if(!v3SelectCase(caseId,false))return;
+  v3RenderMechanic(); mtabId('finalqc');
+}
+
+function v5RenderFinalQc(){
+  const panel=document.getElementById('m-finalqc'); if(!panel)return;
+  const mechanic=workflowState.demoMechanic||'Rizky';
+  const waiting=(workflowState.cases||[]).filter(c=>c.wo?.id&&c.wo.mechanic===mechanic&&c.wo.jobStatus==='WAITING_FINAL_QC'&&c.wo.status!=='CLOSED');
+  const current=v3CurrentCase();
+  const inspect=current&&current.wo?.mechanic===mechanic&&current.wo?.jobStatus==='WAITING_FINAL_QC';
+  panel.innerHTML=`<div class="head"><div><div class="k">Mechanic Final Check</div><h2>Final QC — ${safeText(mechanic)}</h2></div><span class="pill">${waiting.length} MENUNGGU</span></div>
+    <div class="notice"><b>Final QC adalah tahap wajib mechanic.</b> Kendaraan belum dapat menjadi READY FOR PICKUP sampai seluruh checklist dinyatakan PASS.</div>
+    ${waiting.length?`<div class="grid">${waiting.map(c=>`<div class="final-qc-card"><span class="pill">WAITING FINAL QC</span><h3>${safeText(c.wo.id)}</h3><b>${safeText(c.booking.name)}</b><p class="muted">${safeText(c.booking.model)} · ${safeText(c.booking.plate)}<br>${safeText(v3Package(c.booking.packageId).name)}</p><button class="btn" onclick="v5OpenFinalQc('${c.caseId}')">PERIKSA SEKARANG</button></div>`).join('')}</div>`:'<div class="card" style="margin-top:13px"><b>Tidak ada job yang menunggu Final QC.</b></div>'}
+    ${inspect?`<div class="card" style="margin-top:13px"><div class="head"><div><div class="k">Final QC Inspection</div><h3>${safeText(current.wo.id)}</h3></div>${wfPill(current.wo.qcStatus)}</div>
+      <div class="grid"><div class="card"><h3>Vehicle</h3><b>${safeText(current.booking.model)}</b><p class="muted">${safeText(current.booking.plate)}</p></div><div class="card"><h3>Mechanic / Inspector</h3><b>${safeText(mechanic)}</b><p class="muted">Self Final QC</p></div><div class="card"><h3>Approved Scope</h3><p>${v3ApprovedItems(current.estimate).map(i=>safeText(i.name)).join('<br>')}</p></div></div>
+      <h3 style="margin-top:16px">Checklist Final QC</h3><div class="qcchecks">${['Semua pekerjaan approved sudah selesai','Tidak ada kebocoran / bunyi abnormal','Rem & fungsi keselamatan normal','Lampu / electrical berfungsi','Baut / fastener & fluid sudah dicek','Road test / function test selesai','Area kerja dan kendaraan bersih'].map(x=>`<label class="qccheck"><input class="v5qcbox" type="checkbox"><span><b>${x}</b></span></label>`).join('')}</div>
+      <div class="field" style="margin-top:12px"><label>Catatan Final QC / alasan jika gagal</label><textarea id="v5QcNote" placeholder="Catatan hasil pemeriksaan akhir..."></textarea></div>
+      <div class="actions"><button class="btn" onclick="v5FinalQcPass()">✓ PASS FINAL QC</button><button class="btn bad" onclick="v5FinalQcFail()">✕ FAIL → REWORK</button></div></div>`:''}`;
+}
+
+function v5FinalQcPass(){
+  if(currentStaffRole!=='mechanic'){toast('Final QC hanya dapat dilakukan oleh mechanic');return;}
+  if(!v5IsAssignedMechanic()){toast('Final QC hanya dapat dilakukan mechanic yang mengerjakan WO ini');return;}
+  if(workflowState.wo.jobStatus!=='WAITING_FINAL_QC'){toast('Job belum menunggu Final QC');return;}
+  const boxes=[...document.querySelectorAll('#m-finalqc .v5qcbox')];
+  if(!boxes.length||!boxes.every(x=>x.checked)){toast('Selesaikan seluruh checklist Final QC');return;}
+  const note=document.getElementById('v5QcNote')?.value.trim()||'Seluruh checklist Final QC OK.';
+  workflowState.wo.qcStatus='PASSED'; workflowState.wo.qcBy=v5FinalQcActor();
+  workflowState.wo.qcAt=new Date().toISOString(); workflowState.wo.qcNote=note;
+  workflowState.wo.status='READY_FOR_PICKUP'; workflowState.wo.jobStatus='READY_FOR_PICKUP';
+  workflowState.invoice.status=workflowState.invoice.paid>=workflowState.invoice.total?'PAID':'UNPAID';
+  commitWorkflow('FINAL_QC_PASSED',workflowState.wo.id,`Inspector ${workflowState.wo.qcBy} · ${note}`,'MECHANIC');
+  pushNotification('advisor','Final QC Passed',workflowState.wo.id+' siap diproses ke pengambilan.','qc');
+  pushCustomerNotification('Vespa siap diambil','Final QC oleh mechanic selesai dan Vespa Anda sudah siap diambil. Silakan cek tagihan.','ready','completed');
+  toast('FINAL QC PASSED → READY FOR PICKUP'); syncWorkflowUI();
+}
+
+function v5FinalQcFail(){
+  if(currentStaffRole!=='mechanic'){toast('Final QC hanya dapat dilakukan oleh mechanic');return;}
+  if(!v5IsAssignedMechanic()){toast('Final QC hanya dapat dilakukan mechanic yang mengerjakan WO ini');return;}
+  if(workflowState.wo.jobStatus!=='WAITING_FINAL_QC'){toast('Job belum menunggu Final QC');return;}
+  const note=document.getElementById('v5QcNote')?.value.trim(); if(!note){toast('Alasan Final QC gagal wajib diisi');return;}
+  workflowState.wo.qcStatus='FAILED'; workflowState.wo.qcBy=v5FinalQcActor();
+  workflowState.wo.qcAt=new Date().toISOString(); workflowState.wo.qcNote=note;
+  workflowState.wo.status='REWORK'; workflowState.wo.jobStatus='REWORK';
+  commitWorkflow('FINAL_QC_FAILED',workflowState.wo.id,`Inspector ${workflowState.wo.qcBy} · ${note}`,'MECHANIC');
+  pushNotification('advisor','Final QC Failed — Rework',workflowState.wo.id+' perlu rework: '+note,'qc');
+  pushCustomerNotification('Pengerjaan memerlukan perbaikan akhir','Mechanic menemukan hal yang perlu diperbaiki saat pemeriksaan akhir. Pengerjaan dilanjutkan sebelum kendaraan dinyatakan siap.','service','tracking');
+  toast('FINAL QC FAILED → REWORK'); syncWorkflowUI(); mtabId('work');
+}
+
+// Tambahkan Final QC ke render mechanic yang sudah memuat fitur foto diagnosis/finding.
+const v5RenderMechanicBase=v3RenderMechanic;
+v3RenderMechanic=function(){
+  v5RenderMechanicBase();
+  const metric=[...document.querySelectorAll('#m-jobs .metric')].find(x=>x.textContent.includes('Waiting QC'));
+  if(metric){const label=metric.querySelector('.muted');if(label)label.textContent='Waiting Final QC';const n=metric.querySelector('strong');if(n){const mechanic=workflowState.demoMechanic||'Rizky';n.textContent=(workflowState.cases||[]).filter(c=>c.wo?.mechanic===mechanic&&c.wo?.jobStatus==='WAITING_FINAL_QC').length;}}
+  v5RenderFinalQc();
+};
+
+// Tracking customer tetap menggunakan posisi tahap QC yang sama, tetapi status baru dikenali.
+const v5StatusStepBase=v3StatusStep;
+v3StatusStep=function(){
+  const w=workflowState.wo;
+  if(w?.jobStatus==='WAITING_FINAL_QC'||w?.qcStatus==='FAILED')return 4;
+  return v5StatusStepBase();
+};
+
+// Compatibility aliases: bila kode lama memanggil qcPass/qcFail, arahkan ke Final QC mechanic.
+qcPass=v5FinalQcPass;
+qcFail=v5FinalQcFail;
+
+// Copy yang tampil ke user dibuat konsisten dengan konsep Final QC mechanic.
+const v5RenderCompletedBase=v3RenderCompleted;
+v3RenderCompleted=function(){v5RenderCompletedBase();const sec=document.getElementById('completed');const lines=sec?.querySelectorAll('.line');if(lines?.[0])lines[0].innerHTML=`<span>Final QC</span><b>${safeText(workflowState.wo.qcStatus)}</b>`;};
+
+function v5InitFinalQc(){
+  v5DisableSeparateQcRole();
+  // Legacy notification role QC tidak lagi relevan; owner tetap dapat membaca audit dari workflow.
+  if(Array.isArray(workflowState.staffNotifications))workflowState.staffNotifications=workflowState.staffNotifications.filter(n=>n.role!=='qc');
+  // Migrasi state lama WAITING_QC agar file test lama tetap dapat dilanjutkan tanpa rusak.
+  (workflowState.cases||[]).forEach(c=>{
+    if(c.wo?.jobStatus==='WAITING_QC'){c.wo.jobStatus='WAITING_FINAL_QC';c.wo.status='WAITING_FINAL_QC';if(c.wo.qcStatus!=='PASSED')c.wo.qcStatus='PENDING';}
+  });
+  if(workflowState.wo?.jobStatus==='WAITING_QC'){workflowState.wo.jobStatus='WAITING_FINAL_QC';workflowState.wo.status='WAITING_FINAL_QC';if(workflowState.wo.qcStatus!=='PASSED')workflowState.wo.qcStatus='PENDING';}
+  saveWorkflow();syncWorkflowUI();
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(v5InitFinalQc,40));
+</script>
+
 </body>
 
 </html>
