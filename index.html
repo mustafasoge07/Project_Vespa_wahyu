@@ -962,6 +962,31 @@
 .v3-package-summary small{color:var(--g);font-weight:750}
 @media(max-width:720px){html,body{max-width:100%;overflow-x:hidden}.staffgrid,.staffgrid>div,.panel{min-width:0;max-width:100%}.tablewrap{width:100%;overflow-x:auto}.tbl,.wf-table-mini{min-width:680px}.head{align-items:flex-start;gap:8px}.v3-package-summary>div{align-items:flex-start;flex-direction:column}}
 </style>
+
+<style>
+/*
+    ======================================================================
+    [Foto sparepart]  
+    ======================================================================*/
+ .part-photo {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f4f6f5;
+  margin-bottom: 14px;
+  border: 1px solid var(--l);
+}
+
+.part-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+}
+ </style>
+
 </head>
 
 <body>
@@ -2797,12 +2822,89 @@
     function completeJob() { document.getElementById('jobStatus').textContent = 'WAITING QC'; toast('Pekerjaan selesai dan dikirim ke QC') }
 
     const invData = [
-      { sku: 'VSP-VBL-001', name: 'V-Belt Sprint / Primavera', model: 'Sprint / Primavera', on: 3, res: 1, min: 2, cost: 310000, sell: 450000 },
-      { sku: 'VSP-RLR-001', name: 'Roller CVT Set', model: 'Sprint / Primavera', on: 6, res: 2, min: 2, cost: 115000, sell: 180000 },
-      { sku: 'VSP-BRK-001', name: 'Brake Pad Front', model: 'Sprint / Primavera', on: 2, res: 0, min: 3, cost: 145000, sell: 225000 },
-      { sku: 'VSP-OIL-001', name: 'Engine Oil 4T', model: 'All', on: 12, res: 3, min: 5, cost: 82000, sell: 125000 },
-      { sku: 'VSP-FLT-001', name: 'Oil Filter GTS', model: 'GTS 150', on: 0, res: 0, min: 2, cost: 60000, sell: 95000 },
-      { sku: 'VSP-SPK-001', name: 'Spark Plug', model: 'All', on: 8, res: 0, min: 3, cost: 52000, sell: 85000 }
+      { 
+        sku: 'VSP-VBL-001',
+        name: 'V-Belt Sprint / Primavera',
+        model: 'Sprint / Primavera',
+        on: 3,
+        res: 1,
+        min: 2,
+        cost: 310000,
+        sell: 450000,
+        img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxfodRBQbP9sRYitNjULgOMqF4TxnHomQ1JzuE'
+      },
+      
+      {
+        sku: 'VSP-RLR-001',
+        name: 'Roller CVT Set',
+        model: 'Sprint / Primavera',
+        on: 6,
+        res: 2,
+        min: 2,
+        cost: 115000,
+        sell: 180000,
+        img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxsAO1ZpJVo68GkjqyRveMzOXFPaTi5JHNKfwd'
+      },
+
+      {
+        sku: 'VSP-SHOCK-001',
+        name: 'Shockbreaker Depan',
+        model: 'Sprint / Primavera',
+        on: 2,
+        res: 0,
+        min: 3,
+        cost: 145000,
+        sell: 225000,
+        img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxiWoYntZQBzdJw5mGE4aUjy329rRFgs0YpDef'
+      },
+
+      {
+        sku: 'VSP-OIL-001',
+        name: 'Engine Oil 4T',
+        model: 'All',
+        on: 12,
+        res: 3,
+        min: 5,
+        cost: 82000,
+        sell: 125000,
+        img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxRXhqk3WKYjJ96dwysPpfQDnhvHEMgUzLV2b1'
+      },
+
+      {
+        sku: 'VSP-OIL-001',
+        name: 'Engine Oil 4T',
+        model: 'All',
+        on: 12,
+        res: 3,
+        min: 5,
+        cost: 82000,
+        sell: 125000,
+        img:''
+      },
+
+      {
+        sku: 'VSP-FLT-001',
+        name: 'Oil Filter GTS',
+        model: 'GTS 150',
+        on: 0,
+        res: 0,
+        min: 2,
+        cost: 60000,
+        sell: 95000,
+        img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxDUx2bXLolRFgA4KTPNc3Voev8Gdr9CBZxb6j'
+       },
+
+       {
+        sku: 'VSP-KSR-001',
+        name: 'Kampas Rem Belakang',
+        model: 'Sprint / Primavera',
+        on: 8,
+        res: 0,
+        min: 3,
+        cost: 52000,
+        sell: 85000,
+        img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxchMyUrd4lPArfRNu9q27kiOZDWY0UTV5JBvo'
+       }
     ];
     function itab(id, btn) { document.querySelectorAll('#inventory .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('i-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#inventory .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); if (id === 'stock') renderInventory(invData); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     function itabId(id) { const btn = [...document.querySelectorAll('#inventory .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); itab(id, btn) }
@@ -4195,9 +4297,16 @@ function v3RenderInvoice(){
 
 function v3RenderPartsCatalog(){
   const q=(document.getElementById('ps')?.value||'').toLowerCase();const model=document.getElementById('pm')?.value||'Semua model';const list=invData.filter(x=>(x.name.toLowerCase().includes(q)||x.sku.toLowerCase().includes(q))&&(model==='Semua model'||x.model.includes(model.split(' ')[0])||x.model==='All'));
-  const grid=document.getElementById('pg');if(!grid)return;grid.innerHTML=list.map(x=>{const available=Math.max(0,x.on-x.res);return `<div class="card"><div class="k">${x.sku}</div><h3>${safeText(x.name)}</h3><div class="muted">${safeText(x.model)}</div><div class="money" style="font-size:19px;margin-top:8px">${rup(x.sell)}</div><p>${available?`<span class="pill">Tersedia · ${available}</span>`:'<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>'}</p><button class="btn alt" onclick="openPartInquiry('${x.sku}')">TANYA KETERSEDIAAN</button></div>`}).join('')||'<div class="card">Part tidak ditemukan.</div>';
+  const grid=document.getElementById('pg');if(!grid)return;grid.innerHTML=list.map(x=>{const available=Math.max(0,x.on-x.res);
+  return `<div class="card">${x.img?`<div class="part-photo"><img src="${x.img}" alt="${safeText(x.name)}" onerror="this.parentElement.style.display='none'"></div>`:''}
+  <div class="k">${x.sku}</div><h3>${safeText(x.name)}</h3>
+  <div class="muted">${safeText(x.model)}</div>
+  <div class="money" style="font-size:19px;margin-top:8px">${rup(x.sell)}
+  </div>
+  <p>${available?`<span class="pill">Tersedia · ${available}</span>`:'<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>'}</p><button class="btn alt" onclick="openPartInquiry('${x.sku}')">TANYA KETERSEDIAAN</button></div>`}).join('')||'<div class="card">Part tidak ditemukan.</div>';
   parts.splice(0,parts.length,...invData.map(x=>[x.name,x.model==='All'?'Semua model':x.model,x.sell,Math.max(0,x.on-x.res)]));
 }
+
 filterParts=v3RenderPartsCatalog;
 
 const v3LegacyOpenPartInquiry=openPartInquiry;
