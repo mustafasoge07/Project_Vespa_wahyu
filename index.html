@@ -15,22 +15,6 @@
    [RENDER_VESPA_SECOND]   = kode yang menampilkan kartu produk
    [DETAIL_VESPA_SECOND]   = kode yang menampilkan detail + gallery
 
- PENTING:
- - Foto tidak ditanam langsung ke file HTML. Foto disimpan sebagai file terpisah.
- - Background Home yang dipakai sekarang:
-       assets/images/workshop-bg.webp
- - Foto Vespa Second yang disarankan:
-       assets/images/vespa-second/nama-foto.webp
-
- Contoh struktur folder:
-   index.html
-   assets/
-     images/
-       workshop-bg.webp
-       vespa-second/
-         sprint-2022-1.webp
-         sprint-2022-2.webp
-         sprint-2022-3.webp
 ======================================================================
 -->
 
@@ -574,22 +558,6 @@
     /*
     ======================================================================
     [BACKGROUND_HOME] ===== MULAI BACKGROUND FOTO HALAMAN HOME =====
-    ======================================================================
-
-    CARA GANTI FOTO BACKGROUND SECARA MANUAL:
-    1. Simpan foto di folder: assets/images/
-    2. Nama file default: workshop-bg.webp
-    3. Kalau nama file Anda berbeda, GANTI HANYA alamat pada url(...) di bawah.
-
-       CONTOH:
-       url("assets/images/workshop-bg.webp")
-
-       diganti menjadi:
-       url("assets/images/background-bengkel-baru.jpg")
-
-    CATATAN:
-    - Ini BACKGROUND CSS, jadi memang tidak akan ditemukan sebagai tag <img>.
-    - Pastikan huruf besar/kecil nama folder dan file sama persis saat di GitHub.
     ======================================================================
     */
     #home {
@@ -2853,8 +2821,8 @@
         on: 2,
         res: 0,
         min: 3,
-        cost: 145000,
-        sell: 225000,
+        cost: 350000,
+        sell: 750000,
         img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxiWoYntZQBzdJw5mGE4aUjy329rRFgs0YpDef'
       },
 
@@ -2871,15 +2839,15 @@
       },
 
       {
-        sku: 'VSP-OIL-001',
-        name: 'Engine Oil 4T',
+        sku: 'VSP-PTN-001',
+        name: 'Piston',
         model: 'All',
         on: 12,
         res: 3,
         min: 5,
-        cost: 82000,
-        sell: 125000,
-        img:''
+        cost: 275000,
+        sell: 450000,
+        img:'https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxmzSqyJGEvljwYcDLX7AFJ2aGrZesMdO8nWNE'
       },
 
       {
