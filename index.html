@@ -2674,185 +2674,7 @@
       </div>
     </section>
 
-    <section id="qc" class="page">
-      <div class="staffgrid">
-        <aside class="side">
-          <button class="on" onclick="qtab('queue',this)">QC Queue</button>
-          <button onclick="qtab('inspect',this)">QC Inspection</button>
-          <button onclick="qtab('history',this)">QC History</button>
-        </aside>
-        <div>
-          <div id="q-queue" class="panel on">
-            <div class="head">
-              <div>
-                <div class="k">Quality Control</div>
-                <h2>QC Queue</h2>
-              </div><button class="btn alt" onclick="staffLogout()">Logout</button>
-            </div>
-            <div class="metrics">
-              <div class="metric"><span class="muted">Waiting QC</span><strong>3</strong></div>
-              <div class="metric"><span class="muted">In Inspection</span><strong>1</strong></div>
-              <div class="metric"><span class="muted">Passed Today</span><strong>6</strong></div>
-              <div class="metric"><span class="muted">Rework</span><strong>1</strong></div>
-            </div>
-            <div class="card tablewrap" style="margin-top:13px">
-              <table class="tbl">
-                <tr>
-                  <th>WO</th>
-                  <th>Vehicle</th>
-                  <th>Mechanic</th>
-                  <th>Completed</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
-                </tr>
-                <tr>
-                  <td>WO-260923-036</td>
-                  <td>Primavera 150 · B 8821 FJR</td>
-                  <td>Rizky</td>
-                  <td>11:18</td>
-                  <td><span class="pill">WAITING QC</span></td>
-                  <td><button class="btn" onclick="openQC('WO-260923-036','Rizky')">INSPECT</button></td>
-                </tr>
-                <tr>
-                  <td>WO-260923-040</td>
-                  <td>Sprint 150 · B 7788 TT</td>
-                  <td>Arif</td>
-                  <td>11:35</td>
-                  <td><span class="pill">WAITING QC</span></td>
-                  <td><button class="btn" onclick="openQC('WO-260923-040','Arif')">INSPECT</button></td>
-                </tr>
-                <tr>
-                  <td>WO-260923-043</td>
-                  <td>Vespa S · B 5501 AA</td>
-                  <td>Rizky</td>
-                  <td>11:51</td>
-                  <td><span class="pill">WAITING QC</span></td>
-                  <td><button class="btn" onclick="openQC('WO-260923-043','Rizky')">INSPECT</button></td>
-                </tr>
-              </table>
-            </div>
-            <div class="notice" style="margin-top:12px">QC wajib sebelum kendaraan dapat berubah menjadi READY FOR
-              PICKUP.</div>
-          </div>
-
-          <div id="q-inspect" class="panel">
-            <div class="head">
-              <div>
-                <div class="k">QC Inspection</div>
-                <h2 id="qcWo">WO-260923-036</h2>
-              </div><span class="pill" id="qcState">IN PROGRESS</span>
-            </div>
-            <div class="grid">
-              <div class="card">
-                <h3>Vehicle</h3><b>Primavera 150</b>
-                <p class="muted">B 8821 FJR</p>
-              </div>
-              <div class="card">
-                <h3>Mechanic</h3><b id="qcMechanic">Rizky</b>
-                <p class="muted">Job completed</p>
-              </div>
-              <div class="card">
-                <h3>Approved Scope</h3>
-                <p>Periodic Service<br>Engine Oil</p>
-              </div>
-            </div>
-            <div class="card" style="margin-top:13px">
-              <h3>QC Checklist</h3>
-              <div class="qcchecks">
-                <label class="qccheck"><input class="qcbox" type="checkbox"><span><b>Approved work
-                      completed</b><br><small class="muted">Sesuai scope estimate/WO.</small></span><select>
-                    <option>OK</option>
-                    <option>Issue</option>
-                  </select></label>
-                <label class="qccheck"><input class="qcbox" type="checkbox"><span><b>No leak / abnormal
-                      noise</b><br><small class="muted">Pemeriksaan setelah pekerjaan.</small></span><select>
-                    <option>OK</option>
-                    <option>Issue</option>
-                  </select></label>
-                <label class="qccheck"><input class="qcbox" type="checkbox"><span><b>Brake & safety check</b><br><small
-                      class="muted">Fungsi keselamatan dasar.</small></span><select>
-                    <option>OK</option>
-                    <option>Issue</option>
-                  </select></label>
-                <label class="qccheck"><input class="qcbox" type="checkbox"><span><b>Fluid / fastener
-                      check</b><br><small class="muted">Level dan pengencangan akhir.</small></span><select>
-                    <option>OK</option>
-                    <option>Issue</option>
-                  </select></label>
-                <label class="qccheck"><input class="qcbox" type="checkbox"><span><b>Final road/static
-                      test</b><br><small class="muted">Sesuai kebutuhan pekerjaan.</small></span><select>
-                    <option>OK</option>
-                    <option>Issue</option>
-                  </select></label>
-              </div>
-              <div class="field" style="margin-top:12px"><label>QC Note / Failure Reason</label><textarea id="qcNote"
-                  placeholder="Wajib diisi jika QC gagal..."></textarea></div>
-              <div class="notice" id="selfQcWarning" style="display:none;margin-top:12px">⚠️ Mekanik tidak boleh
-                melakukan QC atas pekerjaannya sendiri secara default. Owner override harus diaudit.</div>
-              <div class="actions"><button class="btn" onclick="qcPass()">✓ PASS QC</button><button class="btn bad"
-                  onclick="qcFail()">✕ FAIL → REWORK</button></div>
-            </div>
-          </div>
-
-          <div id="q-history" class="panel">
-            <div class="head">
-              <h2>QC History</h2>
-            </div>
-            <div class="card tablewrap">
-              <table class="tbl">
-                <tr>
-                  <th>WO</th>
-                  <th>Inspector</th>
-                  <th>Result</th>
-                  <th>Time</th>
-                  <th>Note</th>
-                </tr>
-                <tr>
-                  <td>WO-260923-028</td>
-                  <td>Andi</td>
-                  <td><span class="pill">PASSED</span></td>
-                  <td>10:12</td>
-                  <td>All checks OK</td>
-                </tr>
-                <tr>
-                  <td>WO-260923-031</td>
-                  <td>Andi</td>
-                  <td><span class="pill badgefail">FAILED</span></td>
-                  <td>10:35</td>
-                  <td>CVT cover noise — rework</td>
-                </tr>
-                <tr>
-                  <td>WO-260923-031</td>
-                  <td>Andi</td>
-                  <td><span class="pill">PASSED</span></td>
-                  <td>11:02</td>
-                  <td>Rework verified</td>
-                </tr>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ======================================================================
-         [CUSTOMER_NOTIFICATIONS] ===== CUSTOMER NOTIFICATION CENTER =====
-         Notifikasi customer terpisah dari staff dan setiap item punya tujuan klik.
-         ====================================================================== -->
-    <section id="customerNotifications" class="page">
-      <div class="head">
-        <div>
-          <div class="k">Customer Updates</div>
-          <h2>Notifikasi Servis</h2>
-        </div>
-        <div class="actions" style="margin-top:0">
-          <button class="btn alt" onclick="markAllCustomerRead()">TANDAI SUDAH DIBACA</button>
-          <button class="btn alt" onclick="returnFromCustomerNotifications()">← KEMBALI</button>
-        </div>
-      </div>
-      <div class="notice" style="margin-bottom:12px">Ketuk notifikasi untuk langsung membuka bagian yang berkaitan dengan servis Anda.</div>
-      <div class="card" id="customerNotifList"></div>
-    </section>
+    <!-- [LEGACY_QC_REMOVED_V6] Standalone QC page removed; Final QC lives in Mechanic dashboard. -->
 
     <section id="notifications" class="page">
       <div class="head">
@@ -4898,6 +4720,347 @@ function v5InitFinalQc(){
   saveWorkflow();syncWorkflowUI();
 }
 document.addEventListener('DOMContentLoaded',()=>setTimeout(v5InitFinalQc,40));
+</script>
+
+
+
+<style>
+/* ======================================================================
+   [FRONTEND_FREEZE_V6] Workflow consolidation + Owner/Inventory completion
+   ====================================================================== */
+.v6-choice-list{display:grid;gap:9px;margin-top:10px}
+.v6-choice{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:start;padding:11px;border:1px solid var(--l);border-radius:14px;background:#fff}
+.v6-choice input{width:19px;height:19px;margin-top:2px}
+.v6-choice small{display:block;color:var(--m);margin-top:3px}
+.v6-form-box{border:1px solid var(--l);border-radius:16px;padding:14px;background:#f8faf9;margin:12px 0}
+.v6-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.v6-toolbar .btn{padding:9px 12px}
+.v6-empty{padding:16px;text-align:center;color:var(--m)}
+.v6-status-note{font-size:12px;color:var(--m);margin-top:6px}
+@media(max-width:720px){.v6-choice{grid-template-columns:26px 1fr}.v6-choice>b{grid-column:2}.v6-toolbar .btn{flex:1 1 auto}}
+</style>
+<script>
+/* ======================================================================
+   [FRONTEND_FREEZE_V6]
+   - Diagnosis + multiple Additional Findings in one mechanic workspace
+   - Granular customer approval (all / selected / reject all)
+   - Functional local POS, Inventory masters, PO, Receiving, Movement
+   - Dynamic Owner dashboard, Staff, Service/Labor, Settings
+   - Persistent Used Vespa local data + controlled reservation lifecycle
+   - Aggregated digital service history
+   ====================================================================== */
+
+const V6_VERSION=60;
+function v6Uid(prefix='ID'){return prefix+'-'+Date.now()+'-'+Math.floor(Math.random()*100000);}
+function v6Now(){return new Date().toISOString();}
+function v6Available(p){return Math.max(0,Number(p?.on||0)-Number(p?.res||0));}
+function v6Money(n){return rup(Number(n||0));}
+function v6CasePendingItems(c){return (c?.estimate?.items||[]).filter(i=>i.approval==='PENDING');}
+function v6CurrentPending(){return (workflowState.estimate?.items||[]).filter(i=>i.approval==='PENDING');}
+
+function v6EnsureMasters(){
+  workflowState.version=Math.max(Number(workflowState.version||0),V6_VERSION);
+  workflowState.stockMovements=Array.isArray(workflowState.stockMovements)?workflowState.stockMovements:[];
+  workflowState.qcInspections=Array.isArray(workflowState.qcInspections)?workflowState.qcInspections:[];
+  workflowState.posSales=Array.isArray(workflowState.posSales)?workflowState.posSales:[];
+  workflowState.purchaseOrders=Array.isArray(workflowState.purchaseOrders)?workflowState.purchaseOrders:[];
+  workflowState.poDraftLines=Array.isArray(workflowState.poDraftLines)?workflowState.poDraftLines:[];
+  workflowState.suppliers=Array.isArray(workflowState.suppliers)&&workflowState.suppliers.length?workflowState.suppliers:[
+    {id:'SUP-001',name:'PT Vespa Parts Indonesia',phone:'',category:'CVT · Engine · OEM Parts',status:'ACTIVE'},
+    {id:'SUP-002',name:'Motor Supply Jakarta',phone:'',category:'Fluid · Brake · General Parts',status:'ACTIVE'}
+  ];
+  workflowState.staffMaster=Array.isArray(workflowState.staffMaster)&&(workflowState.staffMaster||[]).length?workflowState.staffMaster:[
+    {id:'STF-001',name:'Rina',role:'advisor',status:'ACTIVE'},
+    {id:'STF-002',name:'Rizky',role:'mechanic',status:'ACTIVE'},
+    {id:'STF-003',name:'Bayu',role:'mechanic',status:'ACTIVE'},
+    {id:'STF-004',name:'Arif',role:'mechanic',status:'ACTIVE'},
+    {id:'STF-005',name:'Deni',role:'inventory',status:'ACTIVE'},
+    {id:'STF-006',name:'Wahyu',role:'owner',status:'ACTIVE'}
+  ];
+  workflowState.serviceCatalog=Array.isArray(workflowState.serviceCatalog)&&workflowState.serviceCatalog.length?workflowState.serviceCatalog:[
+    {code:'SRV-CVT-01',name:'Service CVT',category:'CVT',price:150000,status:'ACTIVE'},
+    {code:'SRV-PER-01',name:'Periodic Service',category:'General',price:200000,status:'ACTIVE'},
+    {code:'LAB-DIA-01',name:'Diagnostic Labor',category:'Diagnosis',price:100000,status:'ACTIVE'}
+  ];
+  workflowState.workshopSettings={name:'Vespa Wahyu',whatsapp:'081200000000',address:'Jakarta',open:'09:00',close:'18:00',capacity:4,maintenanceKm:3000,staticQris:'QRIS Workshop — configured',dynamicQris:'Disabled',releasePolicy:'Block release if outstanding',warrantyDays:30,warrantyKm:1000,...(workflowState.workshopSettings||{})};
+  if(Array.isArray(workflowState.usedVespaUnits)&&workflowState.usedVespaUnits.length){
+    usedVespaUnits.splice(0,usedVespaUnits.length,...v3Clone(workflowState.usedVespaUnits));
+  }else workflowState.usedVespaUnits=v3Clone(usedVespaUnits);
+  if(Array.isArray(workflowState.inventory)&&workflowState.inventory.length){
+    invData.splice(0,invData.length,...workflowState.inventory.map((x,i)=>({category:'General',brand:'OEM',location:'Rak '+String(i+1).padStart(2,'0'),...x})));
+  }
+  invData.forEach((p,i)=>{p.category=p.category||'General';p.brand=p.brand||'OEM';p.location=p.location||('Rak '+String(i+1).padStart(2,'0'));});
+  syncInventorySnapshot();
+  (workflowState.cases||[]).forEach(c=>{
+    c.estimate=v6NormalizeEstimate(c.estimate,c.booking?.packageId,c.wo?.id);
+    (c.wo?.findings||[]).forEach(f=>{f.status=f.status||'RECORDED';});
+  });
+  workflowState.estimate=v6NormalizeEstimate(workflowState.estimate,workflowState.booking?.packageId,workflowState.wo?.id);
+}
+
+const v6BaseNormalizeEstimate=v3NormalizeEstimate;
+function v6NormalizeEstimate(est,pkgId,woId){
+  const e=v6BaseNormalizeEstimate(est,pkgId,woId);
+  (e.items||[]).forEach((i,idx)=>{if(!i.itemId)i.itemId='ESTI-'+String(woId||'NO-WO').replace(/[^A-Z0-9]/gi,'')+'-'+idx+'-'+Math.floor(Math.random()*10000);});
+  const pending=(e.items||[]).some(i=>i.approval==='PENDING');
+  e.approval=pending?'PENDING':'APPROVED';
+  if(!pending && ['SENT','REVISION_PENDING'].includes(e.status))e.status=(e.items||[]).some(i=>i.source==='FINDING'&&i.approval==='APPROVED')?'REVISION_APPROVED':'BASE_APPROVED';
+  e.total=v3ProposedTotal(e);
+  return e;
+}
+v3NormalizeEstimate=v6NormalizeEstimate;
+
+const v6BaseSaveWorkflow=saveWorkflow;
+saveWorkflow=function(){
+  try{v6BaseSaveWorkflow();}
+  catch(e){
+    console.error('Local save failed',e);
+    if(String(e?.name||'').includes('Quota')||String(e?.message||'').toLowerCase().includes('quota')) toast('Penyimpanan lokal penuh. Kurangi foto testing / reset data sebelum lanjut.');
+  }
+};
+
+function v6RecordMovement(sku,type,qty,reference,actor,note=''){
+  workflowState.stockMovements.unshift({id:v6Uid('MOV'),ts:v6Now(),sku,type,qty:Number(qty||0),reference:reference||'-',actor:actor||workflowActor(),note});
+  workflowState.stockMovements=workflowState.stockMovements.slice(0,250);
+  saveWorkflow();
+}
+
+/* -------------------- MECHANIC: DIAGNOSIS + MULTI FINDING -------------------- */
+function v6ReadDiagnosisChecks(){
+  const rows=[...document.querySelectorAll('#m-diagnosis table.tbl tr[data-area]')];
+  return rows.map(r=>({area:r.dataset.area,status:r.querySelector('select')?.value||'Normal',note:r.querySelector('input')?.value?.trim()||''}));
+}
+function v6RestoreDiagnosisChecks(){
+  const saved=workflowState.wo?.diagnosisChecks||[];
+  document.querySelectorAll('#m-diagnosis table.tbl tr').forEach(r=>{
+    const first=r.querySelector('td');if(!first)return;const area=first.textContent.trim();r.dataset.area=area;
+    const x=saved.find(z=>z.area===area);if(x){const sel=r.querySelector('select');const inp=r.querySelector('input');if(sel)sel.value=x.status||'Normal';if(inp)inp.value=x.note||'';}
+  });
+}
+startDiag=function(){
+  if(!workflowState.wo.id){toast('Pilih Work Order terlebih dahulu');return;}
+  if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}
+  if(workflowState.wo.diagnosisStatus==='COMPLETED'){toast('Diagnosis sudah selesai. Temuan tambahan tetap dapat dicatat dari panel Diagnosis.');return;}
+  workflowState.wo.diagnosisStatus='IN_PROGRESS';workflowState.wo.status='DIAGNOSIS';workflowState.wo.jobStatus='DIAGNOSIS';
+  commitWorkflow('DIAGNOSIS_STARTED',workflowState.wo.id,'Diagnosis dimulai','MECHANIC');
+  pushCustomerNotification('Pemeriksaan dimulai','Mechanic mulai memeriksa Vespa Anda.','service','tracking');toast('Diagnosis dimulai');
+};
+finishDiag=function(){
+  if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}
+  if(workflowState.wo.diagnosisStatus!=='IN_PROGRESS'){toast('Mulai diagnosis terlebih dahulu');return;}
+  const note=document.getElementById('v3DiagSummary')?.value.trim()||'Pemeriksaan selesai. Tidak ada catatan tambahan.';
+  workflowState.wo.diagnosisChecks=v6ReadDiagnosisChecks();workflowState.wo.diagnosisStatus='COMPLETED';workflowState.wo.diagnosis=note;
+  const pending=v6CurrentPending().length>0;
+  workflowState.wo.status=pending?'WAITING_APPROVAL':'DIAGNOSIS_COMPLETED';workflowState.wo.jobStatus=pending?'WAITING_APPROVAL':'APPROVED';
+  commitWorkflow('DIAGNOSIS_COMPLETED',workflowState.wo.id,note+(pending?' · ada temuan menunggu keputusan customer':''),'MECHANIC');
+  pushNotification('advisor','Diagnosis Completed',workflowState.wo.id+' · '+note,'mechanic');
+  pushCustomerNotification('Pemeriksaan selesai',pending?'Pemeriksaan selesai dan ada temuan tambahan yang membutuhkan keputusan Anda.':'Pemeriksaan selesai. Pekerjaan akan dilanjutkan sesuai scope yang telah disetujui.','service',pending?'approval':'tracking');
+  toast(pending?'Diagnosis selesai · tunggu keputusan temuan tambahan':'Diagnosis selesai');
+};
+
+v3CreateAdditionalFinding=function(){
+  if(!workflowState.wo.id){toast('Pilih Work Order terlebih dahulu');return;}
+  if(workflowState.wo.status==='CLOSED'||workflowState.release?.status==='RELEASED'){toast('WO sudah CLOSED; gunakan Warranty / Comeback');return;}
+  if(!['IN_PROGRESS','COMPLETED'].includes(workflowState.wo.diagnosisStatus)){toast('Mulai diagnosis terlebih dahulu sebelum mencatat temuan');return;}
+  const desc=document.getElementById('v3FindingDesc')?.value.trim();const sku=document.getElementById('v3FindingPart')?.value||'';
+  const qty=Math.max(1,+document.getElementById('v3FindingQty')?.value||1);const labor=Math.max(0,+document.getElementById('v3FindingLabor')?.value||0);
+  if(!desc){toast('Temuan / rekomendasi wajib diisi');return;}
+  if(!sku&&!labor){toast('Pilih part atau isi biaya labor tambahan');return;}
+  const existingPending=v6CurrentPending().length>0;const rev=existingPending?Number(workflowState.estimate.revision||1):Number(workflowState.estimate.revision||0)+1;
+  const fid='FND-'+wfDateCode()+'-'+String(Date.now()).slice(-5);const photos=typeof v4FindingPhotos==='function'?v3Clone(v4FindingPhotos()):[];const items=[];
+  if(sku){const p=invData.find(x=>x.sku===sku);if(p)items.push({itemId:v6Uid('ESTI'),kind:'part',sku:p.sku,name:p.name,qty,unitPrice:p.sell,source:'FINDING',findingId:fid,revision:rev,approval:'PENDING',note:desc,photos:v3Clone(photos)});}
+  if(labor)items.push({itemId:v6Uid('ESTI'),kind:'labor',code:'LAB-ADD',name:'Labor Tambahan — '+desc,qty:1,unitPrice:labor,source:'FINDING',findingId:fid,revision:rev,approval:'PENDING',note:desc,photos:v3Clone(photos)});
+  workflowState.estimate.items.push(...items);workflowState.estimate.revision=rev;workflowState.estimate.id=estimateCodeFromWo(workflowState.wo.id,rev);workflowState.estimate.status='REVISION_PENDING';workflowState.estimate.approval='PENDING';workflowState.estimate.pendingFindingId='MULTIPLE';workflowState.estimate.total=v3ProposedTotal(workflowState.estimate);
+  if(!Array.isArray(workflowState.wo.findings))workflowState.wo.findings=[];
+  workflowState.wo.findings.push({id:fid,revision:rev,description:desc,photos:v3Clone(photos),status:'WAITING_CUSTOMER',createdAt:v6Now()});
+  if(workflowState.wo.diagnosisStatus==='COMPLETED'){workflowState.wo.status='WAITING_APPROVAL';workflowState.wo.jobStatus='WAITING_APPROVAL';}
+  commitWorkflow('ADDITIONAL_FINDING_ADDED',workflowState.estimate.id,desc+' · '+items.length+' item · '+v6Money(items.reduce((s,i)=>s+v3ItemTotal(i),0)),'MECHANIC');
+  pushNotification('advisor','Additional Finding Updated',workflowState.estimate.id+' · '+desc,'mechanic');
+  pushCustomerNotification('Temuan servis diperbarui',workflowState.estimate.id+' memiliki item tambahan untuk Anda pilih/putuskan.','estimate','approval');
+  if(typeof v4FindingDraftPhotos!=='undefined'){v4FindingDraftPhotos=[];v4FindingDraftCaseId=workflowState.selectedCaseId;}
+  ['v3FindingDesc','v3FindingLabor'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const q=document.getElementById('v3FindingQty');if(q)q.value='1';const ps=document.getElementById('v3FindingPart');if(ps)ps.value='';
+  saveWorkflow();syncWorkflowUI();mtabId('diagnosis');toast('Temuan ditambahkan · mechanic dapat menambah temuan lain tanpa menunggu approval');
+};
+additionalFinding=function(){mtabId('diagnosis');setTimeout(()=>document.getElementById('v3FindingBox')?.scrollIntoView({behavior:'smooth',block:'center'}),50);};
+
+function v6FindingSummaryHtml(){
+  const finds=workflowState.wo?.findings||[];if(!finds.length)return '<div class="muted">Belum ada temuan tambahan.</div>';
+  return finds.map(f=>{const its=(workflowState.estimate.items||[]).filter(i=>i.findingId===f.id);const sts=[...new Set(its.map(i=>i.approval))].join(' / ');return `<div class="line"><span><b>${safeText(f.description)}</b><br><small class="muted">${safeText(f.id)} · ${safeText(sts||f.status)}</small></span><b>${v6Money(its.reduce((s,i)=>s+v3ItemTotal(i),0))}</b></div>`;}).join('');
+}
+
+const v6BaseRenderMechanic=v3RenderMechanic;
+v3RenderMechanic=function(){
+  v6BaseRenderMechanic();v6RestoreDiagnosisChecks();
+  const diag=document.getElementById('m-diagnosis');const box=document.getElementById('v3FindingBox');
+  if(diag&&box){
+    const card=diag.querySelector('.card');if(card){
+      box.querySelector('h3').textContent='Temuan / Additional Finding';
+      const submit=[...box.querySelectorAll('button')].find(b=>b.textContent.includes('BUAT ESTIMATE'));if(submit)submit.textContent='TAMBAH TEMUAN KE ESTIMATE REVISI';
+      let list=document.getElementById('v6FindingList');if(!list){list=document.createElement('div');list.id='v6FindingList';list.className='card';list.style.cssText='margin-top:13px;background:#fff';box.insertAdjacentElement('beforebegin',list);}list.innerHTML='<h3>Temuan yang sudah dicatat</h3>'+v6FindingSummaryHtml();
+      card.appendChild(box);
+      const finish=[...card.querySelectorAll('.actions button')].find(b=>b.textContent.includes('SELESAIKAN DIAGNOSIS'));if(finish?.parentElement)finish.parentElement.appendChild(finish);
+    }
+  }
+  const work=document.getElementById('m-work');if(work&&!document.getElementById('v6FindingShortcut')){
+    const act=work.querySelector('.actions');if(act){const b=document.createElement('button');b.id='v6FindingShortcut';b.className='btn alt';b.textContent='TEMUAN / DIAGNOSIS';b.onclick=()=>mtabId('diagnosis');act.insertBefore(b,act.lastElementChild||null);}
+  }
+};
+
+/* -------------------- CUSTOMER GRANULAR APPROVAL -------------------- */
+function v6PendingPhotoHtml(items){
+  const ids=new Set(items.map(i=>i.findingId).filter(Boolean));const finds=(workflowState.wo?.findings||[]).filter(f=>ids.has(f.id)&&(f.photos||[]).length);
+  if(!finds.length&&!(workflowState.wo?.diagnosisPhotos||[]).length)return '';
+  return `<div class="media-upload-box"><h3>Dokumentasi mechanic</h3>${(workflowState.wo?.diagnosisPhotos||[]).length?`<b>Foto diagnosis</b>${v4PhotoGridHtml(workflowState.wo.diagnosisPhotos)}`:''}${finds.map(f=>`<div style="margin-top:10px"><b>${safeText(f.description)}</b>${v4PhotoGridHtml(f.photos||[])}</div>`).join('')}<small class="muted">Klik foto untuk memperbesar sebelum menentukan item yang disetujui.</small></div>`;
+}
+v3RenderApproval=function(){
+  const sec=document.getElementById('approval');if(!sec)return;const title=sec.querySelector('.head h2');if(title)title.textContent=workflowState.estimate.id||'ESTIMATE';
+  const pending=v6CurrentPending();const badge=sec.querySelector('.head .pill');if(badge)badge.textContent=pending.length?'PILIH ITEM':'TIDAK ADA APPROVAL BARU';
+  const pkg=v3Package(workflowState.booking.packageId);const approved=(workflowState.estimate.items||[]).filter(i=>i.approval==='APPROVED');const declined=(workflowState.estimate.items||[]).filter(i=>i.approval==='DECLINED');const card=sec.querySelector('.card');if(!card)return;
+  card.innerHTML=`<div class="notice"><b>Paket dasar sudah disetujui:</b> ${safeText(pkg.name)} · ${v6Money(pkg.price)}</div>
+    <h3 style="margin-top:16px">Scope approved</h3>${approved.map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}</span><b>${v6Money(v3ItemTotal(i))}</b></div>`).join('')||'<div class="muted">-</div>'}
+    ${pending.length?`<h3 style="margin-top:16px">Pilih temuan yang Anda setujui</h3><div class="notice">Anda boleh menyetujui semua item atau hanya sebagian. Item yang tidak dicentang saat <b>SETUJUI PILIHAN</b> akan dianggap ditolak.</div><div class="v6-choice-list">${pending.map(i=>`<label class="v6-choice"><input type="checkbox" class="v6ApprovalChoice" value="${safeText(i.itemId)}" checked><span><b>${safeText(i.name)}</b><small>${safeText(i.note||'Temuan mechanic')} · ${i.kind==='part'?'PART':'LABOR'} · Qty ${i.qty||1}</small></span><b>${v6Money(v3ItemTotal(i))}</b></label>`).join('')}</div><div class="line"><b>Total item pending</b><span class="money">${v6Money(pending.reduce((s,i)=>s+v3ItemTotal(i),0))}</span></div>${v6PendingPhotoHtml(pending)}<div class="actions"><button class="btn" onclick="v6CustomerDecision('SELECTED')">SETUJUI PILIHAN</button><button class="btn alt" onclick="v6CustomerDecision('ALL')">SETUJUI SEMUA</button><button class="btn bad" onclick="v6CustomerDecision('NONE')">TOLAK SEMUA</button></div>`:'<div class="notice" style="margin-top:14px">Tidak ada item tambahan yang menunggu keputusan.</div>'}
+    ${declined.length?`<h3 style="margin-top:16px">Item yang ditolak</h3>${declined.map(i=>`<div class="line"><span>${safeText(i.name)}</span>${wfPill('DECLINED')}</div>`).join('')}`:''}`;
+};
+function v6CustomerDecision(mode){
+  const pending=v6CurrentPending();if(!pending.length){toast('Tidak ada item pending');return;}
+  let selected=new Set();if(mode==='ALL')pending.forEach(i=>selected.add(i.itemId));if(mode==='SELECTED')document.querySelectorAll('.v6ApprovalChoice:checked').forEach(x=>selected.add(x.value));
+  if(mode==='SELECTED'&&!selected.size){toast('Pilih minimal satu item atau gunakan TOLAK SEMUA');return;}
+  const ok=confirm(mode==='NONE'?'Tolak semua item tambahan?':mode==='ALL'?'Setujui semua item tambahan?':'Setujui item yang dicentang dan tolak sisanya?');if(!ok)return;
+  let approvedCount=0,declinedCount=0;pending.forEach(i=>{if(selected.has(i.itemId)){i.approval='APPROVED';approvedCount++;}else{i.approval='DECLINED';declinedCount++;}});
+  workflowState.estimate.pendingFindingId='';workflowState.estimate.approval='APPROVED';workflowState.estimate.status=approvedCount&&declinedCount?'REVISION_PARTIAL':approvedCount?'REVISION_APPROVED':'REVISION_DECLINED';workflowState.estimate.total=v3ApprovedTotal(workflowState.estimate);
+  (workflowState.wo.findings||[]).forEach(f=>{const its=(workflowState.estimate.items||[]).filter(i=>i.findingId===f.id);if(!its.length)return;f.status=its.every(i=>i.approval==='APPROVED')?'APPROVED':its.every(i=>i.approval==='DECLINED')?'DECLINED':'PARTIAL';});
+  workflowState.invoice.items=v3Clone(v3ApprovedItems(workflowState.estimate));workflowState.invoice.total=v3ApprovedTotal(workflowState.estimate);workflowState.invoice.outstanding=Math.max(0,workflowState.invoice.total-Number(workflowState.invoice.paid||0));
+  if(workflowState.wo.diagnosisStatus==='COMPLETED'){workflowState.wo.status='DIAGNOSIS_COMPLETED';workflowState.wo.jobStatus='APPROVED';}
+  commitWorkflow('ESTIMATE_ITEMS_DECIDED',workflowState.estimate.id,`Approved ${approvedCount} · Declined ${declinedCount}`,'CUSTOMER');pushNotification('advisor','Customer Decision',`${workflowState.estimate.id}: ${approvedCount} approved, ${declinedCount} declined`,'approval');pushNotification('mechanic','Customer Decision',`${workflowState.estimate.id}: ${approvedCount} approved, ${declinedCount} declined`,'approval');pushCustomerNotification('Pilihan tambahan tersimpan',`${approvedCount} item disetujui dan ${declinedCount} item ditolak. Tagihan mengikuti item yang disetujui.`,'estimate','tracking');toast('Keputusan tersimpan');go('tracking');syncWorkflowUI();
+}
+ask=function(ok){v6CustomerDecision(ok?'ALL':'NONE');};
+
+/* Allow approved part request even when a different finding is still pending. */
+const v6BaseRequestPart=requestPart;
+requestPart=function(btn,token,qty=1){
+  const old=workflowState.estimate.approval;const p=v3PartForRequest(token);const allowed=p&&(workflowState.estimate.items||[]).some(i=>i.sku===p.sku&&i.approval==='APPROVED');
+  if(!allowed){toast('Part ini belum disetujui customer');return;}
+  if(old==='PENDING')workflowState.estimate.approval='APPROVED';try{v6BaseRequestPart(btn,token,qty);}finally{workflowState.estimate.approval=v6CurrentPending().length?'PENDING':'APPROVED';saveWorkflow();}
+};
+
+/* Stronger job lifecycle without blocking approved base work while optional items are pending. */
+const v6BaseJobAction=jobAction;
+jobAction=function(st){
+  const s=String(st).toUpperCase();if(workflowState.wo.status==='CLOSED'){toast('WO sudah CLOSED');return;}
+  if(s==='STARTED'&&workflowState.wo.diagnosisStatus!=='COMPLETED'){toast('Selesaikan diagnosis terlebih dahulu');return;}
+  if(['WAITING_FINAL_QC','READY_FOR_PICKUP'].includes(workflowState.wo.jobStatus)&&s==='STARTED'){toast('Job sudah masuk tahap Final QC / Ready');return;}
+  v6BaseJobAction(st);
+};
+
+/* -------------------- INVENTORY COMPLETION -------------------- */
+function v6RenderInventoryDashboard(){
+  const p=document.getElementById('i-dash');if(!p)return;const low=invData.filter(x=>invStatus(x)==='Low Stock');const out=invData.filter(x=>invStatus(x)==='Out of Stock');const pending=(workflowState.partRequests||[]).filter(r=>r.status==='REQUESTED');
+  p.innerHTML=`<div class="head"><div><div class="k">Parts / Inventory</div><h2>Inventory Dashboard</h2></div><div class="actions" style="margin-top:0"><button class="btn alt" id="backOwnerBtn" style="${inventoryOpenedByOwner?'':'display:none'}" onclick="go('owner');otabId('dash')">← OWNER</button><button class="btn alt" onclick="staffLogout()">Logout</button></div></div><div class="metrics"><div class="metric"><span class="muted">Total SKU</span><strong>${invData.length}</strong></div><div class="metric"><span class="muted">Low Stock</span><strong>${low.length}</strong></div><div class="metric"><span class="muted">Out of Stock</span><strong>${out.length}</strong></div><div class="metric"><span class="muted">Pending Request</span><strong>${pending.length}</strong></div></div><div class="card" style="margin-top:13px"><h3>Quick Actions</h3><div class="actions"><button class="btn" onclick="itabId('requests')">PART REQUESTS</button><button class="btn alt" onclick="itabId('stock')">STOCK LIST</button><button class="btn alt" onclick="itabId('po')">PURCHASE ORDER</button><button class="btn alt" onclick="itabId('receive')">RECEIVE GOODS</button></div></div><div class="card" style="margin-top:13px"><h3>Perlu Perhatian</h3>${[...out,...low].slice(0,8).map(x=>`<div class="line"><span>${safeText(x.name)}<br><small>${safeText(x.sku)}</small></span>${wfPill(invStatus(x).toUpperCase().replaceAll(' ','_'))}</div>`).join('')||'<div class="muted">Tidak ada stock alert.</div>'}</div>`;
+}
+function v6RenderPartsDb(){
+  const p=document.getElementById('i-partsdb');if(!p)return;p.innerHTML=`<div class="head"><h2>Parts Database</h2><button class="btn" onclick="v6OpenPartForm()">+ TAMBAH PART</button></div><div id="v6PartForm" class="v6-form-box" style="display:none"></div><div class="card tablewrap"><table class="tbl"><tr><th>SKU</th><th>Nama</th><th>Kategori</th><th>Brand</th><th>Lokasi</th><th>Cost</th><th>Selling</th><th>Status</th><th>Aksi</th></tr>${invData.map(x=>`<tr><td>${safeText(x.sku)}</td><td><b>${safeText(x.name)}</b><br><small>${safeText(x.model)}</small></td><td>${safeText(x.category)}</td><td>${safeText(x.brand)}</td><td>${safeText(x.location)}</td><td>${v6Money(x.cost)}</td><td>${v6Money(x.sell)}</td><td>${wfPill(invStatus(x).toUpperCase().replaceAll(' ','_'))}</td><td><button class="btn alt" onclick="v6OpenPartForm('${x.sku}')">EDIT</button></td></tr>`).join('')}</table></div>`;
+}
+function v6OpenPartForm(sku=''){
+  const box=document.getElementById('v6PartForm');if(!box)return;const x=invData.find(p=>p.sku===sku)||{sku:'',name:'',model:'All',category:'General',brand:'OEM',location:'',on:0,res:0,min:1,cost:0,sell:0};box.style.display='block';box.dataset.editSku=sku;
+  box.innerHTML=`<h3>${sku?'Edit Part':'Tambah Part'}</h3><div class="form"><div class="field"><label>SKU *</label><input id="v6pSku" value="${safeText(x.sku)}" ${sku?'readonly':''}></div><div class="field"><label>Nama *</label><input id="v6pName" value="${safeText(x.name)}"></div><div class="field"><label>Compatibility / Model</label><input id="v6pModel" value="${safeText(x.model)}"></div><div class="field"><label>Kategori</label><input id="v6pCat" value="${safeText(x.category)}"></div><div class="field"><label>Brand</label><input id="v6pBrand" value="${safeText(x.brand)}"></div><div class="field"><label>Lokasi</label><input id="v6pLoc" value="${safeText(x.location)}"></div><div class="field"><label>On Hand</label><input id="v6pOn" type="number" min="0" value="${Number(x.on||0)}"></div><div class="field"><label>Minimum</label><input id="v6pMin" type="number" min="0" value="${Number(x.min||0)}"></div><div class="field"><label>Cost</label><input id="v6pCost" type="number" min="0" value="${Number(x.cost||0)}"></div><div class="field"><label>Selling Price</label><input id="v6pSell" type="number" min="0" value="${Number(x.sell||0)}"></div></div><div class="actions"><button class="btn" onclick="v6SavePart()">SIMPAN</button><button class="btn alt" onclick="document.getElementById('v6PartForm').style.display='none'">BATAL</button></div>`;
+}
+function v6SavePart(){
+  const sku=document.getElementById('v6pSku')?.value.trim().toUpperCase(),name=document.getElementById('v6pName')?.value.trim();if(!sku||!name){toast('SKU dan nama wajib');return;}const edit=document.getElementById('v6PartForm')?.dataset.editSku||'';let x=invData.find(p=>p.sku===edit);if(!x&&invData.some(p=>p.sku===sku)){toast('SKU sudah digunakan');return;}const data={sku,name,model:document.getElementById('v6pModel').value.trim()||'All',category:document.getElementById('v6pCat').value.trim()||'General',brand:document.getElementById('v6pBrand').value.trim()||'OEM',location:document.getElementById('v6pLoc').value.trim()||'-',on:Math.max(0,+document.getElementById('v6pOn').value||0),res:x?Number(x.res||0):0,min:Math.max(0,+document.getElementById('v6pMin').value||0),cost:Math.max(0,+document.getElementById('v6pCost').value||0),sell:Math.max(0,+document.getElementById('v6pSell').value||0)};if(x)Object.assign(x,data);else invData.push(data);syncInventorySnapshot();commitWorkflow(edit?'PART_MASTER_UPDATED':'PART_MASTER_CREATED',sku,name,'INVENTORY');v6RenderInventoryAll();v3RenderPartsCatalog();toast('Part tersimpan');
+}
+function v6RenderCompatibility(){const p=document.getElementById('i-compat');if(!p)return;p.innerHTML=`<div class="head"><h2>Part Compatibility</h2></div><div class="notice">Compatibility tersimpan di master part. Gunakan EDIT untuk memperbarui model/variant yang kompatibel.</div><div class="card tablewrap" style="margin-top:12px"><table class="tbl"><tr><th>SKU</th><th>Part</th><th>Compatibility</th><th>Aksi</th></tr>${invData.map(x=>`<tr><td>${x.sku}</td><td>${safeText(x.name)}</td><td>${safeText(x.model)}</td><td><button class="btn alt" onclick="v6EditCompatibility('${x.sku}')">EDIT</button></td></tr>`).join('')}</table></div>`;}
+function v6EditCompatibility(sku){const x=invData.find(p=>p.sku===sku);if(!x)return;const val=prompt('Compatibility / model untuk '+x.name,x.model);if(val===null)return;x.model=val.trim()||'All';syncInventorySnapshot();commitWorkflow('PART_COMPATIBILITY_UPDATED',sku,x.model,'INVENTORY');v6RenderCompatibility();v3RenderPartsCatalog();}
+function v6RenderSuppliers(){const p=document.getElementById('i-supplier');if(!p)return;p.innerHTML=`<div class="head"><h2>Suppliers</h2><button class="btn" onclick="v6SupplierForm()">+ SUPPLIER</button></div><div id="v6SupplierForm" class="v6-form-box" style="display:none"></div><div class="grid">${workflowState.suppliers.map(s=>`<div class="card"><h3>${safeText(s.name)}</h3><p class="muted">${safeText(s.category||'-')}<br>${safeText(s.phone||'-')}</p>${wfPill(s.status)}<div class="actions"><button class="btn alt" onclick="v6SupplierForm('${s.id}')">EDIT</button><button class="btn" onclick="itabId('po');setTimeout(()=>{const e=document.getElementById('v6PoSupplier');if(e)e.value='${s.id}'},30)">BUAT PO</button></div></div>`).join('')}</div>`;}
+function v6SupplierForm(id=''){const b=document.getElementById('v6SupplierForm');if(!b)return;const s=workflowState.suppliers.find(x=>x.id===id)||{id:'',name:'',phone:'',category:'',status:'ACTIVE'};b.style.display='block';b.dataset.id=id;b.innerHTML=`<div class="form"><div class="field"><label>Nama *</label><input id="v6SupName" value="${safeText(s.name)}"></div><div class="field"><label>WhatsApp / Telp</label><input id="v6SupPhone" value="${safeText(s.phone)}"></div><div class="field"><label>Kategori</label><input id="v6SupCat" value="${safeText(s.category)}"></div><div class="field"><label>Status</label><select id="v6SupStatus"><option ${s.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${s.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div></div><div class="actions"><button class="btn" onclick="v6SaveSupplier()">SIMPAN</button><button class="btn alt" onclick="document.getElementById('v6SupplierForm').style.display='none'">BATAL</button></div>`;}
+function v6SaveSupplier(){const b=document.getElementById('v6SupplierForm'),id=b?.dataset.id||'',name=document.getElementById('v6SupName')?.value.trim();if(!name){toast('Nama supplier wajib');return;}const data={id:id||v6Uid('SUP'),name,phone:document.getElementById('v6SupPhone').value.trim(),category:document.getElementById('v6SupCat').value.trim(),status:document.getElementById('v6SupStatus').value};const old=workflowState.suppliers.find(x=>x.id===id);if(old)Object.assign(old,data);else workflowState.suppliers.push(data);commitWorkflow(id?'SUPPLIER_UPDATED':'SUPPLIER_CREATED',data.id,name,'INVENTORY');v6RenderSuppliers();}
+function v6RenderPO(){const p=document.getElementById('i-po');if(!p)return;const draft=workflowState.poDraftLines||[];p.innerHTML=`<div class="head"><div><div class="k">Purchasing</div><h2>Purchase Order</h2></div><span class="pill">${(workflowState.purchaseOrders||[]).filter(x=>['DRAFT','ORDERED','PARTIAL'].includes(x.status)).length} ACTIVE</span></div><div class="v6-form-box"><h3>Buat PO Multi-item</h3><div class="form"><div class="field"><label>Supplier</label><select id="v6PoSupplier">${workflowState.suppliers.filter(x=>x.status==='ACTIVE').map(x=>`<option value="${x.id}">${safeText(x.name)}</option>`).join('')}</select></div><div class="field"><label>Expected Date</label><input id="v6PoDate" type="date"></div><div class="field"><label>Part</label><select id="v6PoPart">${invData.map(x=>`<option value="${x.sku}">${x.sku} · ${safeText(x.name)} · ${v6Money(x.cost)}</option>`).join('')}</select></div><div class="field"><label>Qty</label><input id="v6PoQty" type="number" min="1" value="1"></div></div><div class="actions"><button class="btn alt" onclick="v6AddPoDraftLine()">+ TAMBAH ITEM</button></div><div class="tablewrap" style="margin-top:10px"><table class="wf-table-mini"><tr><th>Part</th><th>Qty</th><th>Cost</th><th>Subtotal</th><th></th></tr>${draft.map((l,i)=>`<tr><td>${safeText(l.name)}<br><small>${l.sku}</small></td><td>${l.qty}</td><td>${v6Money(l.cost)}</td><td>${v6Money(l.qty*l.cost)}</td><td><button class="btn bad" onclick="v6RemovePoDraftLine(${i})">×</button></td></tr>`).join('')||'<tr><td colspan="5">Belum ada item. Pilih part lalu klik + TAMBAH ITEM.</td></tr>'}<tr><td colspan="3"><b>Total Draft</b></td><td><b>${v6Money(draft.reduce((a,l)=>a+l.qty*l.cost,0))}</b></td><td></td></tr></table></div><div class="actions"><button class="btn alt" onclick="v6CreatePO('DRAFT')">SIMPAN DRAFT</button><button class="btn" onclick="v6CreatePO('ORDERED')">BUAT & ORDER</button></div></div><div class="card tablewrap"><table class="tbl"><tr><th>PO</th><th>Supplier</th><th>Items</th><th>Expected</th><th>Total</th><th>Status</th><th>Aksi</th></tr>${(workflowState.purchaseOrders||[]).map(po=>`<tr><td>${po.id}</td><td>${safeText(po.supplierName)}</td><td>${po.lines.map(l=>`${safeText(l.name)} ×${l.qty} <small>(rec ${l.received||0})</small>`).join('<br>')}</td><td>${safeText(po.expectedDate||'-')}</td><td>${v6Money(po.lines.reduce((a,l)=>a+l.qty*l.cost,0))}</td><td>${wfPill(po.status)}</td><td>${po.status==='DRAFT'?`<button class="btn" onclick="v6PoStatus('${po.id}','ORDERED')">ORDER</button> `:''}${['DRAFT','ORDERED'].includes(po.status)?`<button class="btn bad" onclick="v6PoStatus('${po.id}','CANCELLED')">CANCEL</button>`:'-'}</td></tr>`).join('')||'<tr><td colspan="7">Belum ada PO.</td></tr>'}</table></div>`;}
+function v6AddPoDraftLine(){const p=invData.find(x=>x.sku===document.getElementById('v6PoPart')?.value),qty=Math.max(1,+document.getElementById('v6PoQty')?.value||1);if(!p)return;workflowState.poDraftLines=workflowState.poDraftLines||[];const ex=workflowState.poDraftLines.find(x=>x.sku===p.sku);if(ex)ex.qty+=qty;else workflowState.poDraftLines.push({sku:p.sku,name:p.name,qty,cost:p.cost,received:0});saveWorkflow();v6RenderPO();}
+function v6RemovePoDraftLine(i){workflowState.poDraftLines.splice(i,1);saveWorkflow();v6RenderPO();}
+function v6CreatePO(status){const sup=workflowState.suppliers.find(x=>x.id===document.getElementById('v6PoSupplier')?.value);if(!sup){toast('Supplier tidak valid');return;}let lines=v3Clone(workflowState.poDraftLines||[]);if(!lines.length){const p=invData.find(x=>x.sku===document.getElementById('v6PoPart')?.value),qty=Math.max(1,+document.getElementById('v6PoQty')?.value||1);if(p)lines=[{sku:p.sku,name:p.name,qty,cost:p.cost,received:0}];}if(!lines.length){toast('Tambahkan minimal satu item PO');return;}const po={id:generateDocumentCode('PO'),supplierId:sup.id,supplierName:sup.name,expectedDate:document.getElementById('v6PoDate')?.value||'',status,createdAt:v6Now(),lines};workflowState.purchaseOrders.unshift(po);workflowState.poDraftLines=[];commitWorkflow('PO_'+status,po.id,`${lines.length} item · ${lines.reduce((a,l)=>a+l.qty,0)} unit`,'INVENTORY');v6RenderPO();v6RenderReceiving();toast('PO '+status);}
+function v6PoStatus(id,status){const po=workflowState.purchaseOrders.find(x=>x.id===id);if(!po)return;po.status=status;commitWorkflow('PO_STATUS',id,status,'INVENTORY');v6RenderPO();v6RenderReceiving();}
+function v6RenderReceiving(){const p=document.getElementById('i-receive');if(!p)return;const pos=(workflowState.purchaseOrders||[]).filter(x=>['ORDERED','PARTIAL'].includes(x.status));p.innerHTML=`<div class="head"><div><div class="k">Goods Receiving</div><h2>Receive Purchase Orders</h2></div><span class="pill">${pos.length} OPEN</span></div>${pos.map(po=>`<div class="card" style="margin-bottom:12px"><div class="head"><div><b>${po.id}</b><div class="muted">${safeText(po.supplierName)} · ${safeText(po.expectedDate||'-')}</div></div>${wfPill(po.status)}</div>${po.lines.map((l,i)=>{const rem=Math.max(0,l.qty-(l.received||0));return `<div class="line"><span>${safeText(l.name)}<br><small>${l.sku} · Ordered ${l.qty} · Received ${l.received||0}</small></span><input id="v6Recv_${po.id}_${i}" type="number" min="0" max="${rem}" value="${rem}" style="width:110px"></div>`}).join('')}<div class="actions"><button class="btn" onclick="v6ReceivePO('${po.id}')">RECEIVE STOCK</button></div></div>`).join('')||'<div class="card v6-empty">Tidak ada PO berstatus ORDERED/PARTIAL.</div>'}`;}
+function v6ReceivePO(id){const po=workflowState.purchaseOrders.find(x=>x.id===id);if(!po)return;let total=0;po.lines.forEach((l,i)=>{const rem=Math.max(0,l.qty-(l.received||0)),q=Math.min(rem,Math.max(0,+document.getElementById(`v6Recv_${po.id}_${i}`)?.value||0));if(!q)return;const p=invData.find(x=>x.sku===l.sku);if(p){p.on+=q;l.received=(l.received||0)+q;total+=q;v6RecordMovement(l.sku,'PURCHASE_RECEIVE',q,po.id,'INVENTORY',po.supplierName);}});if(!total){toast('Tidak ada qty diterima');return;}po.status=po.lines.every(l=>(l.received||0)>=l.qty)?'RECEIVED':'PARTIAL';syncInventorySnapshot();commitWorkflow('GOODS_RECEIVED',po.id,total+' unit','INVENTORY');v6RenderInventoryAll();v3RenderPartsCatalog();toast(total+' unit diterima');}
+function v6RenderMovement(){const p=document.getElementById('i-movement');if(!p)return;p.innerHTML=`<div class="head"><h2>Stock Movement</h2><span class="pill">${workflowState.stockMovements.length} RECORD</span></div><div class="card tablewrap"><table class="tbl"><tr><th>Waktu</th><th>SKU</th><th>Type</th><th>Qty</th><th>Reference</th><th>Actor</th><th>Note</th></tr>${workflowState.stockMovements.map(m=>`<tr><td>${new Date(m.ts).toLocaleString('id-ID')}</td><td>${safeText(m.sku)}</td><td>${safeText(m.type)}</td><td>${m.qty>0?'+':''}${m.qty}</td><td>${safeText(m.reference)}</td><td>${safeText(m.actor)}</td><td>${safeText(m.note||'')}</td></tr>`).join('')||'<tr><td colspan="7">Belum ada movement.</td></tr>'}</table></div><div class="notice" style="margin-top:12px">Movement tidak dihapus; koreksi dilakukan dengan adjustment/reversal baru.</div>`;}
+const v6BaseIssueRequest=v3IssueRequest;
+v3IssueRequest=function(id){const r=(workflowState.partRequests||[]).find(x=>x.id===id);const p=r&&invData.find(x=>x.sku===r.sku);const before=p?.on;v6BaseIssueRequest(id);if(r?.status==='ISSUED'&&p&&p.on<before)v6RecordMovement(r.sku,'ISSUE',-Number(r.qty||0),r.woId,'INVENTORY',r.id);v6RenderInventoryAll();};
+const v6BaseStockOpname=saveStockOpname;
+saveStockOpname=function(){const sku=document.getElementById('wfOpnameSku')?.value;const p=invData.find(x=>x.sku===sku);const before=p?.on;v6BaseStockOpname();if(p&&before!==p.on)v6RecordMovement(sku,'ADJUSTMENT',Number(p.on)-Number(before),'STOCK_OPNAME','INVENTORY','Physical count');v6RenderInventoryAll();};
+function v6RenderInventoryAll(){v6RenderInventoryDashboard();v6RenderPartsDb();v6RenderCompatibility();v6RenderSuppliers();v6RenderPO();v6RenderReceiving();v6RenderMovement();renderInventory(invData);v3RenderInventoryRequests();renderOpnameSystemQty();renderOpnameHistory();const add=[...document.querySelectorAll('#i-stock .head button')].find(b=>b.textContent.includes('+ PART'));if(add){add.onclick=()=>{itabId('partsdb');setTimeout(()=>v6OpenPartForm(),20);};add.textContent='+ PART';}}
+const v6BaseItab=itab;itab=function(id,btn){v6BaseItab(id,btn);v6RenderInventoryAll();};
+
+/* -------------------- REAL LOCAL POS -------------------- */
+function v6RenderPos(){const p=document.getElementById('p-pos');if(!p)return;p.innerHTML=`<div class="head"><div><div class="k">Counter Sales</div><h2>POS Parts</h2></div><span class="pill">LOCAL TRANSACTION</span></div><div class="v6-form-box"><div class="form"><div class="field"><label>Customer / Nama</label><input id="v6PosCustomer" placeholder="Walk-in customer"></div><div class="field"><label>Part</label><select id="v6PosSku">${invData.map(x=>`<option value="${x.sku}">${x.sku} · ${safeText(x.name)} · Available ${v6Available(x)} · ${v6Money(x.sell)}</option>`).join('')}</select></div><div class="field"><label>Qty</label><input id="v6PosQty" type="number" min="1" value="1"></div><div class="field"><label>Pembayaran</label><select id="v6PosMethod"><option>cash</option><option>transfer</option><option>static_qris</option></select></div></div><button class="btn" onclick="v6PosSale()">BAYAR & SELESAIKAN</button></div><div class="card tablewrap"><table class="tbl"><tr><th>POS</th><th>Waktu</th><th>Customer</th><th>Part</th><th>Qty</th><th>Total</th><th>Payment</th></tr>${(workflowState.posSales||[]).map(s=>`<tr><td>${s.id}</td><td>${new Date(s.ts).toLocaleString('id-ID')}</td><td>${safeText(s.customer)}</td><td>${safeText(s.part)}</td><td>${s.qty}</td><td>${v6Money(s.total)}</td><td>${wfPill('PAID')}<br><small>${safeText(s.method)}</small></td></tr>`).join('')||'<tr><td colspan="7">Belum ada transaksi POS.</td></tr>'}</table></div><div id="wfPartInquiryList" class="card" style="margin-top:13px"></div>`;renderPartInquiries();}
+function v6PosSale(){const p=invData.find(x=>x.sku===document.getElementById('v6PosSku')?.value),qty=Math.max(1,+document.getElementById('v6PosQty')?.value||1);if(!p){toast('Part tidak ditemukan');return;}if(v6Available(p)<qty){toast('Available stock tidak cukup');return;}const sale={id:generateDocumentCode('POS'),ts:v6Now(),customer:document.getElementById('v6PosCustomer')?.value.trim()||'Walk-in',sku:p.sku,part:p.name,qty,unitPrice:p.sell,total:p.sell*qty,method:document.getElementById('v6PosMethod')?.value||'cash',status:'PAID'};p.on-=qty;workflowState.posSales.unshift(sale);syncInventorySnapshot();v6RecordMovement(p.sku,'POS_SALE',-qty,sale.id,'ADVISOR',sale.customer);commitWorkflow('POS_SALE',sale.id,`${p.sku} ×${qty} · ${v6Money(sale.total)}`,'ADVISOR');v6RenderPos();v6RenderInventoryAll();v3RenderPartsCatalog();v6RenderOwnerDashboard();v6RenderReports();toast('POS '+sale.id+' PAID');}
+
+/* -------------------- OWNER COMPLETION -------------------- */
+function v6StaffRoleLabel(r){return ({advisor:'Service Advisor / Cashier',mechanic:'Mechanic',inventory:'Parts / Inventory',owner:'Owner / Admin'})[r]||r;}
+function v6RenderOwnerDashboard(){const p=document.getElementById('o-dash');if(!p)return;const cases=workflowState.cases||[],paid=cases.filter(c=>c.invoice?.status==='PAID').reduce((s,c)=>s+Number(c.invoice.paid||0),0),pos=(workflowState.posSales||[]).reduce((s,x)=>s+Number(x.total||0),0),active=cases.filter(c=>c.wo?.id&&c.wo.status!=='CLOSED'),closed=cases.filter(c=>c.wo?.status==='CLOSED'),outstanding=cases.reduce((s,c)=>s+Number(c.invoice?.outstanding||0),0),low=invData.filter(x=>invStatus(x)==='Low Stock').length,oos=invData.filter(x=>invStatus(x)==='Out of Stock').length,activeStaff=(workflowState.staffMaster||[]).filter(x=>x.status==='ACTIVE').length,inactiveStaff=(workflowState.staffMaster||[]).length-activeStaff,busy=new Set(active.filter(c=>c.wo?.mechanic&&c.wo.mechanic!=='Belum ditentukan').map(c=>c.wo.mechanic)).size;p.innerHTML=`<div class="head"><div><div class="k">Owner / Admin</div><h2>Business Dashboard</h2></div><button class="btn alt" onclick="staffLogout()">Logout</button></div><div class="metrics"><div class="metric"><span class="muted">Confirmed Revenue</span><strong style="font-size:20px">${v6Money(paid+pos)}</strong></div><div class="metric"><span class="muted">WO Aktif</span><strong>${active.length}</strong></div><div class="metric"><span class="muted">WO Closed</span><strong>${closed.length}</strong></div><div class="metric"><span class="muted">Outstanding</span><strong style="font-size:20px">${v6Money(outstanding)}</strong></div></div><div class="grid"><div class="card"><div class="k">Operation</div><h3>Workshop</h3>${['WAITING_DIAGNOSIS','WAITING_APPROVAL','IN_PROGRESS','WAITING_FINAL_QC','READY_FOR_PICKUP'].map(st=>`<div class="line"><span>${st.replaceAll('_',' ')}</span><b>${active.filter(c=>c.wo.status===st||c.wo.jobStatus===st).length}</b></div>`).join('')}</div><div class="card"><div class="k">Inventory</div><h3>Stock Alert</h3><div class="line"><span>Low Stock</span><b>${low}</b></div><div class="line"><span>Out of Stock</span><b>${oos}</b></div><div class="line"><span>Open PO</span><b>${(workflowState.purchaseOrders||[]).filter(x=>['DRAFT','ORDERED','PARTIAL'].includes(x.status)).length}</b></div><div class="actions"><button class="btn alt" onclick="openInventoryFromOwner()">VIEW INVENTORY</button></div></div><div class="card"><div class="k">Staff</div><h3>Team Status</h3><div class="line"><span>Active</span><b>${activeStaff}</b></div><div class="line"><span>Inactive</span><b>${inactiveStaff}</b></div><div class="line"><span>Mechanic Busy</span><b>${busy}</b></div></div></div>`;}
+function v6RenderStaff(){const p=document.getElementById('o-staff');if(!p)return;p.innerHTML=`<div class="head"><h2>Staff Management</h2><button class="btn" onclick="v6StaffForm()">+ STAFF</button></div><div id="v6StaffForm" class="v6-form-box" style="display:none"></div><div class="card tablewrap"><table class="tbl"><tr><th>Staff</th><th>Role</th><th>Status</th><th>Current Work</th><th>Aksi</th></tr>${workflowState.staffMaster.map(s=>{const jobs=s.role==='mechanic'?(workflowState.cases||[]).filter(c=>c.wo?.mechanic===s.name&&c.wo.status!=='CLOSED').length:0;return `<tr><td>${safeText(s.name)}<br><small>${s.id}</small></td><td>${safeText(v6StaffRoleLabel(s.role))}</td><td>${wfPill(s.status)}</td><td>${s.role==='mechanic'?jobs+' Active Job':s.role==='advisor'?'Front Desk':s.role==='inventory'?'Inventory':'Administration'}</td><td><button class="btn alt" onclick="v6StaffForm('${s.id}')">EDIT</button></td></tr>`}).join('')}</table></div><div class="notice" style="margin-top:12px">Mechanic dengan job aktif tidak dapat dinonaktifkan sebelum job selesai atau direassign.</div>`;}
+function v6StaffForm(id=''){const b=document.getElementById('v6StaffForm');if(!b)return;const s=workflowState.staffMaster.find(x=>x.id===id)||{id:'',name:'',role:'mechanic',status:'ACTIVE'};b.style.display='block';b.dataset.id=id;b.innerHTML=`<div class="form"><div class="field"><label>Nama *</label><input id="v6StaffName" value="${safeText(s.name)}"></div><div class="field"><label>Role</label><select id="v6StaffRole">${['advisor','mechanic','inventory','owner'].map(r=>`<option value="${r}" ${s.role===r?'selected':''}>${v6StaffRoleLabel(r)}</option>`).join('')}</select></div><div class="field"><label>Status</label><select id="v6StaffStatus"><option ${s.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${s.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div></div><div class="actions"><button class="btn" onclick="v6SaveStaff()">SIMPAN</button><button class="btn alt" onclick="document.getElementById('v6StaffForm').style.display='none'">BATAL</button></div>`;}
+function v6SaveStaff(){const b=document.getElementById('v6StaffForm'),id=b?.dataset.id||'',name=document.getElementById('v6StaffName')?.value.trim(),role=document.getElementById('v6StaffRole')?.value,status=document.getElementById('v6StaffStatus')?.value;if(!name){toast('Nama wajib');return;}const old=workflowState.staffMaster.find(x=>x.id===id);if(old&&old.role==='mechanic'&&status==='INACTIVE'&&(workflowState.cases||[]).some(c=>c.wo?.mechanic===old.name&&c.wo.status!=='CLOSED')){toast('Mechanic masih memiliki job aktif; reassign/selesaikan job terlebih dahulu');return;}const data={id:id||v6Uid('STF'),name,role,status};if(old)Object.assign(old,data);else workflowState.staffMaster.push(data);commitWorkflow(id?'STAFF_UPDATED':'STAFF_CREATED',data.id,`${name} · ${role} · ${status}`,'OWNER');v6RenderStaff();v6RenderOwnerDashboard();}
+function v6RenderCatalog(){const p=document.getElementById('o-catalog');if(!p)return;p.innerHTML=`<div class="head"><h2>Service & Labor Catalog</h2><button class="btn" onclick="v6CatalogForm()">+ ITEM</button></div><div id="v6CatalogForm" class="v6-form-box" style="display:none"></div><div class="card tablewrap"><table class="tbl"><tr><th>Code</th><th>Service / Labor</th><th>Category</th><th>Standard Price</th><th>Status</th><th>Aksi</th></tr>${workflowState.serviceCatalog.map(x=>`<tr><td>${safeText(x.code)}</td><td>${safeText(x.name)}</td><td>${safeText(x.category)}</td><td>${v6Money(x.price)}</td><td>${wfPill(x.status)}</td><td><button class="btn alt" onclick="v6CatalogForm('${x.code}')">EDIT</button></td></tr>`).join('')}</table></div><div class="notice" style="margin-top:12px">Perubahan catalog berlaku untuk transaksi baru. Estimate/Invoice yang sudah dibuat tetap menyimpan snapshot harga.</div>`;}
+function v6CatalogForm(code=''){const b=document.getElementById('v6CatalogForm');if(!b)return;const x=workflowState.serviceCatalog.find(z=>z.code===code)||{code:'',name:'',category:'General',price:0,status:'ACTIVE'};b.style.display='block';b.dataset.code=code;b.innerHTML=`<div class="form"><div class="field"><label>Code *</label><input id="v6CatCode" value="${safeText(x.code)}" ${code?'readonly':''}></div><div class="field"><label>Nama *</label><input id="v6CatName" value="${safeText(x.name)}"></div><div class="field"><label>Category</label><input id="v6CatCategory" value="${safeText(x.category)}"></div><div class="field"><label>Price</label><input id="v6CatPrice" type="number" min="0" value="${Number(x.price||0)}"></div><div class="field"><label>Status</label><select id="v6CatStatus"><option ${x.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${x.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div></div><div class="actions"><button class="btn" onclick="v6SaveCatalog()">SIMPAN</button><button class="btn alt" onclick="document.getElementById('v6CatalogForm').style.display='none'">BATAL</button></div>`;}
+function v6SaveCatalog(){const b=document.getElementById('v6CatalogForm'),oldCode=b?.dataset.code||'',code=document.getElementById('v6CatCode')?.value.trim().toUpperCase(),name=document.getElementById('v6CatName')?.value.trim();if(!code||!name){toast('Code dan nama wajib');return;}if(!oldCode&&workflowState.serviceCatalog.some(x=>x.code===code)){toast('Code sudah digunakan');return;}const data={code,name,category:document.getElementById('v6CatCategory').value.trim()||'General',price:Math.max(0,+document.getElementById('v6CatPrice').value||0),status:document.getElementById('v6CatStatus').value};const old=workflowState.serviceCatalog.find(x=>x.code===oldCode);if(old)Object.assign(old,data);else workflowState.serviceCatalog.push(data);commitWorkflow(oldCode?'SERVICE_CATALOG_UPDATED':'SERVICE_CATALOG_CREATED',code,name,'OWNER');v6RenderCatalog();}
+function v6RenderSettings(){const p=document.getElementById('o-settings');if(!p)return;const s=workflowState.workshopSettings;p.innerHTML=`<div class="head"><div><div class="k">One Deployment = One Workshop</div><h2>Workshop Settings</h2></div></div><div class="card form"><div class="field"><label>Workshop Name</label><input id="v6WsName" value="${safeText(s.name)}"></div><div class="field"><label>WhatsApp</label><input id="workshopWhatsapp" value="${safeText(s.whatsapp)}"></div><div class="field full"><label>Address</label><input id="v6WsAddress" value="${safeText(s.address)}"></div><div class="field"><label>Open</label><input id="v6WsOpen" type="time" value="${safeText(s.open)}"></div><div class="field"><label>Close</label><input id="v6WsClose" type="time" value="${safeText(s.close)}"></div><div class="field"><label>Booking Capacity / Slot</label><input id="v6WsCapacity" type="number" min="1" value="${Number(s.capacity||4)}"></div><div class="field"><label>Maintenance Default (km)</label><input id="v6WsKm" type="number" min="0" value="${Number(s.maintenanceKm||3000)}"></div><div class="field full"><label>Static QRIS</label><input id="v6WsQris" value="${safeText(s.staticQris)}"></div><div class="field"><label>Dynamic QRIS</label><select id="dynamicQris"><option ${s.dynamicQris==='Disabled'?'selected':''}>Disabled</option><option ${s.dynamicQris!=='Disabled'?'selected':''}>Enabled — Provider Integration</option></select></div><div class="field"><label>Release Policy</label><select id="v6WsRelease"><option ${s.releasePolicy==='Block release if outstanding'?'selected':''}>Block release if outstanding</option><option ${s.releasePolicy!=='Block release if outstanding'?'selected':''}>Allow Owner override</option></select></div><div class="field"><label>Warranty Days</label><input id="v6WsWarrantyDays" type="number" value="${Number(s.warrantyDays||30)}"></div><div class="field"><label>Warranty KM</label><input id="v6WsWarrantyKm" type="number" value="${Number(s.warrantyKm||1000)}"></div><button class="btn full" onclick="v6SaveSettings()">SAVE SETTINGS</button></div><div class="notice" style="margin-top:12px">Settings tersimpan di localStorage untuk simulasi ini. Dynamic QRIS tetap membutuhkan provider/backend untuk production.</div>`;}
+function v6SaveSettings(){workflowState.workshopSettings={name:document.getElementById('v6WsName').value.trim()||'Vespa Wahyu',whatsapp:document.getElementById('workshopWhatsapp').value.trim(),address:document.getElementById('v6WsAddress').value.trim(),open:document.getElementById('v6WsOpen').value,close:document.getElementById('v6WsClose').value,capacity:Math.max(1,+document.getElementById('v6WsCapacity').value||4),maintenanceKm:Math.max(0,+document.getElementById('v6WsKm').value||3000),staticQris:document.getElementById('v6WsQris').value.trim(),dynamicQris:document.getElementById('dynamicQris').value,releasePolicy:document.getElementById('v6WsRelease').value,warrantyDays:Math.max(0,+document.getElementById('v6WsWarrantyDays').value||30),warrantyKm:Math.max(0,+document.getElementById('v6WsWarrantyKm').value||1000)};commitWorkflow('WORKSHOP_SETTINGS_UPDATED','WORKSHOP',workflowState.workshopSettings.name,'OWNER');toast('Workshop settings tersimpan');}
+workshopWaNumber=function(){let raw=String(workflowState.workshopSettings?.whatsapp||'081200000000').replace(/\D/g,'');if(raw.startsWith('0'))raw='62'+raw.slice(1);return raw;};
+
+/* -------------------- USED VESPA PERSISTENCE + RESERVATION -------------------- */
+function v6PersistUsedUnits(){workflowState.usedVespaUnits=v3Clone(usedVespaUnits);saveWorkflow();}
+const v6BaseRenderUsed=renderUsedVespa;
+renderUsedVespa=function(){v6BaseRenderUsed();};
+addUsedUnit=function(){const name=document.getElementById('ouName')?.value.trim(),year=+document.getElementById('ouYear')?.value,price=+document.getElementById('ouPrice')?.value;if(!name||!year||!price){toast('Nama, tahun dan harga wajib diisi');return;}usedVespaUnits.unshift({id:'UV-'+String(Math.max(0,...usedVespaUnits.map(x=>+(String(x.id).match(/(\d+)$/)?.[1]||0)))+1).padStart(3,'0'),name,year,price,km:+document.getElementById('ouKm').value||0,color:document.getElementById('ouColor').value||'-',plate:document.getElementById('ouPlate').value||'-',tax:document.getElementById('ouTax').value||'-',status:document.getElementById('ouStatus').value,condition:'Data unit baru',desc:document.getElementById('ouDesc').value||'-',image:pendingUnitPhotos[0]||'',gallery:pendingUnitPhotos.slice()});pendingUnitPhotos=[];const input=document.getElementById('ouPhotos');if(input)input.value='';const prev=document.getElementById('ouPhotoPreview');if(prev)prev.innerHTML='';v6PersistUsedUnits();renderOwnerUnits();renderUsedVespa();toggleUnitForm();commitWorkflow('USED_UNIT_CREATED',usedVespaUnits[0].id,name,'OWNER');toast('Unit tersimpan lokal dan tetap ada setelah refresh');};
+cycleUnitStatus=function(id){const u=usedVespaUnits.find(x=>x.id===id);if(!u)return;u.status=u.status==='TERSEDIA'?'BOOKED':u.status==='BOOKED'?'TERJUAL':'TERSEDIA';v6PersistUsedUnits();renderOwnerUnits();renderUsedVespa();commitWorkflow('USED_UNIT_STATUS',id,u.status,'OWNER');toast('Status unit: '+u.status);};
+submitUsedVespaLead=function(){const u=usedVespaUnits.find(x=>x.id===activeUsedUnitId);if(!u){toast('Buka detail unit terlebih dahulu');return;}const name=document.getElementById('wfUsedBuyer')?.value.trim(),phone=document.getElementById('wfUsedPhone')?.value.trim(),type=document.getElementById('wfUsedLeadType')?.value,dp=+document.getElementById('wfUsedDp')?.value||0;if(!name||!phone){toast('Nama dan WhatsApp wajib diisi');return;}if(['BOOKING','DP'].includes(type)&&u.status!=='TERSEDIA'){toast('Unit tidak tersedia untuk reservation baru');return;}if(['BOOKING','DP'].includes(type)&&(workflowState.vespaLeads||[]).some(l=>l.unitId===u.id&&['RESERVATION_PENDING','DP_PENDING','BOOKED'].includes(l.status))){toast('Sudah ada reservation aktif/pending untuk unit ini');return;}const status=type==='INQUIRY'?'OPEN':type==='DP'?'DP_PENDING':'RESERVATION_PENDING';const lead={id:generateDocumentCode('LEAD'),unitId:u.id,unit:u.name,name,phone,type,dp,status,createdAt:v6Now()};workflowState.vespaLeads.unshift(lead);lastUsedLeadId=lead.id;commitWorkflow('USED_VESPA_'+type,lead.id,`${u.id} · ${name}${dp?' · DP '+v6Money(dp):''}`,'CUSTOMER');const result=document.getElementById('wfUsedLeadResult');if(result){result.style.display='block';result.innerHTML=`<b>Data tercatat.</b><br>Lead ID: <b>${lead.id}</b><br>Status: ${safeText(status)}<br>BOOKING/DP belum mengunci unit sampai dikonfirmasi workshop.`;}const actions=document.getElementById('wfUsedLeadActions');if(actions)actions.style.display='flex';pushNotification('advisor','Vespa Second '+type,lead.id+' · '+name+' · '+u.name,'sales');renderUsedLeads();toast('Lead tersimpan · menunggu konfirmasi workshop');};
+renderUsedLeads=function(){const b=document.getElementById('wfUsedLeadList');if(!b)return;b.innerHTML=`<h3>Vespa Second — Sales Leads</h3>`+(workflowState.vespaLeads.length?`<div class="tablewrap"><table class="wf-table-mini"><tr><th>Lead</th><th>Unit</th><th>Customer</th><th>Type</th><th>DP</th><th>Status</th><th>Aksi</th></tr>${workflowState.vespaLeads.map(x=>`<tr><td>${x.id}</td><td>${safeText(x.unit)}</td><td>${safeText(x.name)}<br><small>${safeText(x.phone)}</small></td><td>${x.type}</td><td>${v6Money(x.dp)}</td><td>${wfPill(x.status)}</td><td>${['RESERVATION_PENDING','DP_PENDING'].includes(x.status)?`<button class="btn" onclick="v6LeadDecision('${x.id}','CONFIRM')">CONFIRM</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>`:x.status==='BOOKED'?`<button class="btn" onclick="v6LeadDecision('${x.id}','SOLD')">SOLD</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>`:'-'}</td></tr>`).join('')}</table></div>`:'<div class="notice">Belum ada inquiry / booking unit.</div>');};
+function v6LeadDecision(id,action){const l=workflowState.vespaLeads.find(x=>x.id===id);if(!l)return;const u=usedVespaUnits.find(x=>x.id===l.unitId);if(action==='CONFIRM'){if(u&&u.status!=='TERSEDIA'){toast('Unit sudah tidak tersedia');return;}l.status='BOOKED';if(u)u.status='BOOKED';(workflowState.vespaLeads||[]).forEach(o=>{if(o.id!==l.id&&o.unitId===l.unitId&&['RESERVATION_PENDING','DP_PENDING'].includes(o.status))o.status='CANCELLED';});}else if(action==='SOLD'){l.status='SOLD';if(u)u.status='TERJUAL';}else{l.status='CANCELLED';if(u&&u.status==='BOOKED')u.status='TERSEDIA';}v6PersistUsedUnits();commitWorkflow('USED_LEAD_'+action,l.id,l.unit,'OWNER');renderUsedLeads();renderOwnerUnits();renderUsedVespa();}
+
+
+// Used-unit photos are compressed before local persistence to reduce localStorage pressure.
+previewUnitPhotos=async function(input){
+  const box=document.getElementById('ouPhotoPreview'),files=Array.from(input?.files||[]).slice(0,5);pendingUnitPhotos=[];if(box)box.innerHTML='';if(!files.length)return;
+  try{for(const f of files){const img=typeof v4CompressImage==='function'?await v4CompressImage(f,1000,.62):null;if(img?.data)pendingUnitPhotos.push(img.data);}if(box)box.innerHTML=pendingUnitPhotos.map((src,i)=>`<div class="preview-frame"><img src="${src}" alt="Preview foto ${i+1}"></div>`).join('');toast(pendingUnitPhotos.length+' foto dikompres dan siap dipakai');}catch(e){console.error(e);toast('Ada foto yang gagal diproses');}
+};
+
+// Keep a real attempt history for mechanic Final QC; PASS/FAIL never erases prior attempts.
+const v6FinalQcPassBase=v5FinalQcPass;
+v5FinalQcPass=function(){const before=workflowState.wo?.qcStatus;v6FinalQcPassBase();if(before!=='PASSED'&&workflowState.wo?.qcStatus==='PASSED'){workflowState.qcInspections=workflowState.qcInspections||[];workflowState.qcInspections.unshift({id:v6Uid('QC'),woId:workflowState.wo.id,result:'PASSED',mechanic:workflowState.wo.qcBy||workflowState.wo.mechanic,note:workflowState.wo.qcNote||'',ts:workflowState.wo.qcAt||v6Now()});saveWorkflow();}};
+const v6FinalQcFailBase=v5FinalQcFail;
+v5FinalQcFail=function(){const before=workflowState.wo?.qcStatus;v6FinalQcFailBase();if(before!=='FAILED'&&workflowState.wo?.qcStatus==='FAILED'){workflowState.qcInspections=workflowState.qcInspections||[];workflowState.qcInspections.unshift({id:v6Uid('QC'),woId:workflowState.wo.id,result:'FAILED',mechanic:workflowState.wo.qcBy||workflowState.wo.mechanic,note:workflowState.wo.qcNote||'',ts:workflowState.wo.qcAt||v6Now()});saveWorkflow();}};
+qcPass=v5FinalQcPass;qcFail=v5FinalQcFail;
+const v6FinalQcRenderBase=v5RenderFinalQc;
+v5RenderFinalQc=function(){v6FinalQcRenderBase();const panel=document.getElementById('m-finalqc');if(!panel)return;const hist=(workflowState.qcInspections||[]).filter(x=>x.woId===workflowState.wo?.id).slice(0,8);if(hist.length)panel.insertAdjacentHTML('beforeend',`<div class="card" style="margin-top:13px"><h3>Riwayat Final QC WO Ini</h3>${hist.map(x=>`<div class="line"><span>${new Date(x.ts).toLocaleString('id-ID')} · ${safeText(x.mechanic)}<br><small>${safeText(x.note||'-')}</small></span>${wfPill(x.result)}</div>`).join('')}</div>`);};
+
+/* -------------------- SERVICE HISTORY AGGREGATION -------------------- */
+v3RenderRecord=function(){const sec=document.getElementById('record');if(!sec)return;const c=v3CurrentCase();if(!c)return;const plate=String(c.booking.plate||'').trim().toUpperCase(),phone=String(c.booking.phone||'').replace(/\D/g,'');const records=(workflowState.serviceRecords||[]).filter(r=>String(r.plate||'').trim().toUpperCase()===plate||(phone&&String(r.phone||'').replace(/\D/g,'')===phone)).sort((a,b)=>new Date(b.date)-new Date(a.date));sec.innerHTML=`<div class="head"><div><div class="k">Digital Service History</div><h2>${safeText(c.booking.plate)} · ${safeText(c.booking.model)}</h2></div><span class="pill">${records.length} RECORD</span></div>${records.length?records.map((rec,idx)=>`<div class="card" style="margin-bottom:12px"><div class="head"><div><b>${new Date(rec.date).toLocaleString('id-ID')}</b><div class="muted">${rec.woId} · ${rec.invoiceId}</div></div>${idx===0?'<span class="pill">TERBARU</span>':''}</div><div class="line"><span>Odometer</span><b>${Number(rec.odometer||0).toLocaleString('id-ID')} km</b></div><div class="line"><span>Mechanic</span><b>${safeText(rec.mechanic)}</b></div><h3 style="margin-top:12px">Pekerjaan & Part</h3>${(rec.items||[]).map(i=>`<div class="line"><span>${safeText(i.name)} ×${i.qty||1}</span><b>${v6Money(v3ItemTotal(i))}</b></div>`).join('')}<div class="line"><b>Total</b><span class="money">${v6Money(rec.total)}</span></div></div>`).join(''):'<div class="card"><div class="notice">Belum ada service record yang CLOSED untuk kendaraan ini.</div></div>'}<div class="actions"><button class="btn" onclick="go('booking')">BOOKING SERVIS LAGI</button></div>`;};
+const v6BaseCreateServiceRecord=v3CreateServiceRecord;
+v3CreateServiceRecord=function(){const r=v6BaseCreateServiceRecord();if(r){r.phone=workflowState.booking.phone||'';r.year=workflowState.booking.year||'';r.qcBy=workflowState.wo.qcBy||workflowState.wo.mechanic;r.qcNote=workflowState.wo.qcNote||'';saveWorkflow();}return r;};
+
+/* -------------------- OWNER REPORTS INCLUDING POS -------------------- */
+function v6RenderReports(){const p=document.getElementById('o-reports');if(!p)return;const cases=workflowState.cases||[],paidCases=cases.filter(c=>c.invoice?.status==='PAID'),serviceRevenue=paidCases.reduce((s,c)=>s+Number(c.invoice.paid||0),0),posRevenue=(workflowState.posSales||[]).reduce((s,x)=>s+Number(x.total||0),0),labor=paidCases.reduce((s,c)=>s+(c.invoice.items||[]).filter(i=>i.kind==='labor').reduce((a,i)=>a+v3ItemTotal(i),0),0),serviceParts=paidCases.reduce((s,c)=>s+(c.invoice.items||[]).filter(i=>i.kind==='part').reduce((a,i)=>a+v3ItemTotal(i),0),0),posParts=posRevenue,total=serviceRevenue+posRevenue,avg=paidCases.length?Math.round(serviceRevenue/paidCases.length):0;p.innerHTML=`<div class="head"><div><div class="k">Financial & Operational</div><h2>Reports — Local Workflow</h2></div><span class="pill">PRE-BACKEND</span></div><div class="metrics"><div class="metric"><span class="muted">Confirmed Revenue</span><strong style="font-size:20px">${v6Money(total)}</strong></div><div class="metric"><span class="muted">Service / Labor</span><strong style="font-size:20px">${v6Money(labor)}</strong></div><div class="metric"><span class="muted">Parts (Service + POS)</span><strong style="font-size:20px">${v6Money(serviceParts+posParts)}</strong></div><div class="metric"><span class="muted">Paid Invoices + POS</span><strong>${paidCases.length+(workflowState.posSales||[]).length}</strong></div></div><div class="wf-grid" style="margin-top:13px"><div class="wf-card"><span class="muted">Service Revenue</span><strong>${v6Money(serviceRevenue)}</strong></div><div class="wf-card"><span class="muted">POS Revenue</span><strong>${v6Money(posRevenue)}</strong></div><div class="wf-card"><span class="muted">Average Service Invoice</span><strong>${v6Money(avg)}</strong></div><div class="wf-card"><span class="muted">Active WO</span><strong>${cases.filter(c=>c.wo?.id&&c.wo.status!=='CLOSED').length}</strong></div><div class="wf-card"><span class="muted">Closed WO</span><strong>${cases.filter(c=>c.wo?.status==='CLOSED').length}</strong></div><div class="wf-card"><span class="muted">Pending Customer Decision</span><strong>${cases.filter(c=>v6CasePendingItems(c).length).length}</strong></div></div><div class="card tablewrap" style="margin-top:13px"><table class="tbl"><tr><th>WO</th><th>Customer</th><th>Status</th><th>Invoice</th><th>Total</th></tr>${cases.filter(c=>c.wo?.id).map(c=>`<tr><td>${c.wo.id}</td><td>${safeText(c.booking.name)}</td><td>${wfPill(c.wo.status)}</td><td>${safeText(c.invoice.id||'-')} · ${wfPill(c.invoice.status)}</td><td>${v6Money(c.invoice.total||0)}</td></tr>`).join('')||'<tr><td colspan="5">Belum ada Work Order.</td></tr>'}</table></div>`;}
+v3RenderReports=v6RenderReports;
+function v6RenderAudit(){const p=document.getElementById('o-audit');if(!p)return;p.innerHTML=`<div class="head"><div><div class="k">Immutable Local History</div><h2>Audit Log</h2></div><span class="pill">${(workflowState.audit||[]).length} EVENT</span></div><div class="card tablewrap"><table class="tbl"><tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th></tr>${(workflowState.audit||[]).map(x=>`<tr><td>${new Date(x.ts).toLocaleString('id-ID')}</td><td>${safeText(x.actor)}</td><td><b>${safeText(x.action)}</b></td><td>${safeText(x.entity)}</td><td>${safeText(x.detail||'')}</td></tr>`).join('')||'<tr><td colspan="5">Belum ada event.</td></tr>'}</table></div><div class="notice" style="margin-top:12px">Audit event tidak diedit/dihapus melalui UI. Setelah backend, log dipindahkan ke database dengan policy terpisah.</div>`;}
+function v6RenderOwnerAll(){v6RenderOwnerDashboard();v6RenderStaff();v6RenderCatalog();v6RenderSettings();v6RenderReports();v6RenderAudit();renderUsedLeads();renderOwnerUnits();}
+const v6BaseOtab=otab;otab=function(id,btn){v6BaseOtab(id,btn);v6RenderOwnerAll();};
+
+/* -------------------- GLOBAL UI / INIT -------------------- */
+v6EnsureMasters();
+const v6BaseSync=syncWorkflowUI;
+syncWorkflowUI=function(){v6BaseSync();v6RenderInventoryDashboard();v6RenderOwnerDashboard();v6RenderStaff();v6RenderCatalog();v6RenderSettings();v6RenderReports();v6RenderAudit();v6RenderPos();renderUsedLeads();renderOwnerUnits();};
+
+function v6CleanupUi(){
+  document.querySelectorAll('#inventory .side button').forEach(b=>{if(b.textContent.trim()==='Stock Movement'){} });
+  const obsolete=document.getElementById('qc');if(obsolete)obsolete.remove();
+  // Ensure Owner warranty button is visible if panel exists.
+  const side=document.querySelector('#owner .side');if(side){const wb=[...side.querySelectorAll('button')].filter(b=>b.textContent.includes('Warranty'));wb.slice(1).forEach(b=>b.remove());}
+}
+function v6Init(){
+  v6EnsureMasters();v6CleanupUi();
+  // Repair old demo/reset cases: top-level PENDING is invalid when no item itself is pending.
+  (workflowState.cases||[]).forEach(c=>{c.estimate=v6NormalizeEstimate(c.estimate,c.booking?.packageId,c.wo?.id);});
+  const cur=v3CurrentCase();if(cur)v3LoadCaseIntoCurrent(cur,false);
+  v6PersistUsedUnits();saveWorkflow();syncWorkflowUI();v6RenderInventoryAll();v6RenderOwnerAll();v6RenderPos();
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(v6Init,90));
 </script>
 
 </body>
