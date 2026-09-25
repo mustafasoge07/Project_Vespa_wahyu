@@ -8021,6 +8021,255 @@ window.vwMechanicIntegrationInfo=function(){
 };
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007DE_BUTTONS_FIX]
+     Global button integrity + mechanic diagnosis enable-state fix
+     ====================================================================== -->
+<style>
+  #mechanic button:not(:disabled),
+  #advisor button:not(:disabled),
+  #staffLogin button:not(:disabled){
+    pointer-events:auto;
+  }
+  .v7btn-disabled-reason{
+    font-size:11px;color:var(--m);margin-top:5px
+  }
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007DE_BUTTONS_FIX]
+
+   Fixes:
+   - Start Diagnosis was too strict: only NOT_STARTED was clickable.
+   - Normalize inline-action buttons to type="button".
+   - Re-apply correct mechanic button state after every Supabase render.
+   - Keep navigation buttons clickable.
+   - Add missing remote-photo viewer bridge.
+   - Add console button audit helper.
+   ====================================================================== */
+
+function v7BtnNorm(v){
+  return String(v||'').trim().toUpperCase();
+}
+
+function v7BtnMechanicRules(){
+  const snap=v7EMechanicSnapshot;
+  if(!snap?.workOrder)return;
+
+  const wo=snap.workOrder;
+  const ds=v7BtnNorm(wo.diagnosisStatus);
+  const ws=v7BtnNorm(wo.status);
+
+  const terminal=['CLOSED','CANCELLED'].includes(ws);
+
+  // Backend mechanic_start_diagnosis() only forbids COMPLETED/terminal WO.
+  // Therefore WAITING_DIAGNOSIS / empty legacy states must still be startable.
+  const canStart=!terminal && !['IN_PROGRESS','COMPLETED'].includes(ds);
+  const canFinish=!terminal && ds==='IN_PROGRESS';
+  const canFinding=!terminal && ['IN_PROGRESS','COMPLETED'].includes(ds);
+  const canUploadDiag=!terminal && !!snap?.diagnosis?.id;
+
+  const panel=document.getElementById('m-diagnosis');
+  if(panel){
+    const buttons=[...panel.querySelectorAll('button')];
+
+    const start=buttons.find(b=>b.textContent.trim().includes('MULAI DIAGNOSIS'));
+    const finish=buttons.find(b=>b.textContent.trim().includes('SELESAIKAN DIAGNOSIS'));
+    const finding=buttons.find(b=>b.textContent.trim().includes('TAMBAH TEMUAN'));
+    const upload=buttons.find(b=>b.textContent.trim().includes('UPLOAD FOTO TERPILIH'));
+    const refresh=buttons.find(b=>b.textContent.includes('REFRESH'));
+
+    if(start){
+      start.disabled=!canStart;
+      start.type='button';
+      start.title=canStart?'':(
+        ds==='IN_PROGRESS'?'Diagnosis sudah berjalan':
+        ds==='COMPLETED'?'Diagnosis sudah selesai':
+        terminal?'Work Order sudah tidak aktif':''
+      );
+    }
+    if(finish){
+      finish.disabled=!canFinish;
+      finish.type='button';
+      finish.title=canFinish?'':'Diagnosis harus IN PROGRESS';
+    }
+    if(finding){
+      finding.disabled=!canFinding;
+      finding.type='button';
+      finding.title=canFinding?'':'Mulai diagnosis terlebih dahulu';
+    }
+    if(upload){
+      upload.disabled=!canUploadDiag;
+      upload.type='button';
+      upload.title=canUploadDiag?'':'Mulai diagnosis agar record diagnosis tersedia';
+    }
+    if(refresh){
+      refresh.disabled=false;
+      refresh.type='button';
+    }
+
+    let reason=document.getElementById('v7BtnDiagnosisState');
+    if(!reason){
+      reason=document.createElement('div');
+      reason.id='v7BtnDiagnosisState';
+      reason.className='v7btn-disabled-reason';
+      const safe=document.getElementById('v7EMechanicSafeNote');
+      (safe||panel.querySelector('.head'))?.insertAdjacentElement('afterend',reason);
+    }
+    if(reason){
+      reason.textContent=
+        'DB status: WO '+(ws||'-')+
+        ' · Diagnosis '+(ds||'-')+
+        ' · Start '+(canStart?'AKTIF':'NONAKTIF')+
+        ' · Finish '+(canFinish?'AKTIF':'NONAKTIF');
+    }
+  }
+
+  // Sidebar navigation is navigation, never an operational mutation.
+  document.querySelectorAll('#mechanic .side button').forEach(b=>{
+    b.disabled=false;
+    b.type='button';
+    b.style.pointerEvents='auto';
+  });
+
+  // Remote job/detail buttons are navigation/refresh and must be clickable.
+  document.querySelectorAll(
+    '#m-jobs button,#m-detail button'
+  ).forEach(b=>{
+    b.type='button';
+    if(
+      b.textContent.includes('BUKA JOB') ||
+      b.textContent.includes('BUKA DIAGNOSIS') ||
+      b.textContent.includes('REFRESH') ||
+      b.textContent.includes('Logout')
+    ){
+      b.disabled=false;
+    }
+  });
+}
+
+function v7BtnNormalizeDocument(root=document){
+  root.querySelectorAll('button').forEach(b=>{
+    // A button with inline action should not accidentally submit a surrounding form.
+    if(b.hasAttribute('onclick') && !b.hasAttribute('type')){
+      b.type='button';
+    }
+  });
+}
+
+function v7BtnRepair(){
+  v7BtnNormalizeDocument(document);
+  if(v7ERole()==='mechanic' && v7EIsRemoteStaff()){
+    v7BtnMechanicRules();
+  }
+}
+
+/* Missing bridge used by remote signed-URL thumbnails. */
+window.v4OpenViewer=function(url,title='Foto'){
+  try{
+    v4EnsureViewer();
+    const img=document.getElementById('v4ViewerImg');
+    const ttl=document.getElementById('v4ViewerTitle');
+    const viewer=document.getElementById('v4ImageViewer');
+    if(img)img.src=url;
+    if(ttl)ttl.textContent=title||'Foto';
+    if(viewer)viewer.classList.add('on');
+  }catch(err){
+    console.error('[BUTTON_FIX] image viewer',err);
+    toast('Preview foto gagal dibuka');
+  }
+};
+
+/* Re-apply rules after remote mechanic renderer. */
+const v7BtnRenderMechanicBase=v7ERenderMechanicSnapshot;
+v7ERenderMechanicSnapshot=function(snap){
+  v7BtnRenderMechanicBase(snap);
+  requestAnimationFrame(()=>{
+    v7BtnRepair();
+    v7EAttachMechanicDirtyTracking();
+  });
+};
+
+/* Safe mtab override: navigation should never be blocked by an action state. */
+const v7BtnMtabBase=mtab;
+mtab=function(id,btn){
+  document.querySelectorAll('#mechanic .panel').forEach(x=>x.classList.remove('on'));
+  const p=document.getElementById('m-'+id);
+  if(p)p.classList.add('on');
+
+  document.querySelectorAll('#mechanic .side button').forEach(x=>{
+    x.classList.remove('on');
+    x.disabled=false;
+  });
+  if(btn)btn.classList.add('on');
+
+  window.scrollTo({top:0,behavior:'smooth'});
+  requestAnimationFrame(v7BtnRepair);
+};
+
+mtabId=function(id){
+  const btn=[...document.querySelectorAll('#mechanic .side button')]
+    .find(x=>(x.getAttribute('onclick')||'').includes("'"+id+"'"));
+  mtab(id,btn);
+};
+
+/* Watch dynamic HTML replacement from Advisor / Mechanic renderers. */
+const v7BtnObserver=new MutationObserver(mutations=>{
+  let relevant=false;
+  for(const m of mutations){
+    const n=m.target;
+    if(
+      n?.nodeType===1 &&
+      (n.closest?.('#mechanic') || n.closest?.('#advisor') || n.id==='mechanic' || n.id==='advisor')
+    ){
+      relevant=true;
+      break;
+    }
+  }
+  if(relevant)requestAnimationFrame(v7BtnRepair);
+});
+
+/* Console / field diagnostic. */
+window.vwButtonAudit=function(){
+  const rows=[...document.querySelectorAll('button')].map((b,i)=>({
+    index:i,
+    page:b.closest('.page')?.id||'',
+    panel:b.closest('.panel')?.id||'',
+    text:(b.textContent||'').trim().replace(/\s+/g,' ').slice(0,55),
+    disabled:!!b.disabled,
+    visible:!!(b.offsetWidth||b.offsetHeight||b.getClientRects().length),
+    onclick:!!b.getAttribute('onclick'),
+    type:b.type||''
+  }));
+  const visibleDisabled=rows.filter(x=>x.visible&&x.disabled);
+  const visibleNoAction=rows.filter(x=>x.visible&&!x.disabled&&!x.onclick && x.type!=='submit');
+
+  console.table(rows);
+  console.table(visibleDisabled);
+  console.table(visibleNoAction);
+
+  return {
+    total:rows.length,
+    visible:rows.filter(x=>x.visible).length,
+    visibleDisabled,
+    visibleNoAction
+  };
+};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    v7BtnNormalizeDocument(document);
+    v7BtnRepair();
+
+    const mech=document.getElementById('mechanic');
+    const adv=document.getElementById('advisor');
+    if(mech)v7BtnObserver.observe(mech,{subtree:true,childList:true});
+    if(adv)v7BtnObserver.observe(adv,{subtree:true,childList:true});
+  },650);
+});
+</script>
+
 </body>
 
 </html>
