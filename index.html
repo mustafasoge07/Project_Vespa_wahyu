@@ -9039,6 +9039,425 @@ setTimeout(()=>{
 },1300);
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007F_REALTIME_SESSION_FIX]
+     Persistent staff session + route restore + live staff refresh
+     ====================================================================== -->
+<style>
+  #v7RtBadge{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 9px;
+    border-radius:999px;border:1px solid #c9e6d5;background:#e8f6ee;
+    color:#17653f;font-size:10px;font-weight:900;white-space:nowrap
+  }
+  #v7RtBadge.warn{border-color:#ead9a6;background:#fff8e8;color:#8b6200}
+  #v7RtBadge.bad{border-color:#efcfcb;background:#fff0ef;color:#a33a32}
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007F_REALTIME_SESSION_FIX]
+
+   Fixes:
+   1. Refresh no longer throws authenticated staff back to customer Home.
+   2. Staff page/panel/selected WO are remembered and restored.
+   3. Temporary network/context error does NOT auto-sign-out the staff.
+   4. Supabase Postgres Changes triggers immediate role refresh.
+   5. Existing 10s polling remains only as a fallback.
+   6. Customer tracking polls its secure RPC every 4s while the tracking
+      page is visible (anon tables remain closed by RLS).
+   7. Old customer access tokens/shadow booking are cleared ONCE for this
+      clean UAT reset release.
+   ====================================================================== */
+
+const V7RT_VIEW_KEY='vw_staff_resume_v3';
+const V7RT_LOCAL_RESET_MARKER='vw_uat_booking_reset_20260925_v1';
+
+let v7RtChannel=null;
+let v7RtRefreshTimer=null;
+let v7RtCustomerTimer=null;
+let v7RtAuthSub=null;
+let v7RtLastCustomerFingerprint='';
+let v7RtViewObserver=null;
+
+function v7RtBadge(state,text){
+  let b=document.getElementById('v7RtBadge');
+  if(!b){
+    b=document.createElement('span');
+    b.id='v7RtBadge';
+    const host=document.querySelector('.topin');
+    const db=document.getElementById('v7BackendStatus');
+    if(host){
+      if(db?.nextSibling)host.insertBefore(b,db.nextSibling);
+      else host.appendChild(b);
+    }
+  }
+  if(!b)return;
+  b.className=state==='bad'?'bad':state==='warn'?'warn':'';
+  b.textContent=text;
+}
+
+function v7RtClearOldCustomerLocalDataOnce(){
+  try{
+    if(localStorage.getItem(V7RT_LOCAL_RESET_MARKER)==='1')return;
+
+    const remove=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(
+        k==='vespa_booking' ||
+        k==='vw_customer_current_access' ||
+        (k && k.startsWith('vw_customer_access_'))
+      ) remove.push(k);
+    }
+    remove.forEach(k=>localStorage.removeItem(k));
+
+    sessionStorage.removeItem('vw_remote_tracking_snapshot');
+    window.vwCustomerAccess=null;
+    try{booking=null;}catch(_){}
+    try{v7CLastTrack=null;}catch(_){}
+    try{v7DApprovalSnapshot=null;}catch(_){}
+
+    localStorage.setItem(V7RT_LOCAL_RESET_MARKER,'1');
+    console.info('[REALTIME_SESSION_FIX] old customer booking/access cache cleared');
+  }catch(err){
+    console.warn('[REALTIME_SESSION_FIX] local reset warning',err);
+  }
+}
+
+function v7RtCurrentView(){
+  const page=document.querySelector('.page.on')?.id||'';
+  let panel='';
+  if(page==='advisor')panel=document.querySelector('#advisor .panel.on')?.id||'';
+  else if(page==='mechanic')panel=document.querySelector('#mechanic .panel.on')?.id||'';
+  else if(page==='inventory')panel=document.querySelector('#inventory .panel.on')?.id||'';
+  else if(page==='owner')panel=document.querySelector('#owner .panel.on')?.id||'';
+
+  return {
+    role:typeof v7ERole==='function'?v7ERole():'',
+    page,
+    panel,
+    selectedWO:
+      v7EMechanicSnapshot?.workOrder?.code||
+      v7EAdvisorSnapshot?.workOrder?.code||
+      null,
+    savedAt:new Date().toISOString()
+  };
+}
+
+function v7RtSaveView(){
+  try{
+    if(!v7EIsRemoteStaff())return;
+    localStorage.setItem(V7RT_VIEW_KEY,JSON.stringify(v7RtCurrentView()));
+  }catch(_){}
+}
+
+function v7RtReadView(){
+  try{
+    return JSON.parse(localStorage.getItem(V7RT_VIEW_KEY)||'null')||null;
+  }catch(_){return null;}
+}
+
+function v7RtObserveView(){
+  if(v7RtViewObserver)return;
+  v7RtViewObserver=new MutationObserver(()=>v7RtSaveView());
+  document.querySelectorAll('.page,#advisor .panel,#mechanic .panel,#inventory .panel,#owner .panel')
+    .forEach(el=>v7RtViewObserver.observe(el,{attributes:true,attributeFilter:['class']}));
+}
+
+async function v7RtRestoreRoute(saved){
+  const role=v7ERole();
+  const panel=saved?.role===role?saved?.panel:'';
+  const wo=saved?.role===role?saved?.selectedWO:null;
+
+  if(role==='advisor'){
+    go('advisor');
+    await v7ELoadAdvisor();
+    if(wo && panel==='p-wo'){
+      await v7EOpenAdvisorWO(wo);
+      return;
+    }
+    const tab=panel?.startsWith('p-')?panel.slice(2):'dash';
+    stabId(document.getElementById('p-'+tab)?tab:'dash');
+    return;
+  }
+
+  if(role==='mechanic'){
+    go('mechanic');
+    await v7ELoadMechanicJobs();
+    if(wo){
+      let tab=panel?.startsWith('m-')?panel.slice(2):'detail';
+      if(!['jobs','detail','diagnosis','work','parts','finalqc','history'].includes(tab))tab='detail';
+      await v7EOpenMechanicWO(wo,tab,false);
+      if(typeof v7FRefreshMechanicOperational==='function'){
+        await v7FRefreshMechanicOperational({rerender:true});
+      }
+      return;
+    }
+    mtabId('jobs');
+    return;
+  }
+
+  if(role==='inventory'){
+    go('inventory');
+    await v7FLoadInventory();
+    const tab=panel?.startsWith('i-')?panel.slice(2):'dash';
+    itabId(document.getElementById('i-'+tab)?tab:'dash');
+    return;
+  }
+
+  if(role==='owner'){
+    go('owner');
+    const tab=panel?.startsWith('o-')?panel.slice(2):'dash';
+    otabId(document.getElementById('o-'+tab)?tab:'dash');
+    return;
+  }
+
+  go('staffLogin');
+}
+
+async function v7RtRestoreStaffSession(){
+  if(!v7Sb)return false;
+
+  try{
+    const {data,error}=await v7Sb.auth.getSession();
+    if(error)throw error;
+    if(!data?.session)return false;
+
+    // Important: a transient staff_get_context error must NOT sign out
+    // a perfectly valid persisted Auth session.
+    v7EStaffContext=await v7EGetStaffContext();
+    currentStaffRole=v7ERole();
+
+    const nb=document.getElementById('notifBtn');
+    const cb=document.getElementById('customerNotifBtn');
+    if(nb)nb.style.display='inline-block';
+    if(cb)cb.style.display='none';
+
+    await v7RtRestoreRoute(v7RtReadView());
+
+    v7EStartAutoRefresh();
+    v7RtStartStaffRealtime();
+    v7RtSaveView();
+
+    v7RtBadge('','● STAFF LIVE');
+    console.info('[REALTIME_SESSION_FIX] session restored',v7EStaff());
+    return true;
+  }catch(err){
+    console.error('[REALTIME_SESSION_FIX] restore failed WITHOUT signOut',err);
+    v7RtBadge('warn','SESSION RETRY');
+    return false;
+  }
+}
+
+/* Replace the older restore behavior that only routed when staffLogin was
+   already the visible page. This was the main "refresh -> customer Home"
+   bug. */
+v7ERestoreSession=v7RtRestoreStaffSession;
+
+/* ---------- Realtime staff refresh ---------- */
+function v7RtScheduleRefresh(reason='change'){
+  clearTimeout(v7RtRefreshTimer);
+  v7RtRefreshTimer=setTimeout(()=>v7RtRefreshStaff(reason),220);
+}
+
+async function v7RtRefreshStaff(reason='change'){
+  if(!v7EIsRemoteStaff()||document.hidden)return;
+
+  const role=v7ERole();
+  try{
+    if(role==='advisor'){
+      const selected=v7EAdvisorSnapshot?.workOrder?.code||null;
+      await v7ELoadAdvisor({silent:true});
+      if(selected && document.querySelector('#advisor .panel.on')?.id==='p-wo'){
+        await v7EOpenAdvisorWO(selected);
+      }
+    }else if(role==='mechanic'){
+      v7EMechanicJobs=await v7EQueryMechanicJobs();
+      v7ERenderMechanicJobs();
+
+      const active=document.querySelector('#mechanic .panel.on')?.id||'';
+      const editing=active==='m-diagnosis' && !!v7EMechanicFormDirty;
+
+      if(v7EMechanicSnapshot?.workOrder?.code && !editing){
+        await v7FRefreshMechanicWO();
+      }else if(v7EMechanicSnapshot?.workOrder?.id){
+        v7FMechanicRequestRows=await v7FQueryMechanicRequests(v7EMechanicSnapshot.workOrder.id);
+        if(active==='m-parts'||active==='m-work'){
+          v7FRenderMechanicOperational(v7EMechanicSnapshot);
+        }
+      }
+    }else if(role==='inventory'){
+      await v7FLoadInventory({silent:true});
+    }else if(role==='owner'){
+      // Owner module is not fully migrated yet; refresh inventory data if
+      // Owner is using the inventory workspace.
+      if(document.querySelector('.page.on')?.id==='inventory'){
+        await v7FLoadInventory({silent:true});
+      }
+    }
+
+    v7RtBadge('','● STAFF LIVE');
+    console.info('[REALTIME_SESSION_FIX] live refresh',reason);
+  }catch(err){
+    console.warn('[REALTIME_SESSION_FIX] live refresh failed',err);
+    v7RtBadge('warn','LIVE FALLBACK');
+  }
+}
+
+function v7RtStopStaffRealtime(){
+  try{
+    if(v7RtChannel && v7Sb)v7Sb.removeChannel(v7RtChannel);
+  }catch(_){}
+  v7RtChannel=null;
+}
+
+function v7RtStartStaffRealtime(){
+  v7RtStopStaffRealtime();
+  if(!v7Sb||!v7EIsRemoteStaff())return;
+
+  const tables=[
+    'bookings','work_orders','diagnoses','findings',
+    'estimates','estimate_items','part_requests','parts',
+    'invoices','payments','qc_inspections',
+    'customer_notifications','staff_notifications'
+  ];
+
+  let ch=v7Sb.channel('vw-workshop-live-'+String(v7EStaff()?.id||'staff'));
+
+  tables.forEach(table=>{
+    ch=ch.on(
+      'postgres_changes',
+      {event:'*',schema:'public',table},
+      payload=>v7RtScheduleRefresh(table+':'+payload.eventType)
+    );
+  });
+
+  v7RtChannel=ch.subscribe(status=>{
+    if(status==='SUBSCRIBED')v7RtBadge('','● STAFF LIVE');
+    else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')v7RtBadge('warn','LIVE FALLBACK');
+    else if(status==='CLOSED')v7RtBadge('warn','LIVE CLOSED');
+  });
+}
+
+/* Keep login flow, then attach live state and remember the staff view. */
+const v7RtRouteStaffBase=v7ERouteStaff;
+v7ERouteStaff=function(){
+  v7RtRouteStaffBase();
+  setTimeout(()=>{
+    v7RtStartStaffRealtime();
+    v7RtSaveView();
+    v7RtObserveView();
+  },250);
+};
+
+/* Logout intentionally clears resume state and realtime, but NOT customer
+   data. */
+const v7RtStaffLogoutBase=staffLogout;
+staffLogout=async function(){
+  v7RtStopStaffRealtime();
+  clearTimeout(v7RtRefreshTimer);
+  localStorage.removeItem(V7RT_VIEW_KEY);
+  await v7RtStaffLogoutBase();
+  v7RtBadge('warn','STAFF OFFLINE');
+};
+
+/* ---------- Customer secure near-live tracking ----------
+   Direct anonymous table subscriptions stay blocked by RLS. The customer
+   instead refreshes public_track_service(access_token) every 4 seconds
+   only while Tracking is open. */
+function v7RtCustomerFingerprint(data){
+  try{
+    return JSON.stringify({
+      b:data?.booking?.status,
+      w:data?.workOrder?.status,
+      d:data?.workOrder?.diagnosisStatus,
+      j:data?.workOrder?.jobStatus,
+      q:data?.workOrder?.qcStatus,
+      p:data?.workOrder?.partsStatus,
+      e:data?.estimate?.approvalStatus,
+      ei:(data?.estimate?.items||[]).map(x=>[x.id,x.approvalStatus]),
+      i:data?.invoice?.status,
+      o:data?.invoice?.outstanding
+    });
+  }catch(_){return '';}
+}
+
+async function v7RtCustomerTick(){
+  if(document.hidden)return;
+  if(document.querySelector('.page.on')?.id!=='tracking')return;
+  if(!v7Sb)return;
+
+  const access=v7BReadCustomerAccess();
+  if(!access?.accessToken)return;
+
+  try{
+    const data=await v7CTrackWithToken(access.accessToken);
+    const fp=v7RtCustomerFingerprint(data);
+    if(fp!==v7RtLastCustomerFingerprint){
+      v7RtLastCustomerFingerprint=fp;
+      v7CLastTrack=data;
+      v7CRenderTracking(data);
+    }
+  }catch(err){
+    console.warn('[REALTIME_SESSION_FIX] customer live tracking',err);
+  }
+}
+
+function v7RtStartCustomerPolling(){
+  clearInterval(v7RtCustomerTimer);
+  v7RtCustomerTimer=setInterval(v7RtCustomerTick,4000);
+}
+
+/* Auth listener handles token refresh / cross-tab login state cleanly. */
+function v7RtInstallAuthListener(){
+  if(!v7Sb||v7RtAuthSub)return;
+  const {data}=v7Sb.auth.onAuthStateChange((event,session)=>{
+    if(event==='SIGNED_OUT'){
+      v7RtStopStaffRealtime();
+      v7EStaffContext=null;
+      currentStaffRole='public';
+    }else if(event==='TOKEN_REFRESHED'&&session){
+      v7RtBadge('','● STAFF LIVE');
+    }
+  });
+  v7RtAuthSub=data?.subscription||null;
+}
+
+window.vwRealtimeInfo=function(){
+  const sessionView=v7RtReadView();
+  const result={
+    stage:'007F-REALTIME-SESSION',
+    role:typeof v7ERole==='function'?v7ERole():null,
+    staff:v7EStaff()?.name||null,
+    currentPage:document.querySelector('.page.on')?.id||null,
+    currentPanel:sessionView?.panel||null,
+    selectedWO:sessionView?.selectedWO||null,
+    realtimeChannel:!!v7RtChannel,
+    customerPollingMs:4000,
+    authPersistence:'Supabase persistSession=true'
+  };
+  console.table(result);
+  return result;
+};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  v7RtClearOldCustomerLocalDataOnce();
+  v7RtObserveView();
+  v7RtStartCustomerPolling();
+
+  // Wait until 007A has created the Supabase client.
+  const boot=setInterval(()=>{
+    if(!v7Sb)return;
+    clearInterval(boot);
+    v7RtInstallAuthListener();
+
+    // Explicit second restore makes refresh robust even if the older boot
+    // timer ran before the network/catalog finished.
+    setTimeout(v7RtRestoreStaffSession,250);
+  },100);
+});
+</script>
+
 </body>
 
 </html>
