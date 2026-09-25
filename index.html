@@ -5680,6 +5680,427 @@ window.vwBookingIntegrationInfo=function(){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(v7BInstallBooking,240));
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007C] Customer Tracking -> Supabase
+     ====================================================================== -->
+<style>
+  #v7CRecoveryBox{display:none;margin-top:12px}
+  #v7CTrackingMeta{margin-top:12px}
+  .v7c-track-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+  .v7c-track-mini{border:1px solid var(--l);border-radius:13px;padding:11px;background:#f8faf9}
+  .v7c-track-mini small{display:block;color:var(--m);margin-bottom:3px}
+  .v7c-track-mini b{word-break:break-word}
+  .v7c-db-note{font-size:11px;color:var(--m);margin-top:10px}
+  @media(max-width:560px){.v7c-track-grid{grid-template-columns:1fr}}
+</style>
+
+<script>
+/* ======================================================================
+   [SUPABASE_007C]
+   Database-authoritative customer tracking:
+   - public_track_service(access_token)
+   - public_recover_access(workshop_slug, code, phone)
+   - localStorage stores ONLY customer access tokens, never authoritative
+     service status.
+   ====================================================================== */
+
+let v7CTrackBusy=false;
+let v7CLastTrack=null;
+
+function v7CNormalizeCode(v){
+  return String(v||'').trim().toUpperCase();
+}
+
+function v7CAllLocalAccess(){
+  const out=[];
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k || !k.startsWith(V7B_ACCESS_PREFIX))continue;
+      try{
+        const x=JSON.parse(localStorage.getItem(k)||'null');
+        if(x?.accessToken)out.push(x);
+      }catch(_){}
+    }
+    const current=v7BReadCustomerAccess();
+    if(current?.accessToken && !out.some(x=>x.accessToken===current.accessToken)){
+      out.unshift(current);
+    }
+  }catch(e){
+    console.warn('[SUPABASE_007C] enumerate access failed',e);
+  }
+  return out;
+}
+
+function v7CSaveRecoveredAccess(code,token,tracked){
+  const bookingCode=v7CNormalizeCode(tracked?.booking?.code||code);
+  const data={
+    bookingCode,
+    accessToken:String(token),
+    status:String(tracked?.booking?.status||''),
+    bookingDate:tracked?.booking?.date||null,
+    slotTime:tracked?.booking?.slotTime||null,
+    savedAt:new Date().toISOString()
+  };
+  localStorage.setItem(V7B_ACCESS_PREFIX+bookingCode,JSON.stringify(data));
+  localStorage.setItem(V7B_CURRENT_ACCESS_KEY,JSON.stringify(data));
+  window.vwCustomerAccess=data;
+  return data;
+}
+
+async function v7CTrackWithToken(token){
+  const {data,error}=await v7Sb.rpc('public_track_service',{
+    p_access_token:token
+  });
+  if(error)throw error;
+  if(!data?.booking?.code)throw new Error('Data tracking Supabase tidak lengkap');
+  return data;
+}
+
+async function v7CFindLocalTokenForCode(code){
+  const wanted=v7CNormalizeCode(code);
+  const candidates=v7CAllLocalAccess();
+
+  // Fast path: booking code is the localStorage key.
+  const exact=v7BReadCustomerAccess(wanted);
+  if(exact?.accessToken){
+    try{
+      const data=await v7CTrackWithToken(exact.accessToken);
+      const remoteCodes=[
+        v7CNormalizeCode(data?.booking?.code),
+        v7CNormalizeCode(data?.workOrder?.code)
+      ];
+      if(remoteCodes.includes(wanted)){
+        return {token:exact.accessToken,data};
+      }
+    }catch(e){
+      console.warn('[SUPABASE_007C] exact token unusable',e);
+    }
+  }
+
+  // Useful when user types WO code but token was stored under BKG code.
+  for(const item of candidates.slice(0,12)){
+    try{
+      const data=await v7CTrackWithToken(item.accessToken);
+      const remoteCodes=[
+        v7CNormalizeCode(data?.booking?.code),
+        v7CNormalizeCode(data?.workOrder?.code)
+      ];
+      if(remoteCodes.includes(wanted)){
+        return {token:item.accessToken,data};
+      }
+    }catch(_){}
+  }
+
+  return null;
+}
+
+function v7CEnsureRecoveryUI(){
+  const trackCard=document.getElementById('tc')?.closest('.card');
+  if(!trackCard)return null;
+
+  let box=document.getElementById('v7CRecoveryBox');
+  if(!box){
+    box=document.createElement('div');
+    box.id='v7CRecoveryBox';
+    box.innerHTML=`
+      <div class="notice">
+        <b>Akses tracking belum ada di perangkat ini.</b><br>
+        Masukkan nomor WhatsApp yang digunakan saat booking untuk memulihkan akses secara aman.
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Nomor WhatsApp Booking</label>
+        <input id="v7CRecoveryPhone" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxxxx">
+      </div>
+      <div class="actions">
+        <button class="btn" type="button" onclick="v7CRecoverTracking()">PULIHKAN AKSES & LACAK</button>
+      </div>`;
+    trackCard.appendChild(box);
+  }
+  return box;
+}
+
+function v7CShowRecovery(show=true){
+  const box=v7CEnsureRecoveryUI();
+  if(box)box.style.display=show?'block':'none';
+}
+
+function v7CStatusStep(data){
+  const w=data?.workOrder;
+  const estimate=data?.estimate;
+  if(!w)return 0;
+
+  const status=String(w.status||'').toUpperCase();
+  const job=String(w.jobStatus||'').toUpperCase();
+  const qc=String(w.qcStatus||'').toUpperCase();
+  const diag=String(w.diagnosisStatus||'').toUpperCase();
+  const approval=String(estimate?.approvalStatus||'').toUpperCase();
+
+  if(status==='CLOSED'||job==='CLOSED')return 6;
+  if(status==='READY_FOR_PICKUP'||job==='READY_FOR_PICKUP'||qc==='PASSED')return 5;
+  if(job==='WAITING_FINAL_QC'||status==='WAITING_FINAL_QC'||qc==='FAILED')return 4;
+  if(['IN_PROGRESS','STARTED','PAUSED','REWORK'].includes(job) ||
+     ['IN_PROGRESS','PAUSED','REWORK'].includes(status))return 3;
+  if(approval==='PENDING'||status==='WAITING_APPROVAL'||job==='WAITING_APPROVAL')return 2;
+  if(['IN_PROGRESS','COMPLETED'].includes(diag) ||
+     ['DIAGNOSIS','DIAGNOSIS_COMPLETED','WAITING_DIAGNOSIS'].includes(status))return 1;
+  return 0;
+}
+
+function v7CStatusLabel(data){
+  const w=data?.workOrder;
+  if(!w)return String(data?.booking?.status||'BOOKED').replaceAll('_',' ');
+  return String(w.status||w.jobStatus||'IN PROCESS').replaceAll('_',' ');
+}
+
+function v7CFormatDate(v){
+  if(!v)return '-';
+  try{
+    const d=new Date(String(v).length<=10?String(v)+'T00:00:00':v);
+    if(Number.isNaN(d.getTime()))return String(v);
+    return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+  }catch(_){return String(v);}
+}
+
+function v7CTime(v){
+  if(!v)return '-';
+  return String(v).slice(0,5);
+}
+
+function v7CRenderTracking(data){
+  v7CLastTrack=data;
+  window.vwLastSupabaseTracking=data;
+
+  const tr=document.getElementById('tr');
+  if(!tr)return;
+  tr.style.display='block';
+
+  const h=tr.querySelector('h2');
+  if(h)h.textContent=data?.workOrder?.code||data?.booking?.code||'TRACKING';
+
+  const meta=tr.querySelector('p.muted');
+  if(meta){
+    meta.textContent=[
+      data?.customer?.name,
+      data?.vehicle?.model,
+      data?.vehicle?.plate
+    ].filter(Boolean).join(' · ');
+  }
+
+  const pill=document.getElementById('trackpill');
+  if(pill)pill.textContent=v7CStatusLabel(data);
+
+  const step=v7CStatusStep(data);
+  tr.querySelectorAll('.progress .step').forEach((el,i)=>{
+    el.classList.toggle('done',i<step);
+    el.classList.toggle('now',i===step);
+  });
+
+  const notice=tr.querySelector('.notice');
+  const diagnosis=data?.diagnosis||null;
+  const estimate=data?.estimate||null;
+  const invoice=data?.invoice||null;
+  const wo=data?.workOrder||null;
+  const pending=(estimate?.items||[]).filter(x=>String(x.approvalStatus).toUpperCase()==='PENDING');
+
+  if(notice){
+    notice.innerHTML=`
+      <b>Status servis dari Supabase</b><br>
+      Booking: ${safeText(data?.booking?.code||'-')} · ${safeText(String(data?.booking?.status||'-').replaceAll('_',' '))}
+      <br>Jadwal: ${safeText(v7CFormatDate(data?.booking?.date))} · ${safeText(v7CTime(data?.booking?.slotTime))}
+      ${wo?`<br>Work Order: ${safeText(wo.code||'-')} · Mechanic: ${safeText(wo.mechanic||'Belum ditentukan')}`:''}
+      <br>Diagnosis: ${safeText(String(diagnosis?.status||wo?.diagnosisStatus||'NOT_STARTED').replaceAll('_',' '))}
+      ${diagnosis?.summary?`<br>Catatan: ${safeText(diagnosis.summary)}`:''}
+      ${pending.length?`<br><b>${pending.length} item tambahan menunggu keputusan customer.</b>`:''}
+      ${invoice?`<br>Invoice: ${safeText(invoice.code||'-')} · ${safeText(String(invoice.status||'-').replaceAll('_',' '))} · Sisa ${rup(Number(invoice.outstanding||0))}`:''}`;
+  }
+
+  let metaBox=document.getElementById('v7CTrackingMeta');
+  if(!metaBox){
+    metaBox=document.createElement('div');
+    metaBox.id='v7CTrackingMeta';
+    const card=tr.querySelector('.card');
+    const actions=card?.querySelector('.actions');
+    if(card)card.insertBefore(metaBox,actions||null);
+  }
+
+  if(metaBox){
+    metaBox.innerHTML=`
+      <div class="v7c-track-grid">
+        <div class="v7c-track-mini"><small>Keluhan / layanan</small><b>${safeText(data?.booking?.complaint||'-')}</b></div>
+        <div class="v7c-track-mini"><small>Part Status</small><b>${safeText(String(wo?.partsStatus||'-').replaceAll('_',' '))}</b></div>
+        <div class="v7c-track-mini"><small>Final QC</small><b>${safeText(String(wo?.qcStatus||'-').replaceAll('_',' '))}</b></div>
+        <div class="v7c-track-mini"><small>Riwayat servis kendaraan</small><b>${Array.isArray(data?.serviceHistory)?data.serviceHistory.length:0} record</b></div>
+      </div>
+      <div class="v7c-db-note">Data ini dibaca langsung dari Supabase.</div>`;
+  }
+
+  const act=tr.querySelector('.actions');
+  if(act){
+    const buttons=[];
+    if(pending.length){
+      buttons.push(`<button class="btn" type="button" onclick="v7COpenPendingEstimate()">LIHAT ESTIMASI TAMBAHAN</button>`);
+    }
+    if(String(wo?.qcStatus||'').toUpperCase()==='PASSED' ||
+       String(wo?.status||'').toUpperCase()==='READY_FOR_PICKUP'){
+      buttons.push(`<button class="btn alt" type="button" onclick="v7COpenReadyStatus()">STATUS PENGAMBILAN</button>`);
+    }
+    buttons.push(`<button class="btn alt" type="button" onclick="track()">↻ REFRESH STATUS</button>`);
+    act.innerHTML=buttons.join('');
+  }
+
+  v7CShowRecovery(false);
+}
+
+function v7COpenPendingEstimate(){
+  // 007C is tracking-only. We preserve remote payload for the 007D
+  // approval layer and avoid falling back to stale local approval data.
+  if(!v7CLastTrack?.estimate){
+    toast('Estimate belum tersedia.');
+    return;
+  }
+  sessionStorage.setItem('vw_remote_tracking_snapshot',JSON.stringify(v7CLastTrack));
+  toast('Data estimate sudah dari Supabase. Approval online diaktifkan pada tahap 007D.');
+}
+
+function v7COpenReadyStatus(){
+  if(!v7CLastTrack)return;
+  sessionStorage.setItem('vw_remote_tracking_snapshot',JSON.stringify(v7CLastTrack));
+  const invoice=v7CLastTrack.invoice;
+  if(invoice){
+    toast('Final QC selesai · status invoice '+String(invoice.status||'-').replaceAll('_',' '));
+  }else{
+    toast('Final QC selesai · kendaraan siap diproses pengambilan.');
+  }
+}
+
+async function v7CRecoverTracking(){
+  if(v7CTrackBusy)return;
+  const code=v7CNormalizeCode(document.getElementById('tc')?.value);
+  const phone=document.getElementById('v7CRecoveryPhone')?.value.trim()||'';
+
+  if(!code){toast('Masukkan kode Booking / Work Order');return;}
+  if(phone.length<8){toast('Masukkan nomor WhatsApp booking yang benar');return;}
+  if(!v7Sb){toast('Supabase belum siap');return;}
+
+  v7CTrackBusy=true;
+  try{
+    const {data,error}=await v7Sb.rpc('public_recover_access',{
+      p_workshop_slug:V7_WORKSHOP_SLUG,
+      p_code:code,
+      p_phone:phone
+    });
+    if(error)throw error;
+    if(!data?.accessToken)throw new Error('Access token recovery tidak diterima');
+
+    const tracked=await v7CTrackWithToken(data.accessToken);
+    const codes=[
+      v7CNormalizeCode(tracked?.booking?.code),
+      v7CNormalizeCode(tracked?.workOrder?.code)
+    ];
+    if(!codes.includes(code))throw new Error('Kode tracking tidak cocok');
+
+    v7CSaveRecoveredAccess(code,data.accessToken,tracked);
+    v7CRenderTracking(tracked);
+    toast('Akses tracking berhasil dipulihkan ✓');
+  }catch(err){
+    console.error('[SUPABASE_007C] recover failed',err);
+    const msg=String(err?.message||'Kode / WhatsApp tidak cocok');
+    toast(msg.length>110?msg.slice(0,107)+'...':msg);
+  }finally{
+    v7CTrackBusy=false;
+  }
+}
+
+track=async function(){
+  if(v7CTrackBusy)return;
+
+  const code=v7CNormalizeCode(document.getElementById('tc')?.value);
+  const tr=document.getElementById('tr');
+
+  if(!code){
+    toast('Masukkan kode Booking / Work Order');
+    return;
+  }
+  if(!v7Sb || !v7CatalogReady){
+    if(tr)tr.style.display='none';
+    toast('Supabase belum siap. Tunggu status SUPABASE ONLINE.');
+    return;
+  }
+
+  v7CTrackBusy=true;
+  try{
+    const found=await v7CFindLocalTokenForCode(code);
+    if(!found){
+      if(tr)tr.style.display='none';
+      v7CShowRecovery(true);
+      toast('Masukkan WhatsApp booking untuk memulihkan akses tracking.');
+      return;
+    }
+
+    v7CSaveRecoveredAccess(code,found.token,found.data);
+    v7CRenderTracking(found.data);
+
+    console.info('[SUPABASE_007C] Tracking loaded',{
+      booking:found.data?.booking?.code,
+      workOrder:found.data?.workOrder?.code||null,
+      status:found.data?.workOrder?.status||found.data?.booking?.status
+    });
+
+  }catch(err){
+    console.error('[SUPABASE_007C] tracking failed',err);
+    if(tr)tr.style.display='none';
+    v7CShowRecovery(true);
+    const msg=String(err?.message||'Tracking gagal');
+    toast(msg.length>110?msg.slice(0,107)+'...':msg);
+  }finally{
+    v7CTrackBusy=false;
+  }
+};
+
+// The success-page "Lacak" button now uses the real remote tracker.
+bookTrack=function(){
+  const access=v7BReadCustomerAccess();
+  const code=access?.bookingCode||booking?.code||'';
+  const input=document.getElementById('tc');
+  if(input)input.value=code;
+  go('tracking');
+  setTimeout(()=>track(),40);
+};
+
+window.vwTrackingIntegrationInfo=function(){
+  const current=v7BReadCustomerAccess();
+  const result={
+    stage:'007C',
+    supabaseReady:!!v7Sb,
+    catalogReady:v7CatalogReady,
+    hasCurrentAccess:!!current?.accessToken,
+    currentBookingCode:current?.bookingCode||null,
+    lastRemoteBooking:v7CLastTrack?.booking?.code||null,
+    lastRemoteWorkOrder:v7CLastTrack?.workOrder?.code||null
+  };
+  console.table(result);
+  return result;
+};
+
+function v7CInstall(){
+  v7CEnsureRecoveryUI();
+  const input=document.getElementById('tc');
+  if(input && !input.dataset.supabase007c){
+    input.dataset.supabase007c='1';
+    input.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        track();
+      }
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>setTimeout(v7CInstall,320));
+</script>
+
 </body>
 
 </html>
