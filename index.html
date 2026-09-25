@@ -5140,6 +5140,250 @@ function v6Init(){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(v6Init,90));
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007A] Connection + Public Catalog
+     Project URL + publishable key only. Never put service_role here.
+     ====================================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  .v7-backend-status{
+    display:inline-flex;align-items:center;gap:6px;
+    border-radius:999px;padding:6px 9px;font-size:11px;font-weight:850;
+    background:#fff8e8;color:#8b6200;border:1px solid #ead9a6;
+    white-space:nowrap
+  }
+  .v7-backend-status.ok{background:#e8f6ee;color:#17653f;border-color:#c9e6d5}
+  .v7-backend-status.bad{background:#fff0ef;color:#a33a32;border-color:#efcfcb}
+  @media(max-width:520px){.v7-backend-status{font-size:10px;padding:5px 7px}}
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007A]
+   Tahap 007A hanya memindahkan:
+   - koneksi Supabase
+   - public workshop catalog
+   - service package selector
+   - customer sparepart catalog
+
+   Booking / Tracking / Staff Auth / operational workflow masih memakai
+   layer lama sebagai fallback sampai tahap 007B+.
+   ====================================================================== */
+const V7_SUPABASE_URL = 'https://cdatfwgamnmfreymcrjl.supabase.co';
+const V7_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_pgfOJszUhpoZGWCzMpe8MA_yFAhl6ny';
+const V7_WORKSHOP_SLUG = 'vespa-wahyu';
+
+let v7Sb = null;
+let v7Catalog = null;
+let v7RemoteParts = [];
+let v7RemotePackages = [];
+let v7CatalogReady = false;
+
+function v7BackendStatus(state, text){
+  let badge=document.getElementById('v7BackendStatus');
+  if(!badge){
+    badge=document.createElement('span');
+    badge.id='v7BackendStatus';
+    badge.className='v7-backend-status';
+    const host=document.querySelector('.topin');
+    const customerBtn=document.getElementById('customerNotifBtn');
+    if(host) host.insertBefore(badge, customerBtn || null);
+  }
+  badge.className='v7-backend-status'+(state==='ok'?' ok':state==='bad'?' bad':'');
+  badge.textContent=text;
+}
+
+function v7PublicMediaUrl(value){
+  const raw=String(value||'').trim();
+  if(!raw) return '';
+  if(!raw.startsWith('storage://')) return raw;
+  if(!v7Sb) return '';
+  const m=raw.match(/^storage:\/\/([^/]+)\/(.+)$/);
+  if(!m) return '';
+  try{
+    const r=v7Sb.storage.from(m[1]).getPublicUrl(m[2]);
+    return r?.data?.publicUrl || '';
+  }catch(e){
+    console.warn('[SUPABASE_007A] public media URL failed',e);
+    return '';
+  }
+}
+
+function v7NormalizePart(p){
+  return {
+    id:p?.id||'',
+    sku:String(p?.sku||''),
+    name:String(p?.name||'Part'),
+    model:String(p?.model||'All'),
+    category:String(p?.category||'General'),
+    brand:String(p?.brand||'OEM'),
+    sell:Number(p?.sellPrice||0),
+    available:Number(p?.availableQty||0),
+    stockStatus:String(p?.stockStatus||''),
+    img:v7PublicMediaUrl(p?.imageUrl||'')
+  };
+}
+
+function v7ApplyRemotePackages(){
+  const select=document.getElementById('bPackage');
+  if(!select || !v7RemotePackages.length) return;
+  const current=select.value;
+  select.innerHTML=v7RemotePackages.map(p=>
+    `<option value="${safeText(String(p.code||''))}">${safeText(String(p.name||p.code||'Paket'))} · ${rup(Number(p.price||0))}</option>`
+  ).join('');
+  if(v7RemotePackages.some(p=>String(p.code)===current)) select.value=current;
+  select.dispatchEvent(new Event('change',{bubbles:true}));
+}
+
+const v7LocalRenderPartsCatalog = v3RenderPartsCatalog;
+v3RenderPartsCatalog=function(){
+  if(!v7CatalogReady || !v7RemoteParts.length){
+    return v7LocalRenderPartsCatalog();
+  }
+
+  const q=(document.getElementById('ps')?.value||'').trim().toLowerCase();
+  const model=document.getElementById('pm')?.value||'Semua model';
+
+  const list=v7RemoteParts.filter(x=>{
+    const search=(x.name+' '+x.sku+' '+x.brand+' '+x.category).toLowerCase();
+    const modelOk=model==='Semua model'
+      || x.model==='All'
+      || x.model==='Semua model'
+      || x.model.toLowerCase().includes(model.replace(/\s*\d+$/,'').toLowerCase());
+    return search.includes(q) && modelOk;
+  });
+
+  const grid=document.getElementById('pg');
+  if(!grid) return;
+
+  grid.innerHTML=list.map(x=>`
+    <div class="card">
+      ${x.img?`<div class="part-photo"><img src="${x.img}" alt="${safeText(x.name)}" onerror="this.parentElement.style.display='none'"></div>`:''}
+      <div class="k">${safeText(x.sku)}</div>
+      <h3>${safeText(x.name)}</h3>
+      <div class="muted">${safeText(x.model)}</div>
+      <div class="money" style="font-size:19px;margin-top:8px">${rup(x.sell)}</div>
+      <p>${x.available>0
+        ? `<span class="pill">Tersedia · ${x.available}</span>`
+        : '<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>'}
+      </p>
+      <button class="btn alt" onclick="openPartInquiry('${safeText(x.sku)}')">TANYA KETERSEDIAAN</button>
+    </div>`).join('') || '<div class="card">Part tidak ditemukan.</div>';
+};
+filterParts=v3RenderPartsCatalog;
+
+function v7SyncRemotePartMetadataToLocal(){
+  // Jangan sentuh on_hand/reserved lokal pada tahap 007A.
+  // Hanya metadata display agar halaman inquiry lama tetap mengenali SKU.
+  v7RemoteParts.forEach(r=>{
+    let local=invData.find(x=>x.sku===r.sku);
+    if(local){
+      local.name=r.name;
+      local.model=r.model;
+      local.sell=r.sell;
+      if(r.img) local.img=r.img;
+      local.sbAvailable=r.available;
+      local.sbPartId=r.id;
+    }else{
+      invData.push({
+        sku:r.sku,name:r.name,model:r.model,
+        category:r.category,brand:r.brand,location:'SUPABASE',
+        on:r.available,res:0,min:0,cost:0,sell:r.sell,img:r.img,
+        sbAvailable:r.available,sbPartId:r.id,_supabaseCatalog:true
+      });
+    }
+  });
+}
+
+async function v7LoadPublicCatalog(){
+  if(!v7Sb) throw new Error('Supabase client belum siap');
+
+  const {data,error}=await v7Sb.rpc('public_get_catalog',{
+    p_workshop_slug:V7_WORKSHOP_SLUG
+  });
+  if(error) throw error;
+  if(!data || typeof data!=='object') throw new Error('Catalog response kosong');
+
+  v7Catalog=data;
+  v7RemotePackages=Array.isArray(data.packages)?data.packages:[];
+  v7RemoteParts=(Array.isArray(data.parts)?data.parts:[]).map(v7NormalizePart);
+  v7CatalogReady=true;
+
+  v7SyncRemotePartMetadataToLocal();
+  v7ApplyRemotePackages();
+  v3RenderPartsCatalog();
+
+  const workshop=data.workshop||{};
+  const brand=document.querySelector('.brandcopy b');
+  if(brand && workshop.name) brand.textContent=workshop.name;
+
+  v7BackendStatus('ok','● SUPABASE ONLINE');
+  window.dispatchEvent(new CustomEvent('vw:supabase-catalog-ready',{detail:data}));
+
+  console.info('[SUPABASE_007A] Catalog ready',{
+    workshop:workshop.name,
+    packages:v7RemotePackages.length,
+    parts:v7RemoteParts.length,
+    usedVespa:Array.isArray(data.usedVespa)?data.usedVespa.length:0
+  });
+
+  return data;
+}
+
+async function v7InitSupabase(){
+  v7BackendStatus('','DB CONNECTING');
+  try{
+    if(!window.supabase || typeof window.supabase.createClient!=='function'){
+      throw new Error('Supabase JS gagal dimuat dari CDN');
+    }
+
+    v7Sb=window.supabase.createClient(
+      V7_SUPABASE_URL,
+      V7_SUPABASE_PUBLISHABLE_KEY,
+      {
+        auth:{
+          persistSession:true,
+          autoRefreshToken:true,
+          detectSessionInUrl:false
+        }
+      }
+    );
+    window.vwSupabase=v7Sb;
+    window.vwSupabaseConfig={
+      url:V7_SUPABASE_URL,
+      workshopSlug:V7_WORKSHOP_SLUG,
+      stage:'007A'
+    };
+
+    await v7LoadPublicCatalog();
+  }catch(err){
+    console.error('[SUPABASE_007A] Init failed',err);
+    v7CatalogReady=false;
+    v7BackendStatus('bad','LOCAL FALLBACK');
+    // Existing frontend remains usable if network/CDN/Supabase is unavailable.
+    try{v7LocalRenderPartsCatalog();}catch(_){}
+  }
+}
+
+// Console helper for manual verification.
+window.vwSupabaseSelfTest=async function(){
+  if(!v7Sb) await v7InitSupabase();
+  const {data,error}=await v7Sb.rpc('public_get_catalog',{p_workshop_slug:V7_WORKSHOP_SLUG});
+  if(error) throw error;
+  const result={
+    connected:true,
+    workshop:data?.workshop?.name||null,
+    packages:Array.isArray(data?.packages)?data.packages.length:0,
+    parts:Array.isArray(data?.parts)?data.parts.length:0,
+    usedVespa:Array.isArray(data?.usedVespa)?data.usedVespa.length:0
+  };
+  console.table(result);
+  return result;
+};
+
+document.addEventListener('DOMContentLoaded',()=>setTimeout(v7InitSupabase,180));
+</script>
+
 </body>
 
 </html>
