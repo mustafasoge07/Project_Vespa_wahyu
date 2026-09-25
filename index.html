@@ -9458,6 +9458,557 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007G]
+     Final QC + Payment + Proof + Cashier Verification + Vehicle Release
+     ====================================================================== -->
+<style>
+  .v7g-qc-checks{display:grid;gap:8px;margin-top:12px}
+  .v7g-qc-check{display:flex;gap:10px;align-items:flex-start;padding:11px;border:1px solid var(--l);border-radius:13px;background:#fff}
+  .v7g-qc-check input{width:19px;height:19px;margin-top:2px}
+  .v7g-pay-list{display:grid;gap:10px}
+  .v7g-pay-card{border:1px solid var(--l);border-radius:15px;padding:12px;background:#fff}
+  .v7g-proof{max-width:280px;width:100%;max-height:300px;object-fit:contain;border:1px solid var(--l);border-radius:13px;background:#f4f6f5;cursor:pointer}
+  .v7g-methods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+  .v7g-methods button{min-height:62px}
+  .v7g-methods button.on{outline:2px solid currentColor}
+  .v7g-release-card{border:1px solid var(--l);border-radius:15px;padding:12px;margin-top:10px;background:#fff}
+  .v7g-live{font-size:11px;color:var(--m);margin-top:7px}
+  @media(max-width:560px){.v7g-methods{grid-template-columns:1fr}}
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007G]
+   ====================================================================== */
+let v7GCustomerPaymentState=null;
+let v7GCustomerMethod='';
+let v7GCustomerPaymentBusy=false;
+let v7GPaymentQueue=[];
+let v7GReleaseQueue=[];
+let v7GAdvisorSelectedRelease=null;
+
+/* -------------------- customer payment -------------------- */
+async function v7GGetCustomerPaymentState(){
+  const access=v7BReadCustomerAccess();
+  if(!access?.accessToken)throw new Error('Akses customer tidak tersedia');
+  const {data,error}=await v7Sb.rpc('public_get_payment_state',{
+    p_access_token:access.accessToken
+  });
+  if(error)throw error;
+  v7GCustomerPaymentState=data;
+  return data;
+}
+
+function v7GMethodLabel(m){
+  return ({
+    CASH:'Cash di Bengkel',
+    TRANSFER:'Transfer',
+    STATIC_QRIS:'Static QRIS',
+    DYNAMIC_QRIS:'Dynamic QRIS'
+  })[v7FUpper(m)]||String(m||'-');
+}
+
+function v7GRenderCustomerPayment(s){
+  const page=document.getElementById('customerPayment');
+  if(!page)return;
+  const inv=s?.invoice;
+  const ws=s?.workshop||{};
+  const wo=s?.workOrder||{};
+
+  const title=page.querySelector('.head h2');
+  if(title)title.textContent=inv?.code||'INVOICE';
+  const status=document.getElementById('customerPayStatus');
+  if(status)status.textContent=inv?.status||'UNPAID';
+
+  const card=page.querySelector('.invoicebox');
+  if(!card)return;
+
+  if(!inv){
+    card.innerHTML='<div class="notice">Invoice belum tersedia.</div><div class="actions"><button class="btn alt" type="button" onclick="go(\'tracking\')">← TRACKING</button></div>';
+    return;
+  }
+
+  const latest=(inv.payments||[])[0]||null;
+  const paid=Number(inv.paid||0),outstanding=Number(inv.outstanding||0);
+
+  card.innerHTML=`
+    ${(inv.items||[]).map(i=>`<div class="line"><span>${safeText(i.name)} ×${Number(i.qty||1)}</span><b>${rup(Number(i.amount||Number(i.qty||1)*Number(i.unitPrice||0)))}</b></div>`).join('')}
+    <div class="line"><b>Total Tagihan</b><span class="money">${rup(Number(inv.total||0))}</span></div>
+    <div class="line"><span>Sudah Dibayar</span><b>${rup(paid)}</b></div>
+    <div class="line"><span>Sisa Tagihan</span><b>${rup(outstanding)}</b></div>
+
+    ${latest?`<div class="notice" style="margin-top:12px"><b>Payment terakhir:</b> ${safeText(latest.code)} · ${safeText(v7GMethodLabel(latest.method))} · ${safeText(String(latest.status||'-').replaceAll('_',' '))}${latest.rejectionNote?`<br>Catatan: ${safeText(latest.rejectionNote)}`:''}</div>`:''}
+
+    ${inv.status==='PAID'
+      ? `<div class="notice" style="margin-top:12px"><b>✓ LUNAS.</b> Kendaraan dapat diserahkan setelah Final QC PASSED dan Advisor melakukan Vehicle Release.</div>`
+      : `
+        <h3 style="margin-top:18px">Pilih Metode Pembayaran</h3>
+        <div class="v7g-methods">
+          <button class="btn alt ${v7GCustomerMethod==='CASH'?'on':''}" type="button" onclick="v7GChooseCustomerMethod('CASH')">💵<br>Cash</button>
+          <button class="btn alt ${v7GCustomerMethod==='TRANSFER'?'on':''}" type="button" onclick="v7GChooseCustomerMethod('TRANSFER')">🏦<br>Transfer</button>
+          <button class="btn alt ${v7GCustomerMethod==='STATIC_QRIS'?'on':''}" type="button" onclick="v7GChooseCustomerMethod('STATIC_QRIS')">▦<br>Static QRIS</button>
+        </div>
+        <div id="v7GPayInstruction" class="notice">${v7GCustomerInstruction(ws)}</div>
+        <div id="v7GProofBox" style="${['TRANSFER','STATIC_QRIS'].includes(v7GCustomerMethod)?'':'display:none;'};margin-top:12px">
+          <div class="field"><label>Bukti pembayaran JPG / PNG / WEBP</label><input id="v7GPaymentProof" type="file" accept="image/jpeg,image/png,image/webp"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" onclick="v7GSubmitCustomerPayment()">KIRIM / KONFIRMASI PEMBAYARAN</button>
+        </div>
+        ${ws.dynamicQrisEnabled
+          ? '<div class="notice" style="margin-top:10px">Dynamic QRIS diset Enabled di workshop, tetapi gateway/webhook provider belum dipasang pada V1. Gunakan Cash, Transfer, atau Static QRIS untuk UAT.</div>'
+          : ''
+        }
+      `
+    }
+
+    <div class="v7g-live">WO ${safeText(wo.code||'-')} · QC ${safeText(String(wo.qcStatus||'-').replaceAll('_',' '))}</div>
+    <div class="actions">
+      <button class="btn alt" type="button" onclick="go('tracking');track()">← TRACKING</button>
+      ${s?.serviceRecord?'<button class="btn" type="button" onclick="v7GOpenServiceRecord()">SERVICE RECORD</button>':''}
+    </div>`;
+}
+
+function v7GCustomerInstruction(ws){
+  if(v7GCustomerMethod==='CASH')return '<b>Cash di Bengkel.</b> Kasir akan mengonfirmasi pembayaran saat transaksi diterima.';
+  if(v7GCustomerMethod==='TRANSFER')return '<b>Transfer.</b> Transfer sesuai total tagihan lalu upload bukti pembayaran. Detail rekening workshop belum disimpan pada schema V1, jadi gunakan instruksi rekening resmi dari workshop.';
+  if(v7GCustomerMethod==='STATIC_QRIS')return '<b>Static QRIS.</b> '+safeText(ws?.staticQris||'QRIS workshop belum dikonfigurasi')+'<br>Scan QRIS resmi workshop, bayar sesuai nominal, lalu upload bukti.';
+  return 'Pilih metode pembayaran.';
+}
+
+function v7GChooseCustomerMethod(method){
+  v7GCustomerMethod=v7FUpper(method);
+  v7GRenderCustomerPayment(v7GCustomerPaymentState);
+}
+
+async function v7GOpenPayment(){
+  try{
+    const s=await v7GGetCustomerPaymentState();
+    go('customerPayment');
+    v7GRenderCustomerPayment(s);
+  }catch(err){v7FError(err,'Gagal memuat pembayaran');}
+}
+
+async function v7GUploadCustomerProof(access,paymentCode,file){
+  const {data:ticket,error:tErr}=await v7Sb.rpc('public_create_payment_proof_upload_ticket',{
+    p_access_token:access.accessToken,
+    p_payment_code:paymentCode,
+    p_original_name:file.name,
+    p_mime_type:file.type
+  });
+  if(tErr)throw tErr;
+
+  const {error:uErr}=await v7Sb.storage
+    .from(ticket.bucket)
+    .upload(ticket.storagePath,file,{contentType:file.type,upsert:false});
+  if(uErr)throw uErr;
+
+  const {data:fin,error:fErr}=await v7Sb.rpc('public_finalize_payment_proof_upload',{
+    p_access_token:access.accessToken,
+    p_payment_code:paymentCode,
+    p_ticket_id:ticket.ticketId
+  });
+  if(fErr)throw fErr;
+  return fin;
+}
+
+async function v7GSubmitCustomerPayment(){
+  if(v7GCustomerPaymentBusy)return;
+  const access=v7BReadCustomerAccess();
+  const inv=v7GCustomerPaymentState?.invoice;
+  if(!access?.accessToken||!inv?.code){toast('Invoice / akses customer belum tersedia');return;}
+  if(!v7GCustomerMethod){toast('Pilih metode pembayaran');return;}
+
+  let file=null;
+  if(['TRANSFER','STATIC_QRIS'].includes(v7GCustomerMethod)){
+    file=document.getElementById('v7GPaymentProof')?.files?.[0]||null;
+    if(!file){toast('Upload bukti pembayaran terlebih dahulu');return;}
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('Bukti harus JPG, PNG, atau WEBP');return;}
+    if(file.size>8388608){toast('Ukuran bukti maksimal 8 MB');return;}
+  }
+
+  v7GCustomerPaymentBusy=true;
+  try{
+    const {data:pay,error:pErr}=await v7Sb.rpc('public_submit_payment',{
+      p_access_token:access.accessToken,
+      p_invoice_code:inv.code,
+      p_method:v7GCustomerMethod
+    });
+    if(pErr)throw pErr;
+
+    if(file){
+      await v7GUploadCustomerProof(access,pay.paymentCode,file);
+      toast('Bukti pembayaran terkirim · menunggu verifikasi kasir');
+    }else{
+      toast('Cash dipilih · menunggu konfirmasi kasir');
+    }
+
+    const fresh=await v7GGetCustomerPaymentState();
+    v7GRenderCustomerPayment(fresh);
+    try{
+      const tracked=await v7CTrackWithToken(access.accessToken);
+      v7CLastTrack=tracked;
+      v7CRenderTracking(tracked);
+    }catch(_){}
+  }catch(err){
+    v7FError(err,'Pembayaran gagal diproses');
+  }finally{
+    v7GCustomerPaymentBusy=false;
+  }
+}
+
+/* Add real payment button to tracking when an invoice exists. */
+const v7GTrackRenderBase=v7CRenderTracking;
+v7CRenderTracking=function(data){
+  v7GTrackRenderBase(data);
+  const act=document.querySelector('#tr .actions');
+  if(!act||!data?.invoice)return;
+  if(!document.getElementById('v7GTrackPaymentBtn')){
+    const b=document.createElement('button');
+    b.id='v7GTrackPaymentBtn';
+    b.type='button';
+    b.className='btn';
+    b.textContent=data.invoice.status==='PAID'?'LIHAT PEMBAYARAN':'BAYAR / LIHAT INVOICE';
+    b.onclick=v7GOpenPayment;
+    act.prepend(b);
+  }
+};
+
+/* -------------------- mechanic Final QC -------------------- */
+function v7GFinalQcChecklist(){
+  return [
+    'Semua pekerjaan approved sudah selesai',
+    'Tidak ada kebocoran / bunyi abnormal',
+    'Rem & fungsi keselamatan normal',
+    'Lampu / electrical berfungsi',
+    'Baut / fastener & fluid sudah dicek',
+    'Road test / function test selesai',
+    'Area kerja dan kendaraan bersih'
+  ];
+}
+
+function v7GRenderFinalQc(snap=v7EMechanicSnapshot){
+  const p=document.getElementById('m-finalqc');if(!p)return;
+  if(!snap?.workOrder){
+    p.innerHTML='<div class="card">Pilih Work Order terlebih dahulu.</div>';
+    return;
+  }
+  const wo=snap.workOrder;
+  const waiting=v7FUpper(wo.jobStatus)==='WAITING_FINAL_QC';
+  const history=snap.qcInspections||[];
+
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Mechanic Final QC · Supabase</div><h2>${safeText(wo.code)}</h2></div>
+      ${wfPill(v7FUpper(wo.qcStatus||'PENDING'))}
+    </div>
+    <div class="card">
+      <div class="line"><span>Job Status</span><b>${v7EStatus(wo.jobStatus)}</b></div>
+      <div class="line"><span>Mechanic</span><b>${safeText(snap.mechanic?.name||v7EStaff()?.name||'-')}</b></div>
+      ${waiting?`
+        <div class="notice" style="margin-top:10px"><b>Final QC wajib dilakukan mechanic yang mengerjakan WO ini.</b></div>
+        <div class="v7g-qc-checks">
+          ${v7GFinalQcChecklist().map((x,i)=>`<label class="v7g-qc-check"><input class="v7GQcBox" type="checkbox" data-label="${safeText(x)}"><span><b>${safeText(x)}</b></span></label>`).join('')}
+        </div>
+        <div class="field" style="margin-top:12px"><label>Catatan Final QC / alasan jika FAIL</label><textarea id="v7GQcNote" placeholder="Catatan pemeriksaan akhir..."></textarea></div>
+        <div class="actions">
+          <button class="btn" type="button" onclick="v7GSubmitFinalQc('PASSED')">✓ PASS FINAL QC</button>
+          <button class="btn bad" type="button" onclick="v7GSubmitFinalQc('FAILED')">✕ FAIL → REWORK</button>
+        </div>`
+        : `<div class="notice" style="margin-top:10px">Final QC aktif setelah Job Execution berstatus WAITING FINAL QC.</div>`
+      }
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Riwayat Final QC</h3>
+      ${history.map(q=>`<div class="line"><span>Attempt #${Number(q.attempt||0)} · ${safeText(new Date(q.inspectedAt).toLocaleString('id-ID'))}<br><small>${safeText(q.note||'-')}</small></span>${wfPill(v7FUpper(q.result))}</div>`).join('')||'<div class="muted">Belum ada inspeksi.</div>'}
+    </div>`;
+}
+
+async function v7GSubmitFinalQc(result){
+  if(v7FMechanicActionBusy)return;
+  const snap=v7EMechanicSnapshot,code=snap?.workOrder?.code;
+  if(!code)return;
+  const boxes=[...document.querySelectorAll('.v7GQcBox')];
+  const checklist=boxes.map(x=>({label:x.dataset.label,ok:!!x.checked}));
+  const note=document.getElementById('v7GQcNote')?.value.trim()||'';
+
+  if(result==='PASSED' && (!boxes.length||boxes.some(x=>!x.checked))){
+    toast('Semua checklist wajib OK sebelum PASS');
+    return;
+  }
+  if(result==='FAILED' && note.length<2){
+    toast('Alasan Final QC gagal wajib diisi');
+    return;
+  }
+  if(!confirm(result==='PASSED'?'PASS Final QC dan set READY FOR PICKUP?':'FAIL Final QC dan kembalikan ke REWORK?'))return;
+
+  v7FMechanicActionBusy=true;
+  try{
+    const {data,error}=await v7Sb.rpc('mechanic_submit_final_qc',{
+      p_work_order_code:code,
+      p_result:result,
+      p_checklist:checklist,
+      p_note:note||null
+    });
+    if(error)throw error;
+    toast(result==='PASSED'?'Final QC PASSED · READY FOR PICKUP':'Final QC FAILED · REWORK');
+    await v7FRefreshMechanicWO();
+    await v7ELoadMechanicJobs({silent:true});
+    mtabId(result==='PASSED'?'finalqc':'work');
+  }catch(err){v7FError(err,'Final QC gagal');}
+  finally{v7FMechanicActionBusy=false;}
+}
+
+/* Extend mechanic render. */
+const v7GMechanicRenderBase=v7ERenderMechanicSnapshot;
+v7ERenderMechanicSnapshot=function(snap){
+  v7GMechanicRenderBase(snap);
+  v7GRenderFinalQc(snap);
+};
+
+/* -------------------- advisor payment + release -------------------- */
+async function v7GLoadAdvisorFinance({silent=false}={}){
+  if(!['advisor','owner'].includes(v7ERole()))return;
+  try{
+    const [pays,rels]=await Promise.all([
+      v7Sb.rpc('staff_get_payment_queue'),
+      v7Sb.rpc('staff_get_release_queue')
+    ]);
+    if(pays.error)throw pays.error;
+    if(rels.error)throw rels.error;
+    v7GPaymentQueue=Array.isArray(pays.data)?pays.data:[];
+    v7GReleaseQueue=Array.isArray(rels.data)?rels.data:[];
+    v7GRenderAdvisorPayments();
+    v7GRenderAdvisorRelease();
+  }catch(err){
+    if(!silent)v7FError(err,'Gagal memuat Payment / Release');
+    else console.warn('[SUPABASE_007G] finance refresh',err);
+  }
+}
+
+async function v7GProofUrl(path){
+  const {data,error}=await v7Sb.storage.from('vw-private-media').createSignedUrl(path,300);
+  if(error)throw error;
+  return data?.signedUrl||'';
+}
+
+function v7GRenderAdvisorPayments(){
+  const p=document.getElementById('p-pay');if(!p)return;
+  const waiting=v7GPaymentQueue.filter(x=>['WAITING_VERIFICATION','PENDING'].includes(v7FUpper(x.status)));
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Cashier · Supabase</div><h2>Invoice / Payment</h2></div>
+      <div class="v7f-status-row"><span class="pill">${waiting.length} MENUNGGU</span><button class="btn alt" type="button" onclick="v7GLoadAdvisorFinance()">↻ REFRESH</button></div>
+    </div>
+    <div class="v7g-pay-list">
+      ${v7GPaymentQueue.map(x=>`
+        <div class="v7g-pay-card">
+          <div class="line"><span><b>${safeText(x.paymentCode)}</b><br><small>${safeText(x.workOrderCode)} · ${safeText(x.customer)} · ${safeText(x.plate)}</small></span>${wfPill(v7FUpper(x.status))}</div>
+          <div class="line"><span>${safeText(v7GMethodLabel(x.method))}</span><b>${rup(Number(x.amount||0))}</b></div>
+          <div class="line"><span>Invoice</span><b>${safeText(x.invoiceCode)} · ${safeText(x.invoiceStatus)}</b></div>
+          <div id="v7GProof_${safeText(x.paymentId)}"></div>
+          ${
+            ['PENDING','WAITING_VERIFICATION'].includes(v7FUpper(x.status))
+            ? `<div class="actions">
+                <button class="btn alt" type="button" onclick="v7GLoadProofs('${safeText(x.paymentId)}')">LIHAT BUKTI</button>
+                <button class="btn" type="button" onclick="v7GVerifyPayment('${safeText(x.paymentCode)}',true)">APPROVE PAYMENT</button>
+                <button class="btn bad" type="button" onclick="v7GVerifyPayment('${safeText(x.paymentCode)}',false)">REJECT</button>
+               </div>`
+            : ''
+          }
+        </div>`).join('')||'<div class="card">Belum ada payment.</div>'}
+    </div>`;
+}
+
+async function v7GLoadProofs(paymentId){
+  const x=v7GPaymentQueue.find(p=>String(p.paymentId)===String(paymentId));
+  const host=document.getElementById('v7GProof_'+paymentId);if(!host||!x)return;
+  if(!(x.proofs||[]).length){
+    host.innerHTML='<div class="notice">Tidak ada bukti upload. Untuk CASH hal ini normal.</div>';
+    return;
+  }
+  host.innerHTML='<div class="muted">Memuat bukti...</div>';
+  const html=[];
+  for(const proof of x.proofs){
+    try{
+      const url=await v7GProofUrl(proof.storagePath);
+      html.push(`<div style="margin-top:8px"><img class="v7g-proof" src="${url}" alt="${safeText(proof.originalName||'Bukti pembayaran')}" onclick="v4OpenViewer(this.src,'Bukti pembayaran')"><div class="muted">${safeText(proof.originalName||'')}</div></div>`);
+    }catch(e){console.warn(e);}
+  }
+  host.innerHTML=html.join('')||'<div class="notice">Bukti gagal dimuat.</div>';
+}
+
+async function v7GVerifyPayment(code,approve){
+  let note=null;
+  if(!approve){
+    note=prompt('Alasan penolakan bukti pembayaran:','Bukti tidak dapat diverifikasi');
+    if(note===null)return;
+  }else if(!confirm('Approve payment '+code+'?'))return;
+
+  try{
+    const {data,error}=await v7Sb.rpc('staff_verify_payment',{
+      p_payment_code:code,
+      p_approve:!!approve,
+      p_note:note
+    });
+    if(error)throw error;
+    toast(approve?'Payment terverifikasi ✓':'Payment ditolak');
+    await v7GLoadAdvisorFinance();
+    await v7ELoadAdvisor({silent:true});
+  }catch(err){v7FError(err,'Verifikasi payment gagal');}
+}
+
+function v7GRenderAdvisorRelease(){
+  const p=document.getElementById('p-release');if(!p)return;
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Final Handover · Supabase</div><h2>Vehicle Release</h2></div>
+      <button class="btn alt" type="button" onclick="v7GLoadAdvisorFinance()">↻ REFRESH</button>
+    </div>
+    ${v7GReleaseQueue.map(x=>{
+      const gate=v7FUpper(x.qcStatus)==='PASSED' && v7FUpper(x.workOrderStatus)==='READY_FOR_PICKUP' && v7FUpper(x.invoiceStatus)==='PAID';
+      const released=v7FUpper(x.releaseStatus)==='RELEASED'||v7FUpper(x.workOrderStatus)==='CLOSED';
+      return `<div class="v7g-release-card">
+        <div class="line"><span><b>${safeText(x.workOrderCode)}</b><br><small>${safeText(x.customer)} · ${safeText(x.vehicle)} · ${safeText(x.plate)}</small></span>${wfPill(released?'RELEASED':gate?'READY':'BLOCKED')}</div>
+        <div class="line"><span>Final QC</span><b>${safeText(x.qcStatus||'-')}</b></div>
+        <div class="line"><span>Invoice</span><b>${safeText(x.invoiceStatus||'-')} · ${rup(Number(x.invoiceOutstanding||0))} outstanding</b></div>
+        ${released
+          ? `<div class="notice"><b>Released:</b> ${safeText(x.receiver||'-')} · ${x.releasedAt?safeText(new Date(x.releasedAt).toLocaleString('id-ID')):'-'}</div>`
+          : gate
+            ? `<div class="form" style="margin-top:10px"><div class="field"><label>Nama penerima</label><input id="v7GReceiver_${safeText(x.workOrderId)}" placeholder="Nama penerima"></div><div class="field"><label>Catatan</label><input id="v7GReleaseNote_${safeText(x.workOrderId)}" placeholder="Contoh: diterima pemilik langsung"></div></div><div class="actions"><button class="btn" type="button" onclick="v7GReleaseVehicle('${safeText(x.workOrderCode)}','${safeText(x.workOrderId)}')">RELEASE VEHICLE & CLOSE WO</button></div>`
+            : '<div class="notice">Release diblokir sampai Final QC PASSED dan Invoice PAID.</div>'
+        }
+      </div>`;
+    }).join('')||'<div class="card">Belum ada kendaraan READY FOR PICKUP.</div>'}`;
+}
+
+async function v7GReleaseVehicle(code,id){
+  const receiver=document.getElementById('v7GReceiver_'+id)?.value.trim()||'';
+  const note=document.getElementById('v7GReleaseNote_'+id)?.value.trim()||null;
+  if(receiver.length<2){toast('Nama penerima wajib diisi');return;}
+  if(!confirm('Serahkan kendaraan '+code+' ke '+receiver+' dan CLOSE WO?'))return;
+  try{
+    const {data,error}=await v7Sb.rpc('advisor_release_vehicle',{
+      p_work_order_code:code,
+      p_receiver_name:receiver,
+      p_note:note
+    });
+    if(error)throw error;
+    toast('Vehicle released · WO CLOSED ✓');
+    await v7GLoadAdvisorFinance();
+    await v7ELoadAdvisor({silent:true});
+  }catch(err){v7FError(err,'Vehicle Release gagal');}
+}
+
+/* Override advisor render to keep payment/release remote. */
+const v7GAdvisorRenderBase=v7ERenderAdvisorRemote;
+v7ERenderAdvisorRemote=function(){
+  v7GAdvisorRenderBase();
+  if(v7ERole()==='advisor'){
+    v7GRenderAdvisorPayments();
+    v7GRenderAdvisorRelease();
+  }
+};
+
+/* -------------------- customer completed + service record -------------------- */
+async function v7GOpenServiceRecord(){
+  try{
+    const s=await v7GGetCustomerPaymentState();
+    const rec=s?.serviceRecord;
+    if(!rec){toast('Service Record belum tersedia. Vehicle Release belum selesai.');return;}
+    const page=document.getElementById('record');
+    if(page){
+      page.innerHTML=`
+        <div class="head"><div><div class="k">Digital Service Record · Supabase</div><h2>${safeText(s.workOrder?.code||'-')}</h2></div><span class="pill">CLOSED</span></div>
+        <div class="card">
+          <div class="line"><span>Tanggal Service</span><b>${safeText(v7EDate(rec.date))}</b></div>
+          <div class="line"><span>Odometer</span><b>${Number(rec.odometer||0).toLocaleString('id-ID')} km</b></div>
+          <h3 style="margin-top:14px">Pekerjaan</h3>
+          ${(rec.items||[]).map(i=>`<div class="line"><span>${safeText(i.name)} ×${Number(i.qty||1)}</span><b>${rup(Number(i.amount||0))}</b></div>`).join('')}
+          <div class="notice" style="margin-top:12px"><b>Ringkasan:</b> ${safeText(rec.summary||'-')}<br><b>Rekomendasi:</b> ${safeText(rec.recommendation||'-')}</div>
+          <div class="actions"><button class="btn" type="button" onclick="go('booking')">BOOKING SERVIS LAGI</button><button class="btn alt" type="button" onclick="go('tracking');track()">← TRACKING</button></div>
+        </div>`;
+    }
+    go('record');
+  }catch(err){v7FError(err,'Gagal memuat Service Record');}
+}
+
+const v7GReadyBase=v7COpenReadyStatus;
+v7COpenReadyStatus=async function(){
+  try{
+    const s=await v7GGetCustomerPaymentState();
+    if(s?.serviceRecord)return v7GOpenServiceRecord();
+    return v7GOpenPayment();
+  }catch(_){
+    return v7GReadyBase();
+  }
+};
+
+/* Existing old payment functions must route to Supabase for remote booking. */
+chooseCustomerPay=function(method){
+  const map={cash:'CASH',transfer:'TRANSFER',static_qris:'STATIC_QRIS',dynamic_qris:'DYNAMIC_QRIS'};
+  if(map[method]==='DYNAMIC_QRIS'){
+    toast('Dynamic QRIS gateway belum dipasang pada V1.');
+    return;
+  }
+  v7GChooseCustomerMethod(map[method]||method);
+};
+submitPaymentProof=v7GSubmitCustomerPayment;
+simulateDynamicPaid=function(){toast('Dynamic QRIS gateway/webhook belum dipasang.');};
+
+/* -------------------- realtime extension -------------------- */
+const v7GRealtimeBase=v7RtStartStaffRealtime;
+v7RtStartStaffRealtime=function(){
+  v7RtStopStaffRealtime();
+  if(!v7Sb||!v7EIsRemoteStaff())return;
+  const tables=[
+    'bookings','work_orders','diagnoses','findings','estimates','estimate_items',
+    'part_requests','parts','invoices','payments','payment_proofs','qc_inspections',
+    'vehicle_releases','service_records','service_record_items',
+    'customer_notifications','staff_notifications'
+  ];
+  let ch=v7Sb.channel('vw-workshop-live-g-'+String(v7EStaff()?.id||'staff'));
+  tables.forEach(table=>{
+    ch=ch.on('postgres_changes',{event:'*',schema:'public',table},
+      payload=>v7RtScheduleRefresh(table+':'+payload.eventType));
+  });
+  v7RtChannel=ch.subscribe(status=>{
+    if(status==='SUBSCRIBED')v7RtBadge('','● STAFF LIVE');
+    else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')v7RtBadge('warn','LIVE FALLBACK');
+  });
+};
+
+/* Extend live refresh to payment/release panels. */
+const v7GRefreshStaffBase=v7RtRefreshStaff;
+v7RtRefreshStaff=async function(reason='change'){
+  await v7GRefreshStaffBase(reason);
+  if(['advisor','owner'].includes(v7ERole())){
+    await v7GLoadAdvisorFinance({silent:true});
+  }
+};
+
+/* Restore/init */
+setTimeout(()=>{
+  if(v7ERole()==='advisor')v7GLoadAdvisorFinance({silent:true});
+  if(v7ERole()==='mechanic'&&v7EMechanicSnapshot)v7GRenderFinalQc(v7EMechanicSnapshot);
+},1500);
+
+window.vwFinalFlowInfo=function(){
+  const result={
+    stage:'007G',
+    role:v7ERole(),
+    selectedWO:v7EMechanicSnapshot?.workOrder?.code||v7EAdvisorSnapshot?.workOrder?.code||null,
+    qcStatus:v7EMechanicSnapshot?.workOrder?.qcStatus||null,
+    customerInvoice:v7GCustomerPaymentState?.invoice?.code||null,
+    paymentQueue:v7GPaymentQueue.length,
+    releaseQueue:v7GReleaseQueue.length
+  };
+  console.table(result);
+  return result;
+};
+</script>
+
 </body>
 
 </html>
