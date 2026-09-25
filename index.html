@@ -10999,6 +10999,296 @@ window.vwOwnerIntegrationInfo=function(){
 };
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007H_RECEIVE_GOODS_FIX]
+     Reliable Goods Receiving UI + scroll/focus + validation
+     ====================================================================== -->
+<style>
+  #v7HReceiveForm{
+    border:2px solid currentColor;
+    scroll-margin-top:90px;
+  }
+  #v7HReceiveForm .v7h-receive-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 120px;
+    gap:12px;
+    align-items:center;
+    padding:10px 0;
+    border-bottom:1px solid var(--l);
+  }
+  #v7HReceiveForm .v7h-receive-row:last-child{border-bottom:0}
+  #v7HReceiveForm input[type="number"]{width:100%}
+  @media(max-width:560px){
+    #v7HReceiveForm .v7h-receive-row{grid-template-columns:1fr}
+  }
+</style>
+<script>
+let v7HReceiveBusy=false;
+
+function v7HCloseReceiveForm(){
+  v7HReceivePO=null;
+  const h=document.getElementById('v7HInventoryForm');
+  if(h)h.innerHTML='';
+  v7HClearDirty();
+}
+
+v7HOpenReceivePo=function(id){
+  const po=(v7HMaster?.purchaseOrders||[]).find(x=>String(x.id)===String(id));
+
+  if(!po){
+    toast('Purchase Order tidak ditemukan. Tekan REFRESH lalu coba lagi.');
+    console.warn('[007H RECEIVE FIX] PO not found',id);
+    return;
+  }
+
+  if(!['ORDERED','PARTIAL'].includes(v7HUpper(po.status))){
+    toast('PO harus berstatus ORDERED atau PARTIAL sebelum receiving.');
+    return;
+  }
+
+  const items=(po.items||[]).filter(i=>v7HNum(i.qty)-v7HNum(i.receivedQty)>0);
+  if(!items.length){
+    toast('Semua item PO ini sudah diterima.');
+    return;
+  }
+
+  v7HReceivePO=po;
+
+  const host=document.getElementById('v7HInventoryForm');
+  if(!host){
+    toast('Area Goods Receiving tidak ditemukan.');
+    return;
+  }
+
+  host.innerHTML=`
+    <div id="v7HReceiveForm" class="v7h-formbox">
+      <div class="head">
+        <div>
+          <div class="k">Goods Receiving · Supabase</div>
+          <h3>${safeText(po.code)}</h3>
+        </div>
+        ${wfPill(v7HUpper(po.status))}
+      </div>
+
+      <div class="notice">
+        Supplier: <b>${safeText(po.supplier||'-')}</b><br>
+        Isi hanya jumlah barang yang <b>benar-benar diterima saat ini</b>.
+      </div>
+
+      <div style="margin-top:10px">
+        ${items.map(i=>{
+          const outstanding=Math.max(0,v7HNum(i.qty)-v7HNum(i.receivedQty));
+          return `
+            <div class="v7h-receive-row">
+              <div>
+                <b>${safeText(i.part)}</b><br>
+                <small>
+                  ${safeText(i.sku)}
+                  · Ordered ${v7HNum(i.qty)}
+                  · Sudah diterima ${v7HNum(i.receivedQty)}
+                  · Outstanding <b>${outstanding}</b>
+                </small>
+              </div>
+              <div class="field" style="margin:0">
+                <label>Receive sekarang</label>
+                <input
+                  class="v7HRecvInput"
+                  id="v7HRecv_${safeText(i.id)}"
+                  data-item-id="${safeText(i.id)}"
+                  data-outstanding="${outstanding}"
+                  type="number"
+                  min="0"
+                  max="${outstanding}"
+                  step="1"
+                  value="0"
+                  inputmode="numeric"
+                  oninput="v7HMarkDirty()">
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+
+      <div id="v7HReceiveError" class="notice" style="display:none;margin-top:10px"></div>
+
+      <div class="actions">
+        <button id="v7HPostReceivingBtn" class="btn" type="button" onclick="v7HReceivePo()">
+          POST RECEIVING
+        </button>
+        <button class="btn alt" type="button" onclick="v7HCloseReceiveForm()">
+          BATAL
+        </button>
+      </div>
+
+      <div class="v7h-mini">
+        Setelah POST RECEIVING berhasil: stock On Hand bertambah, Stock Movement tercatat,
+        dan PO berubah menjadi PARTIAL atau RECEIVED.
+      </div>
+    </div>`;
+
+  // Opening receiving is treated as an active operational form so Realtime
+  // does not replace Inventory Admin while the user is entering quantities.
+  v7HFormDirty=true;
+
+  requestAnimationFrame(()=>{
+    const form=document.getElementById('v7HReceiveForm');
+    form?.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(()=>{
+      const first=document.querySelector('#v7HReceiveForm .v7HRecvInput');
+      first?.focus();
+      first?.select();
+    },350);
+  });
+
+  toast('Goods Receiving '+po.code+' dibuka');
+};
+
+v7HReceivePo=async function(){
+  if(v7HReceiveBusy)return;
+
+  const po=v7HReceivePO;
+  const errBox=document.getElementById('v7HReceiveError');
+
+  const fail=(msg)=>{
+    if(errBox){
+      errBox.style.display='block';
+      errBox.innerHTML='<b>Belum bisa diposting:</b> '+safeText(msg);
+    }
+    toast(msg);
+  };
+
+  if(!po){
+    fail('Purchase Order belum dipilih.');
+    return;
+  }
+
+  const receipts=[];
+  for(const item of (po.items||[])){
+    const el=document.getElementById('v7HRecv_'+item.id);
+    if(!el)continue;
+
+    const qty=Math.trunc(v7HNum(el.value));
+    const outstanding=Math.max(0,v7HNum(item.qty)-v7HNum(item.receivedQty));
+
+    if(qty<0){
+      fail('Qty receiving tidak boleh negatif.');
+      el.focus();
+      return;
+    }
+    if(qty>outstanding){
+      fail('Qty '+safeText(item.part)+' melebihi outstanding '+outstanding+'.');
+      el.focus();
+      return;
+    }
+    if(qty>0)receipts.push({itemId:item.id,qty});
+  }
+
+  if(!receipts.length){
+    fail('Isi minimal 1 qty barang yang diterima. Qty tidak boleh semuanya 0.');
+    document.querySelector('#v7HReceiveForm .v7HRecvInput')?.focus();
+    return;
+  }
+
+  if(errBox)errBox.style.display='none';
+
+  const totalQty=receipts.reduce((s,x)=>s+x.qty,0);
+  if(!confirm('Post receiving '+totalQty+' unit untuk '+po.code+'?'))return;
+
+  const btn=document.getElementById('v7HPostReceivingBtn');
+  v7HReceiveBusy=true;
+  if(btn){
+    btn.disabled=true;
+    btn.dataset.oldText=btn.textContent;
+    btn.textContent='POSTING...';
+  }
+
+  try{
+    const {data,error}=await v7Sb.rpc('inventory_receive_purchase_order',{
+      p_po_code:po.code,
+      p_receipts:receipts
+    });
+    if(error)throw error;
+
+    v7HReceivePO=null;
+    v7HFormDirty=false;
+
+    toast(
+      'Receiving berhasil · '+
+      Number(data?.receivedQty||totalQty)+' unit · '+
+      String(data?.status||'').replaceAll('_',' ')
+    );
+
+    // Reload authoritative stock + PO state after transaction.
+    await Promise.all([
+      v7HLoadMaster({silent:false,render:true}),
+      v7HLoadDashboard({silent:true})
+    ]);
+
+    // Keep Owner on Inventory Admin and show updated PO/stock.
+    otabId('inventoryadmin');
+
+    requestAnimationFrame(()=>{
+      const host=document.getElementById('o-inventoryadmin');
+      host?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+
+    try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){
+    // Keep the form and entered values when backend rejects receiving.
+    v7HFormDirty=true;
+    const msg=String(err?.message||err?.details||'Goods Receiving gagal');
+    if(errBox){
+      errBox.style.display='block';
+      errBox.innerHTML='<b>Supabase menolak receiving:</b> '+safeText(msg);
+    }
+    v7FError(err,'Goods Receiving gagal');
+  }finally{
+    v7HReceiveBusy=false;
+    if(btn && document.body.contains(btn)){
+      btn.disabled=false;
+      btn.textContent=btn.dataset.oldText||'POST RECEIVING';
+    }
+  }
+};
+
+/* Extra safety:
+   Dynamic owner PO buttons are always normalized as real click buttons. */
+function v7HRepairReceiveButtons(){
+  document.querySelectorAll('#o-inventoryadmin button').forEach(b=>{
+    if((b.textContent||'').trim()==='RECEIVE GOODS'){
+      b.type='button';
+      b.disabled=false;
+      b.style.pointerEvents='auto';
+      b.title='Buka form Goods Receiving';
+    }
+  });
+}
+
+const v7HRenderInventoryReceiveBase=v7HRenderInventoryAdmin;
+v7HRenderInventoryAdmin=function(){
+  v7HRenderInventoryReceiveBase();
+  requestAnimationFrame(v7HRepairReceiveButtons);
+};
+
+setTimeout(v7HRepairReceiveButtons,1500);
+
+window.vwReceiveGoodsInfo=function(){
+  const po=v7HReceivePO;
+  const result={
+    stage:'007H-RECEIVE-GOODS-FIX',
+    selectedPO:po?.code||null,
+    selectedStatus:po?.status||null,
+    formOpen:!!document.getElementById('v7HReceiveForm'),
+    dirty:v7HFormDirty,
+    busy:v7HReceiveBusy,
+    receiveButtons:[...document.querySelectorAll('#o-inventoryadmin button')]
+      .filter(b=>(b.textContent||'').trim()==='RECEIVE GOODS').length
+  };
+  console.table(result);
+  return result;
+};
+</script>
+
 </body>
 
 </html>
