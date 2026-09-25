@@ -10280,6 +10280,725 @@ setTimeout(()=>{
 },1200);
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007H]
+     Owner/Admin + Reports + Master Data + Inventory Admin + Vespa Second
+     ====================================================================== -->
+<style>
+  .v7h-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .v7h-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .v7h-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .v7h-formbox{border:1px solid var(--l);border-radius:15px;padding:13px;background:#f8faf9;margin:12px 0}
+  .v7h-hidden{display:none!important}
+  .v7h-auth{font-size:10px;font-weight:850;padding:4px 7px;border-radius:999px;background:#e8f6ee;color:#17653f}
+  .v7h-auth.off{background:#fff8e8;color:#8b6200}
+  .v7h-mini{font-size:11px;color:var(--m)}
+  .v7h-bars{display:grid;gap:7px;margin-top:12px}
+  .v7h-bar{display:grid;grid-template-columns:72px minmax(80px,1fr) 110px;gap:8px;align-items:center;font-size:11px}
+  .v7h-bar-track{height:9px;background:#edf0ee;border-radius:999px;overflow:hidden}
+  .v7h-bar-fill{height:100%;background:currentColor;border-radius:999px;min-width:2px}
+  .v7h-section{margin-top:14px}
+  .v7h-lines{display:grid;gap:8px}
+  .v7h-line-editor{display:grid;grid-template-columns:110px minmax(180px,1fr) 85px 120px 40px;gap:7px;align-items:end;padding:9px;border:1px solid var(--l);border-radius:12px;background:#fff}
+  .v7h-dirty{color:#8b6200;font-weight:850;font-size:11px}
+  .v7h-po-card{border:1px solid var(--l);border-radius:14px;padding:12px;margin-top:10px;background:#fff}
+  .v7h-photo{width:92px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--l)}
+  .v7h-owner-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#e8f6ee;color:#17653f;font-size:10px;font-weight:900}
+  @media(max-width:760px){
+    .v7h-grid2,.v7h-grid3{grid-template-columns:1fr}
+    .v7h-line-editor{grid-template-columns:1fr 1fr}
+    .v7h-line-editor .v7h-wide{grid-column:1/-1}
+    .v7h-bar{grid-template-columns:62px minmax(60px,1fr) 92px}
+  }
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007H]
+   Owner is now fully DB-backed.
+   Legacy owner/localStorage renderers are bypassed while Supabase owner is logged in.
+   ====================================================================== */
+
+let v7HDashboard=null;
+let v7HMaster=null;
+let v7HReportDays=30;
+let v7HLoading=false;
+let v7HFormDirty=false;
+
+let v7HPackageLines=[];
+let v7HPoLines=[];
+let v7HOpnameLines=[];
+let v7HReceivePO=null;
+let v7HUnitFiles=[];
+let v7HPartFile=null;
+let v7HLastPublicLead=null;
+let v7HLastCatalogRefresh=0;
+
+function v7HOwner(){ return v7ERole()==='owner' && v7EIsRemoteStaff(); }
+function v7HUpper(v){ return String(v||'').trim().toUpperCase(); }
+function v7HNum(v){ const n=Number(v); return Number.isFinite(n)?n:0; }
+function v7HJson(v,f=[]){ try{return typeof v==='string'?JSON.parse(v):v??f}catch(_){return f} }
+function v7HMarkDirty(){ v7HFormDirty=true; const x=document.getElementById('v7HDirtyState'); if(x){x.className='v7h-dirty';x.textContent='Ada perubahan yang belum disimpan.';} }
+function v7HClearDirty(){ v7HFormDirty=false; const x=document.getElementById('v7HDirtyState'); if(x){x.className='v7h-mini';x.textContent='Data tersimpan di Supabase.';} }
+
+function v7HEnsureOwnerPanels(){
+  const side=document.querySelector('#owner .side');
+  const main=document.querySelector('#owner .staffgrid>div');
+  if(!side||!main)return;
+
+  if(!document.getElementById('v7HInventoryNav')){
+    const b=document.createElement('button');
+    b.id='v7HInventoryNav';
+    b.setAttribute('onclick',"otab('inventoryadmin',this)");
+    b.textContent='Inventory Admin';
+    const settings=[...side.querySelectorAll('button')].find(x=>x.textContent.includes('Workshop Settings'));
+    side.insertBefore(b,settings||null);
+  }
+
+  if(!document.getElementById('o-inventoryadmin')){
+    const p=document.createElement('div');
+    p.id='o-inventoryadmin';
+    p.className='panel';
+    main.appendChild(p);
+  }
+}
+
+async function v7HLoadDashboard({silent=false,days=v7HReportDays}={}){
+  if(!v7HOwner())return;
+  try{
+    const {data,error}=await v7Sb.rpc('owner_get_dashboard',{p_days:Number(days)||30});
+    if(error)throw error;
+    v7HDashboard=data;
+    v7HReportDays=Number(data?.periodDays||days||30);
+    v7HRenderDashboard();
+    v7HRenderReports();
+    v7HRenderRoles();
+    v7HRenderSettings();
+  }catch(err){
+    if(!silent)v7FError(err,'Gagal memuat Owner Dashboard');
+    else console.warn('[007H] dashboard',err);
+  }
+}
+
+async function v7HLoadMaster({silent=false,render=true}={}){
+  if(!v7HOwner())return;
+  try{
+    const {data,error}=await v7Sb.rpc('owner_get_master_data');
+    if(error)throw error;
+    v7HMaster=data||{};
+    if(render){
+      v7HRenderStaff();
+      v7HRenderCatalog();
+      v7HRenderInventoryAdmin();
+      v7HRenderUsedVespaOwner();
+      v7HRenderAudit();
+    }
+  }catch(err){
+    if(!silent)v7FError(err,'Gagal memuat Master Data Owner');
+    else console.warn('[007H] master',err);
+  }
+}
+
+async function v7HLoadOwnerAll({silent=false,force=false}={}){
+  if(!v7HOwner()||v7HLoading)return;
+  v7HLoading=true;
+  try{
+    await Promise.all([
+      v7HLoadDashboard({silent}),
+      v7HLoadMaster({silent,render:force||!v7HFormDirty})
+    ]);
+    if(!v7HFormDirty)v7HClearDirty();
+  }finally{v7HLoading=false;}
+}
+
+async function v7HManualRefresh(){
+  if(v7HFormDirty && !confirm('Refresh akan membuang input Owner yang belum disimpan. Lanjutkan?'))return;
+  v7HFormDirty=false;
+  await v7HLoadOwnerAll({force:true});
+  toast('Owner Dashboard diperbarui');
+}
+
+/* ---------------- dashboard / reports ---------------- */
+function v7HRenderDashboard(){
+  const p=document.getElementById('o-dash'); if(!p||!v7HDashboard)return;
+  const m=v7HDashboard.metrics||{},o=v7HDashboard.operation||{};
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Owner / Admin · Supabase</div><h2>Business Dashboard</h2></div>
+      <div class="v7h-toolbar"><span class="v7h-owner-badge">● LIVE OWNER</span><button class="btn alt" type="button" onclick="v7HManualRefresh()">↻ REFRESH</button><button class="btn alt" type="button" onclick="staffLogout()">Logout</button></div>
+    </div>
+    <div id="v7HDirtyState" class="${v7HFormDirty?'v7h-dirty':'v7h-mini'}">${v7HFormDirty?'Ada perubahan yang belum disimpan.':'Data tersimpan di Supabase.'}</div>
+    <div class="metrics" style="margin-top:10px">
+      <div class="metric"><span class="muted">Cash Collected Today</span><strong style="font-size:19px">${rup(v7HNum(m.cashCollectedToday))}</strong></div>
+      <div class="metric"><span class="muted">WO Aktif</span><strong>${v7HNum(m.woActive)}</strong></div>
+      <div class="metric"><span class="muted">Closed Today</span><strong>${v7HNum(m.woClosedToday)}</strong></div>
+      <div class="metric"><span class="muted">Outstanding</span><strong style="font-size:19px">${rup(v7HNum(m.outstanding))}</strong></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="k">Operation</div><h3>Workshop Live</h3>
+        <div class="line"><span>Waiting Diagnosis</span><b>${v7HNum(o.waitingDiagnosis)}</b></div>
+        <div class="line"><span>Diagnosis</span><b>${v7HNum(o.diagnosis)}</b></div>
+        <div class="line"><span>Waiting Approval</span><b>${v7HNum(o.waitingApproval)}</b></div>
+        <div class="line"><span>In Progress / Rework</span><b>${v7HNum(o.inProgress)}</b></div>
+        <div class="line"><span>Waiting Final QC</span><b>${v7HNum(o.waitingFinalQc)}</b></div>
+        <div class="line"><span>Ready for Pickup</span><b>${v7HNum(o.ready)}</b></div>
+      </div>
+      <div class="card">
+        <div class="k">Inventory</div><h3>Stock Alert</h3>
+        <div class="line"><span>Low Stock</span><b>${v7HNum(m.lowStock)}</b></div>
+        <div class="line"><span>Out of Stock</span><b>${v7HNum(m.outOfStock)}</b></div>
+        <div class="line"><span>Open PO</span><b>${v7HNum(m.openPO)}</b></div>
+        <div class="actions"><button class="btn alt" type="button" onclick="otabId('inventoryadmin')">INVENTORY ADMIN</button></div>
+      </div>
+      <div class="card">
+        <div class="k">Staff</div><h3>Team Status</h3>
+        <div class="line"><span>Active</span><b>${v7HNum(m.activeStaff)}</b></div>
+        <div class="line"><span>Inactive</span><b>${v7HNum(m.inactiveStaff)}</b></div>
+        <div class="line"><span>Mechanic Busy</span><b>${v7HNum(m.mechanicBusy)}</b></div>
+        <div class="actions"><button class="btn alt" type="button" onclick="otabId('staff')">STAFF MANAGEMENT</button></div>
+      </div>
+    </div>
+    <div class="card v7h-section">
+      <div class="k">Mechanic Workload</div><h3>Active Jobs</h3>
+      ${(v7HDashboard.mechanicWorkload||[]).map(x=>`<div class="line"><span>${safeText(x.name)}<br><small>${safeText(x.code||'')} · ${safeText(x.status)}</small></span><b>${v7HNum(x.activeJobs)} active · ${v7HNum(x.closedPeriod)} closed</b></div>`).join('')||'<div class="muted">Belum ada mechanic.</div>'}
+    </div>`;
+}
+
+async function v7HChangeReportDays(v){
+  v7HReportDays=Number(v)||30;
+  await v7HLoadDashboard({days:v7HReportDays});
+}
+function v7HRenderReports(){
+  const p=document.getElementById('o-reports'); if(!p||!v7HDashboard)return;
+  const m=v7HDashboard.metrics||{},b=v7HDashboard.billedBreakdown||{},daily=v7HDashboard.daily||[];
+  const max=Math.max(1,...daily.map(x=>v7HNum(x.cashCollected)+v7HNum(x.posSales)));
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Financial & Operational · Supabase</div><h2>Reports</h2></div>
+      <div class="v7h-toolbar"><select style="width:auto" onchange="v7HChangeReportDays(this.value)">
+        ${[1,7,30,90].map(d=>`<option value="${d}" ${d===v7HReportDays?'selected':''}>${d===1?'Hari Ini':d+' Hari'}</option>`).join('')}
+      </select><button class="btn alt" type="button" onclick="v7HExportReportCsv()">EXPORT CSV</button></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span class="muted">Cash Collected</span><strong style="font-size:19px">${rup(v7HNum(m.cashCollectedPeriod)+v7HNum(m.posSalesPeriod))}</strong></div>
+      <div class="metric"><span class="muted">Billed Invoice</span><strong style="font-size:19px">${rup(v7HNum(m.billedPeriod))}</strong></div>
+      <div class="metric"><span class="muted">WO Closed</span><strong>${v7HNum(m.woClosedPeriod)}</strong></div>
+      <div class="metric"><span class="muted">Average Invoice</span><strong style="font-size:19px">${rup(v7HNum(m.avgInvoicePeriod))}</strong></div>
+    </div>
+    <div class="v7h-grid2">
+      <div class="card">
+        <h3>Billed Breakdown</h3>
+        <div class="line"><span>Service</span><b>${rup(v7HNum(b.SERVICE))}</b></div>
+        <div class="line"><span>Labor</span><b>${rup(v7HNum(b.LABOR))}</b></div>
+        <div class="line"><span>Parts</span><b>${rup(v7HNum(b.PART))}</b></div>
+        <div class="line"><span>POS Sales</span><b>${rup(v7HNum(m.posSalesPeriod))}</b></div>
+      </div>
+      <div class="card">
+        <h3>Top Parts</h3>
+        ${(v7HDashboard.topParts||[]).slice(0,8).map(x=>`<div class="line"><span>${safeText(x.name)}<br><small>${safeText(x.code)}</small></span><b>${v7HNum(x.qty)} pcs · ${rup(v7HNum(x.revenue))}</b></div>`).join('')||'<div class="muted">Belum ada data part pada periode ini.</div>'}
+      </div>
+    </div>
+    <div class="card v7h-section">
+      <h3>Daily Collection</h3>
+      <div class="v7h-bars">${daily.slice(-31).map(x=>{
+        const val=v7HNum(x.cashCollected)+v7HNum(x.posSales),pct=Math.max(2,Math.round(val/max*100));
+        return `<div class="v7h-bar"><span>${safeText(String(x.date).slice(5))}</span><div class="v7h-bar-track"><div class="v7h-bar-fill" style="width:${pct}%"></div></div><b>${rup(val)}</b></div>`;
+      }).join('')}</div>
+    </div>
+    <div class="card tablewrap v7h-section">
+      <table class="tbl"><tr><th>Tanggal</th><th>WO Created</th><th>WO Closed</th><th>Payment</th><th>POS</th></tr>
+      ${daily.slice().reverse().map(x=>`<tr><td>${safeText(x.date)}</td><td>${v7HNum(x.woCreated)}</td><td>${v7HNum(x.woClosed)}</td><td>${rup(v7HNum(x.cashCollected))}</td><td>${rup(v7HNum(x.posSales))}</td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+function v7HExportReportCsv(){
+  const rows=[['date','wo_created','wo_closed','payment','pos']];
+  (v7HDashboard?.daily||[]).forEach(x=>rows.push([x.date,x.woCreated,x.woClosed,x.cashCollected,x.posSales]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='vespa-wahyu-report-'+v7HReportDays+'d.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* ---------------- staff ---------------- */
+function v7HRenderStaff(){
+  const p=document.getElementById('o-staff'); if(!p||!v7HMaster)return;
+  p.innerHTML=`
+    <div class="head"><div><div class="k">Supabase Staff Profiles</div><h2>Staff Management</h2></div><button class="btn" type="button" onclick="v7HOpenStaffForm()">+ STAFF PROFILE</button></div>
+    <div id="v7HStaffForm"></div>
+    <div class="card tablewrap"><table class="tbl"><tr><th>Code</th><th>Staff</th><th>Role</th><th>Status</th><th>Auth</th><th>Jobs</th><th>Aksi</th></tr>
+      ${(v7HMaster.staff||[]).map(s=>`<tr><td><b>${safeText(s.code||'-')}</b></td><td>${safeText(s.name)}<br><small>${safeText(s.phone||'')}</small></td><td>${safeText(s.role)}</td><td>${wfPill(v7HUpper(s.status))}</td><td><span class="v7h-auth ${s.authLinked?'':'off'}">${s.authLinked?'LINKED':'NO AUTH'}</span></td><td>${v7HNum(s.activeJobs)}</td><td><button class="btn alt" type="button" onclick="v7HOpenStaffForm('${safeText(s.id)}')">EDIT</button></td></tr>`).join('')}
+    </table></div>
+    <div class="notice" style="margin-top:12px"><b>Security:</b> Owner dapat membuat/edit Staff Profile di sini, tetapi pembuatan user Supabase Auth/password tidak dilakukan dari browser. Staff dengan <b>NO AUTH</b> belum dapat login sampai Auth user dikaitkan.</div>`;
+}
+function v7HOpenStaffForm(id=''){
+  const s=(v7HMaster?.staff||[]).find(x=>x.id===id)||{id:'',code:'',name:'',role:'mechanic',status:'ACTIVE',phone:'',authLinked:false};
+  const h=document.getElementById('v7HStaffForm'); if(!h)return;
+  h.innerHTML=`<div class="v7h-formbox v7h-edit-form" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()">
+    <h3>${id?'Edit':'Tambah'} Staff Profile</h3>
+    <div class="form">
+      <div class="field"><label>Staff Code *</label><input id="v7HStaffCode" value="${safeText(s.code||'')}" placeholder="STF-007"></div>
+      <div class="field"><label>Nama *</label><input id="v7HStaffName" value="${safeText(s.name||'')}"></div>
+      <div class="field"><label>Role</label><select id="v7HStaffRole">${['owner','advisor','mechanic','inventory'].map(r=>`<option value="${r}" ${s.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div class="field"><label>Status</label><select id="v7HStaffStatus"><option ${s.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${s.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div>
+      <div class="field"><label>Phone</label><input id="v7HStaffPhone" value="${safeText(s.phone||'')}"></div>
+      <div class="field"><label>Supabase Auth</label><input disabled value="${s.authLinked?'Linked':'Belum terhubung'}"></div>
+    </div>
+    <div class="actions"><button class="btn" type="button" onclick="v7HSaveStaff('${safeText(id)}')">SIMPAN</button><button class="btn alt" type="button" onclick="document.getElementById('v7HStaffForm').innerHTML=''">BATAL</button></div>
+  </div>`;
+}
+async function v7HSaveStaff(id){
+  try{
+    const {error}=await v7Sb.rpc('owner_upsert_staff',{
+      p_staff_id:id||null,p_staff_code:document.getElementById('v7HStaffCode').value,
+      p_name:document.getElementById('v7HStaffName').value,p_role:document.getElementById('v7HStaffRole').value,
+      p_status:document.getElementById('v7HStaffStatus').value,p_phone:document.getElementById('v7HStaffPhone').value
+    });
+    if(error)throw error; v7HClearDirty(); toast('Staff profile tersimpan'); await v7HLoadMaster({render:true}); await v7HLoadDashboard({silent:true});
+  }catch(err){v7FError(err,'Simpan staff gagal');}
+}
+
+/* ---------------- role matrix ---------------- */
+function v7HRenderRoles(){
+  const p=document.getElementById('o-roles'); if(!p)return;
+  const linked=(v7HMaster?.staff||[]).filter(x=>x.authLinked).length,total=(v7HMaster?.staff||[]).length;
+  p.innerHTML=`<div class="head"><div><div class="k">RLS + RPC Security</div><h2>Role & Permission</h2></div><span class="pill">${linked}/${total} AUTH LINKED</span></div>
+    <div class="card tablewrap"><table class="tbl"><tr><th>Permission</th><th>Owner</th><th>Advisor</th><th>Mechanic</th><th>Inventory</th></tr>
+      <tr><td>Booking / WO</td><td>View</td><td>Manage</td><td>Assigned only</td><td>—</td></tr>
+      <tr><td>Diagnosis / Job</td><td>View</td><td>—</td><td>Own assignment</td><td>—</td></tr>
+      <tr><td>Stock / Part Request</td><td>Manage</td><td>—</td><td>Request</td><td>Manage</td></tr>
+      <tr><td>Payment / Release</td><td>Manage</td><td>Manage</td><td>—</td><td>—</td></tr>
+      <tr><td>Reports / Staff / Settings</td><td>Manage</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Final QC</td><td>View</td><td>—</td><td>Own job</td><td>—</td></tr>
+    </table></div>
+    <div class="notice" style="margin-top:12px">Role berasal dari <b>staff_profiles</b> dan akses database tetap dibatasi RLS/RPC. Dropdown role frontend tidak menentukan hak akses.</div>`;
+}
+
+/* ---------------- catalog ---------------- */
+function v7HRenderCatalog(){
+  const p=document.getElementById('o-catalog');if(!p||!v7HMaster)return;
+  p.innerHTML=`
+    <div class="head"><div><div class="k">Master Data · Supabase</div><h2>Service, Labor & Packages</h2></div><div class="actions"><button class="btn" type="button" onclick="v7HOpenServiceForm()">+ SERVICE/LABOR</button><button class="btn alt" type="button" onclick="v7HOpenPackageForm()">+ PACKAGE</button></div></div>
+    <div id="v7HServiceForm"></div><div id="v7HPackageForm"></div>
+    <div class="card tablewrap"><h3>Service / Labor</h3><table class="tbl"><tr><th>Code</th><th>Nama</th><th>Type</th><th>Category</th><th>Price</th><th>Status</th><th>Aksi</th></tr>
+      ${(v7HMaster.serviceItems||[]).map(x=>`<tr><td><b>${safeText(x.code)}</b></td><td>${safeText(x.name)}</td><td>${safeText(x.itemType)}</td><td>${safeText(x.category||'-')}</td><td>${rup(v7HNum(x.price))}</td><td>${wfPill(v7HUpper(x.status))}</td><td><button class="btn alt" type="button" onclick="v7HOpenServiceForm('${safeText(x.id)}')">EDIT</button></td></tr>`).join('')}
+    </table></div>
+    <div class="card tablewrap v7h-section"><h3>Service Packages</h3><table class="tbl"><tr><th>Code</th><th>Package</th><th>Price</th><th>Lines</th><th>Status</th><th>Aksi</th></tr>
+      ${(v7HMaster.packages||[]).map(x=>`<tr><td><b>${safeText(x.code)}</b></td><td>${safeText(x.name)}<br><small>${safeText(x.description||'')}</small></td><td>${rup(v7HNum(x.price))}</td><td>${(x.items||[]).length}</td><td>${wfPill(v7HUpper(x.status))}</td><td><button class="btn alt" type="button" onclick="v7HOpenPackageForm('${safeText(x.id)}')">EDIT</button></td></tr>`).join('')}
+    </table></div>`;
+}
+function v7HOpenServiceForm(id=''){
+  const x=(v7HMaster?.serviceItems||[]).find(a=>a.id===id)||{code:'',name:'',category:'General',itemType:'SERVICE',price:0,status:'ACTIVE'};
+  document.getElementById('v7HServiceForm').innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>${id?'Edit':'Tambah'} Service / Labor</h3><div class="form">
+    <div class="field"><label>Code *</label><input id="v7HSvcCode" value="${safeText(x.code)}"></div><div class="field"><label>Nama *</label><input id="v7HSvcName" value="${safeText(x.name)}"></div>
+    <div class="field"><label>Type</label><select id="v7HSvcType"><option ${x.itemType==='SERVICE'?'selected':''}>SERVICE</option><option ${x.itemType==='LABOR'?'selected':''}>LABOR</option></select></div>
+    <div class="field"><label>Category</label><input id="v7HSvcCategory" value="${safeText(x.category||'')}"></div><div class="field"><label>Price</label><input id="v7HSvcPrice" type="number" min="0" value="${v7HNum(x.price)}"></div>
+    <div class="field"><label>Status</label><select id="v7HSvcStatus"><option ${x.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${x.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div>
+    </div><div class="actions"><button class="btn" type="button" onclick="v7HSaveService('${safeText(id)}')">SIMPAN</button><button class="btn alt" type="button" onclick="document.getElementById('v7HServiceForm').innerHTML=''">BATAL</button></div></div>`;
+}
+async function v7HSaveService(id){
+  try{
+    const {error}=await v7Sb.rpc('owner_upsert_service_item',{p_item_id:id||null,p_code:document.getElementById('v7HSvcCode').value,p_name:document.getElementById('v7HSvcName').value,p_category:document.getElementById('v7HSvcCategory').value,p_item_type:document.getElementById('v7HSvcType').value,p_price:v7HNum(document.getElementById('v7HSvcPrice').value),p_status:document.getElementById('v7HSvcStatus').value});
+    if(error)throw error;v7HClearDirty();toast('Service/Labor tersimpan');await v7HLoadMaster({render:true});try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){v7FError(err,'Simpan service gagal');}
+}
+function v7HOpenPackageForm(id=''){
+  const x=(v7HMaster?.packages||[]).find(a=>a.id===id)||{code:'',name:'',description:'',price:0,includes:[],status:'ACTIVE',items:[]};
+  v7HPackageLines=(x.items||[]).map(i=>({itemType:i.itemType,refCode:i.refCode,label:i.label,qty:v7HNum(i.qty)||1,unitPrice:v7HNum(i.unitPrice)}));
+  if(!v7HPackageLines.length)v7HPackageLines=[{itemType:'SERVICE',refCode:(v7HMaster?.serviceItems||[])[0]?.code||'',label:'',qty:1,unitPrice:0}];
+  document.getElementById('v7HPackageForm').innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>${id?'Edit':'Tambah'} Package</h3><div class="form">
+    <div class="field"><label>Code *</label><input id="v7HPkgCode" value="${safeText(x.code)}"></div><div class="field"><label>Nama *</label><input id="v7HPkgName" value="${safeText(x.name)}"></div>
+    <div class="field full"><label>Description</label><textarea id="v7HPkgDesc">${safeText(x.description||'')}</textarea></div><div class="field"><label>Package Price</label><input id="v7HPkgPrice" type="number" min="0" value="${v7HNum(x.price)}"></div>
+    <div class="field"><label>Status</label><select id="v7HPkgStatus"><option ${x.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${x.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div>
+    <div class="field full"><label>Includes (1 baris = 1 poin)</label><textarea id="v7HPkgIncludes">${safeText((x.includes||[]).join('\n'))}</textarea></div>
+    </div><h3>Package Line Items</h3><div id="v7HPkgLines" class="v7h-lines"></div><div class="actions"><button class="btn alt" type="button" onclick="v7HAddPackageLine()">+ LINE</button><button class="btn" type="button" onclick="v7HSavePackage('${safeText(id)}')">SIMPAN PACKAGE</button><button class="btn alt" type="button" onclick="document.getElementById('v7HPackageForm').innerHTML=''">BATAL</button></div></div>`;
+  v7HRenderPackageLines();
+}
+function v7HRefOptions(type,selected){
+  const arr=type==='PART'?(v7HMaster?.parts||[]):(v7HMaster?.serviceItems||[]).filter(x=>type==='SERVICE'?x.itemType==='SERVICE':x.itemType==='LABOR');
+  return arr.map(x=>`<option value="${safeText(type==='PART'?x.sku:x.code)}" ${(type==='PART'?x.sku:x.code)===selected?'selected':''}>${safeText(type==='PART'?x.sku:x.code)} · ${safeText(x.name)}</option>`).join('');
+}
+function v7HRenderPackageLines(){
+  const h=document.getElementById('v7HPkgLines');if(!h)return;
+  h.innerHTML=v7HPackageLines.map((x,i)=>`<div class="v7h-line-editor">
+    <div><label>Type</label><select onchange="v7HPackageLines[${i}].itemType=this.value;v7HPackageLines[${i}].refCode='';v7HRenderPackageLines();v7HMarkDirty()">${['SERVICE','LABOR','PART'].map(t=>`<option ${x.itemType===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="v7h-wide"><label>Reference</label><select onchange="v7HPackageLines[${i}].refCode=this.value;v7HMarkDirty()">${v7HRefOptions(x.itemType,x.refCode)}</select></div>
+    <div><label>Qty</label><input type="number" min="0.01" step="0.01" value="${x.qty}" onchange="v7HPackageLines[${i}].qty=v7HNum(this.value);v7HMarkDirty()"></div>
+    <div><label>Override Price</label><input type="number" min="0" value="${x.unitPrice}" onchange="v7HPackageLines[${i}].unitPrice=v7HNum(this.value);v7HMarkDirty()"></div>
+    <button class="btn bad" type="button" onclick="v7HPackageLines.splice(${i},1);v7HRenderPackageLines();v7HMarkDirty()">×</button>
+  </div>`).join('');
+}
+function v7HAddPackageLine(){v7HPackageLines.push({itemType:'SERVICE',refCode:(v7HMaster?.serviceItems||[]).find(x=>x.itemType==='SERVICE')?.code||'',label:'',qty:1,unitPrice:0});v7HRenderPackageLines();v7HMarkDirty();}
+async function v7HSavePackage(id){
+  const lines=v7HPackageLines.filter(x=>x.refCode).map(x=>({...x,label:''}));
+  try{
+    const {error}=await v7Sb.rpc('owner_save_service_package',{p_package_id:id||null,p_code:document.getElementById('v7HPkgCode').value,p_name:document.getElementById('v7HPkgName').value,p_description:document.getElementById('v7HPkgDesc').value,p_price:v7HNum(document.getElementById('v7HPkgPrice').value),p_includes:document.getElementById('v7HPkgIncludes').value.split('\n').map(x=>x.trim()).filter(Boolean),p_status:document.getElementById('v7HPkgStatus').value,p_items:lines});
+    if(error)throw error;v7HClearDirty();toast('Package tersimpan');await v7HLoadMaster({render:true});try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){v7FError(err,'Simpan package gagal');}
+}
+
+/* ---------------- inventory admin ---------------- */
+function v7HRenderInventoryAdmin(){
+  const p=document.getElementById('o-inventoryadmin');if(!p||!v7HMaster)return;
+  const po=v7HMaster.purchaseOrders||[];
+  p.innerHTML=`
+    <div class="head"><div><div class="k">Inventory Administration · Supabase</div><h2>Parts, Supplier, PO & Opname</h2></div><button class="btn alt" type="button" onclick="v7HManualRefresh()">↻ REFRESH</button></div>
+    <div class="v7h-grid3">
+      <div class="card"><div class="k">Parts</div><h3>${(v7HMaster.parts||[]).length} SKU</h3><button class="btn alt" type="button" onclick="v7HOpenPartForm()">+ PART</button></div>
+      <div class="card"><div class="k">Suppliers</div><h3>${(v7HMaster.suppliers||[]).length} Supplier</h3><button class="btn alt" type="button" onclick="v7HOpenSupplierForm()">+ SUPPLIER</button></div>
+      <div class="card"><div class="k">Purchase Order</div><h3>${po.filter(x=>['DRAFT','ORDERED','PARTIAL'].includes(x.status)).length} Open</h3><button class="btn alt" type="button" onclick="v7HOpenPoForm()">+ PO</button></div>
+    </div>
+    <div id="v7HInventoryForm"></div>
+    <div class="card tablewrap v7h-section"><h3>Parts Master</h3><table class="tbl"><tr><th>SKU</th><th>Part</th><th>Stock</th><th>Reserved</th><th>Sell</th><th>Min</th><th>Status</th><th>Aksi</th></tr>
+      ${(v7HMaster.parts||[]).map(x=>`<tr><td><b>${safeText(x.sku)}</b></td><td>${safeText(x.name)}<br><small>${safeText(x.model)} · ${safeText(x.location||'-')}</small></td><td>${v7HNum(x.onHand)}</td><td>${v7HNum(x.reservedQty)}</td><td>${rup(v7HNum(x.sellPrice))}</td><td>${v7HNum(x.minStock)}</td><td>${wfPill(v7HUpper(x.status))}</td><td><button class="btn alt" type="button" onclick="v7HOpenPartForm('${safeText(x.id)}')">EDIT</button></td></tr>`).join('')}
+    </table></div>
+    <div class="card tablewrap v7h-section"><h3>Suppliers</h3><table class="tbl"><tr><th>Code</th><th>Supplier</th><th>Phone</th><th>Category</th><th>Status</th><th>Aksi</th></tr>
+      ${(v7HMaster.suppliers||[]).map(x=>`<tr><td><b>${safeText(x.code||'-')}</b></td><td>${safeText(x.name)}</td><td>${safeText(x.phone||'-')}</td><td>${safeText(x.category||'-')}</td><td>${wfPill(v7HUpper(x.status))}</td><td><button class="btn alt" type="button" onclick="v7HOpenSupplierForm('${safeText(x.id)}')">EDIT</button></td></tr>`).join('')}
+    </table></div>
+    <div class="v7h-section"><h3>Purchase Orders</h3>${po.map(x=>v7HPoCard(x)).join('')||'<div class="card">Belum ada PO.</div>'}</div>
+    <div class="card v7h-section"><div class="head"><h3>Stock Opname</h3><button class="btn alt" type="button" onclick="v7HOpenOpnameForm()">BUAT OPNAME</button></div>
+      ${(v7HMaster.stockOpnames||[]).slice(0,8).map(x=>`<div class="line"><span><b>${safeText(x.code)}</b><br><small>${safeText(new Date(x.createdAt).toLocaleString('id-ID'))}</small></span><b>${(x.items||[]).length} items</b></div>`).join('')||'<div class="muted">Belum ada opname.</div>'}
+    </div>`;
+}
+function v7HPoCard(x){
+  const total=(x.items||[]).reduce((s,i)=>s+v7HNum(i.qty)*v7HNum(i.unitCost),0);
+  return `<div class="v7h-po-card"><div class="line"><span><b>${safeText(x.code)}</b><br><small>${safeText(x.supplier)} · ETA ${safeText(x.expectedDate||'-')}</small></span>${wfPill(v7HUpper(x.status))}</div>
+    ${(x.items||[]).map(i=>`<div class="line"><span>${safeText(i.part)} ×${v7HNum(i.qty)}</span><span>${v7HNum(i.receivedQty)}/${v7HNum(i.qty)} received · ${rup(v7HNum(i.unitCost))}</span></div>`).join('')}
+    <div class="line"><b>Total PO</b><b>${rup(total)}</b></div>
+    <div class="actions">
+      ${x.status==='DRAFT'?`<button class="btn" type="button" onclick="v7HPoAction('${safeText(x.code)}','ORDER')">ORDER</button><button class="btn bad" type="button" onclick="v7HPoAction('${safeText(x.code)}','CANCEL')">CANCEL</button>`:''}
+      ${['ORDERED','PARTIAL'].includes(x.status)?`<button class="btn" type="button" onclick="v7HOpenReceivePo('${safeText(x.id)}')">RECEIVE GOODS</button>${x.status==='ORDERED'?`<button class="btn bad" type="button" onclick="v7HPoAction('${safeText(x.code)}','CANCEL')">CANCEL</button>`:''}`:''}
+    </div></div>`;
+}
+function v7HOpenPartForm(id=''){
+  const x=(v7HMaster?.parts||[]).find(a=>a.id===id)||{sku:'',name:'',model:'All',category:'General',brand:'OEM',location:'',costPrice:0,sellPrice:0,minStock:0,status:'ACTIVE',onHand:0,compatibilities:[]};
+  v7HPartFile=null;
+  const h=document.getElementById('v7HInventoryForm');h.innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>${id?'Edit':'Tambah'} Part</h3><div class="form">
+    <div class="field"><label>SKU *</label><input id="v7HPartSku" value="${safeText(x.sku)}"></div><div class="field"><label>Nama *</label><input id="v7HPartName" value="${safeText(x.name)}"></div>
+    <div class="field"><label>Model</label><input id="v7HPartModel" value="${safeText(x.model||'All')}"></div><div class="field"><label>Category</label><input id="v7HPartCategory" value="${safeText(x.category||'General')}"></div>
+    <div class="field"><label>Brand</label><input id="v7HPartBrand" value="${safeText(x.brand||'OEM')}"></div><div class="field"><label>Location</label><input id="v7HPartLocation" value="${safeText(x.location||'')}"></div>
+    <div class="field"><label>Cost</label><input id="v7HPartCost" type="number" min="0" value="${v7HNum(x.costPrice)}"></div><div class="field"><label>Sell</label><input id="v7HPartSell" type="number" min="0" value="${v7HNum(x.sellPrice)}"></div>
+    <div class="field"><label>Min Stock</label><input id="v7HPartMin" type="number" min="0" value="${v7HNum(x.minStock)}"></div><div class="field"><label>${id?'Current Stock (read only)':'Initial Stock'}</label><input id="v7HPartInitial" type="number" min="0" ${id?'disabled':''} value="${v7HNum(x.onHand)}"></div>
+    <div class="field"><label>Status</label><select id="v7HPartStatus"><option ${x.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${x.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div>
+    <div class="field"><label>Foto Part</label><input type="file" accept="image/jpeg,image/png,image/webp" onchange="v7HPartFile=this.files?.[0]||null;v7HMarkDirty()"></div>
+    <div class="field full"><label>Compatibility (1 baris = model)</label><textarea id="v7HPartCompat">${safeText((x.compatibilities||[]).map(c=>c.model).join('\n'))}</textarea></div>
+    </div><div class="actions"><button class="btn" type="button" onclick="v7HSavePart('${safeText(id)}')">SIMPAN PART</button><button class="btn alt" type="button" onclick="document.getElementById('v7HInventoryForm').innerHTML=''">BATAL</button></div></div>`;
+}
+async function v7HSavePart(id){
+  try{
+    const compat=document.getElementById('v7HPartCompat').value.split('\n').map(x=>x.trim()).filter(Boolean).map(model=>({model,notes:''}));
+    const {data,error}=await v7Sb.rpc('owner_upsert_part',{p_part_id:id||null,p_sku:document.getElementById('v7HPartSku').value,p_name:document.getElementById('v7HPartName').value,p_model:document.getElementById('v7HPartModel').value,p_category:document.getElementById('v7HPartCategory').value,p_brand:document.getElementById('v7HPartBrand').value,p_location:document.getElementById('v7HPartLocation').value,p_cost_price:v7HNum(document.getElementById('v7HPartCost').value),p_sell_price:v7HNum(document.getElementById('v7HPartSell').value),p_min_stock:v7HNum(document.getElementById('v7HPartMin').value),p_status:document.getElementById('v7HPartStatus').value,p_initial_stock:id?0:v7HNum(document.getElementById('v7HPartInitial').value),p_compatibilities:compat});
+    if(error)throw error;
+    if(v7HPartFile&&data?.id)await v7EUploadEntityFiles('PART',data.id,[v7HPartFile]);
+    v7HPartFile=null;v7HClearDirty();toast('Part tersimpan');await v7HLoadMaster({render:true});await v7HLoadDashboard({silent:true});try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){v7FError(err,'Simpan part gagal');}
+}
+function v7HOpenSupplierForm(id=''){
+  const x=(v7HMaster?.suppliers||[]).find(a=>a.id===id)||{code:'',name:'',phone:'',category:'',status:'ACTIVE'};
+  document.getElementById('v7HInventoryForm').innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>${id?'Edit':'Tambah'} Supplier</h3><div class="form">
+    <div class="field"><label>Supplier Code</label><input id="v7HSupCode" value="${safeText(x.code||'')}" placeholder="SUP-003"></div><div class="field"><label>Nama *</label><input id="v7HSupName" value="${safeText(x.name)}"></div>
+    <div class="field"><label>Phone</label><input id="v7HSupPhone" value="${safeText(x.phone||'')}"></div><div class="field"><label>Category</label><input id="v7HSupCategory" value="${safeText(x.category||'')}"></div>
+    <div class="field"><label>Status</label><select id="v7HSupStatus"><option ${x.status==='ACTIVE'?'selected':''}>ACTIVE</option><option ${x.status==='INACTIVE'?'selected':''}>INACTIVE</option></select></div></div>
+    <div class="actions"><button class="btn" type="button" onclick="v7HSaveSupplier('${safeText(id)}')">SIMPAN SUPPLIER</button><button class="btn alt" type="button" onclick="document.getElementById('v7HInventoryForm').innerHTML=''">BATAL</button></div></div>`;
+}
+async function v7HSaveSupplier(id){
+  try{
+    const {error}=await v7Sb.rpc('owner_upsert_supplier',{p_supplier_id:id||null,p_code:document.getElementById('v7HSupCode').value,p_name:document.getElementById('v7HSupName').value,p_phone:document.getElementById('v7HSupPhone').value,p_category:document.getElementById('v7HSupCategory').value,p_status:document.getElementById('v7HSupStatus').value});
+    if(error)throw error;v7HClearDirty();toast('Supplier tersimpan');await v7HLoadMaster({render:true});await v7HLoadDashboard({silent:true});
+  }catch(err){v7FError(err,'Simpan supplier gagal');}
+}
+function v7HOpenPoForm(){
+  v7HPoLines=[{partId:(v7HMaster?.parts||[])[0]?.id||'',qty:1,unitCost:v7HNum((v7HMaster?.parts||[])[0]?.costPrice)}];
+  document.getElementById('v7HInventoryForm').innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>Create Purchase Order</h3><div class="form">
+    <div class="field"><label>Supplier</label><select id="v7HPoSupplier">${(v7HMaster?.suppliers||[]).filter(x=>x.status==='ACTIVE').map(x=>`<option value="${x.id}">${safeText(x.code)} · ${safeText(x.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>Expected Date</label><input id="v7HPoDate" type="date"></div></div><div id="v7HPoLines" class="v7h-lines"></div>
+    <div class="actions"><button class="btn alt" type="button" onclick="v7HAddPoLine()">+ ITEM</button><button class="btn" type="button" onclick="v7HCreatePo()">CREATE PO</button></div></div>`;v7HRenderPoLines();
+}
+function v7HRenderPoLines(){
+  const h=document.getElementById('v7HPoLines');if(!h)return;
+  h.innerHTML=v7HPoLines.map((x,i)=>`<div class="v7h-line-editor"><div class="v7h-wide"><label>Part</label><select onchange="v7HPoLines[${i}].partId=this.value;const p=v7HMaster.parts.find(x=>x.id===this.value);if(p)v7HPoLines[${i}].unitCost=v7HNum(p.costPrice);v7HRenderPoLines();v7HMarkDirty()">${(v7HMaster?.parts||[]).filter(p=>p.status==='ACTIVE').map(p=>`<option value="${p.id}" ${p.id===x.partId?'selected':''}>${safeText(p.sku)} · ${safeText(p.name)}</option>`).join('')}</select></div><div><label>Qty</label><input type="number" min="1" value="${x.qty}" onchange="v7HPoLines[${i}].qty=v7HNum(this.value);v7HMarkDirty()"></div><div><label>Unit Cost</label><input type="number" min="0" value="${x.unitCost}" onchange="v7HPoLines[${i}].unitCost=v7HNum(this.value);v7HMarkDirty()"></div><button class="btn bad" type="button" onclick="v7HPoLines.splice(${i},1);v7HRenderPoLines();v7HMarkDirty()">×</button></div>`).join('');
+}
+function v7HAddPoLine(){const p=(v7HMaster?.parts||[])[0];v7HPoLines.push({partId:p?.id||'',qty:1,unitCost:v7HNum(p?.costPrice)});v7HRenderPoLines();v7HMarkDirty();}
+async function v7HCreatePo(){
+  const items=v7HPoLines.filter(x=>x.partId&&x.qty>0);
+  try{
+    const {data,error}=await v7Sb.rpc('inventory_create_purchase_order',{p_supplier_id:document.getElementById('v7HPoSupplier').value,p_expected_date:document.getElementById('v7HPoDate').value||null,p_items:items});
+    if(error)throw error;v7HClearDirty();toast('PO '+(data?.code||'')+' dibuat');await v7HLoadMaster({render:true});await v7HLoadDashboard({silent:true});
+  }catch(err){v7FError(err,'Create PO gagal');}
+}
+async function v7HPoAction(code,action){
+  if(!confirm(action+' '+code+'?'))return;
+  try{const {error}=await v7Sb.rpc('inventory_purchase_order_action',{p_po_code:code,p_action:action});if(error)throw error;toast('PO '+action+' berhasil');await v7HLoadMaster({render:true});await v7HLoadDashboard({silent:true});}
+  catch(err){v7FError(err,'PO action gagal');}
+}
+function v7HOpenReceivePo(id){
+  const po=(v7HMaster?.purchaseOrders||[]).find(x=>x.id===id);if(!po)return;v7HReceivePO=po;
+  document.getElementById('v7HInventoryForm').innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()"><h3>Goods Receiving · ${safeText(po.code)}</h3>${(po.items||[]).map(i=>`<div class="line"><span>${safeText(i.part)}<br><small>${safeText(i.sku)} · outstanding ${v7HNum(i.qty)-v7HNum(i.receivedQty)}</small></span><input style="max-width:110px" id="v7HRecv_${safeText(i.id)}" type="number" min="0" max="${v7HNum(i.qty)-v7HNum(i.receivedQty)}" value="0"></div>`).join('')}<div class="actions"><button class="btn" type="button" onclick="v7HReceivePo()">POST RECEIVING</button></div></div>`;v7HMarkDirty();
+}
+async function v7HReceivePo(){
+  const po=v7HReceivePO;if(!po)return;
+  const receipts=(po.items||[]).map(i=>({itemId:i.id,qty:v7HNum(document.getElementById('v7HRecv_'+i.id)?.value)})).filter(x=>x.qty>0);
+  try{const {data,error}=await v7Sb.rpc('inventory_receive_purchase_order',{p_po_code:po.code,p_receipts:receipts});if(error)throw error;v7HReceivePO=null;v7HClearDirty();toast('Receiving '+(data?.receivedQty||0)+' unit');await v7HLoadMaster({render:true});await v7HLoadDashboard({silent:true});}
+  catch(err){v7FError(err,'Goods Receiving gagal');}
+}
+function v7HOpenOpnameForm(){
+  const p=(v7HMaster?.parts||[])[0];v7HOpnameLines=[{partId:p?.id||'',physicalQty:v7HNum(p?.onHand),reason:'Stock opname fisik'}];
+  document.getElementById('v7HInventoryForm').innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>Stock Opname</h3><div id="v7HOpnameLines" class="v7h-lines"></div><div class="actions"><button class="btn alt" type="button" onclick="v7HAddOpnameLine()">+ ITEM</button><button class="btn" type="button" onclick="v7HSubmitOpname()">COMPLETE OPNAME</button></div></div>`;v7HRenderOpnameLines();
+}
+function v7HRenderOpnameLines(){
+  const h=document.getElementById('v7HOpnameLines');if(!h)return;
+  h.innerHTML=v7HOpnameLines.map((x,i)=>{const part=(v7HMaster?.parts||[]).find(p=>p.id===x.partId);return `<div class="v7h-line-editor"><div class="v7h-wide"><label>Part</label><select onchange="v7HOpnameLines[${i}].partId=this.value;const p=v7HMaster.parts.find(x=>x.id===this.value);v7HOpnameLines[${i}].physicalQty=v7HNum(p?.onHand);v7HRenderOpnameLines();v7HMarkDirty()">${(v7HMaster?.parts||[]).map(p=>`<option value="${p.id}" ${p.id===x.partId?'selected':''}>${safeText(p.sku)} · ${safeText(p.name)} · system ${v7HNum(p.onHand)}</option>`).join('')}</select></div><div><label>Physical</label><input type="number" min="0" value="${x.physicalQty}" onchange="v7HOpnameLines[${i}].physicalQty=v7HNum(this.value);v7HMarkDirty()"></div><div class="v7h-wide"><label>Reason</label><input value="${safeText(x.reason)}" onchange="v7HOpnameLines[${i}].reason=this.value;v7HMarkDirty()"></div><button class="btn bad" type="button" onclick="v7HOpnameLines.splice(${i},1);v7HRenderOpnameLines();v7HMarkDirty()">×</button></div>`}).join('');
+}
+function v7HAddOpnameLine(){const p=(v7HMaster?.parts||[])[0];v7HOpnameLines.push({partId:p?.id||'',physicalQty:v7HNum(p?.onHand),reason:'Stock opname fisik'});v7HRenderOpnameLines();v7HMarkDirty();}
+async function v7HSubmitOpname(){
+  if(!confirm('Complete Stock Opname dan posting adjustment ke ledger?'))return;
+  try{const {data,error}=await v7Sb.rpc('inventory_complete_stock_opname',{p_items:v7HOpnameLines});if(error)throw error;v7HClearDirty();toast('Opname '+(data?.code||'')+' selesai');await v7HLoadMaster({render:true});await v7HLoadDashboard({silent:true});try{await v7LoadPublicCatalog();}catch(_){}}
+  catch(err){v7FError(err,'Stock Opname gagal');}
+}
+
+/* ---------------- settings ---------------- */
+function v7HRenderSettings(){
+  const p=document.getElementById('o-settings');if(!p||!v7HDashboard)return;
+  const s=v7HDashboard.workshop||{};
+  p.innerHTML=`<div class="head"><div><div class="k">One Deployment = One Workshop · Supabase</div><h2>Workshop Settings</h2></div></div>
+    <div class="card form" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()">
+      <div class="field"><label>Workshop Name</label><input id="v7HWsName" value="${safeText(s.name||'')}"></div>
+      <div class="field"><label>WhatsApp</label><input id="v7HWsWa" value="${safeText(s.whatsapp||'')}"></div>
+      <div class="field full"><label>Address</label><input id="v7HWsAddress" value="${safeText(s.address||'')}"></div>
+      <div class="field"><label>Open</label><input id="v7HWsOpen" type="time" value="${safeText(String(s.openTime||'09:00').slice(0,5))}"></div>
+      <div class="field"><label>Close</label><input id="v7HWsClose" type="time" value="${safeText(String(s.closeTime||'18:00').slice(0,5))}"></div>
+      <div class="field"><label>Booking Capacity</label><input id="v7HWsCapacity" type="number" min="1" value="${v7HNum(s.bookingCapacity)||4}"></div>
+      <div class="field"><label>Maintenance KM</label><input id="v7HWsKm" type="number" min="0" value="${v7HNum(s.maintenanceKm)}"></div>
+      <div class="field full"><label>Static QRIS</label><input id="v7HWsQris" value="${safeText(s.staticQris||'')}"></div>
+      <div class="field"><label>Dynamic QRIS</label><select id="v7HWsDynamic"><option value="false" ${!s.dynamicQrisEnabled?'selected':''}>Disabled</option><option value="true" ${s.dynamicQrisEnabled?'selected':''}>Enabled — Provider Integration</option></select></div>
+      <div class="field"><label>Release Policy</label><select id="v7HWsRelease"><option value="BLOCK_IF_OUTSTANDING" ${s.releasePolicy==='BLOCK_IF_OUTSTANDING'?'selected':''}>Block if outstanding</option><option value="OWNER_OVERRIDE" ${s.releasePolicy==='OWNER_OVERRIDE'?'selected':''}>Allow Owner override</option></select></div>
+      <div class="field"><label>Warranty Days</label><input id="v7HWsDays" type="number" min="0" value="${v7HNum(s.warrantyDays)}"></div>
+      <div class="field"><label>Warranty KM</label><input id="v7HWsWarrantyKm" type="number" min="0" value="${v7HNum(s.warrantyKm)}"></div>
+      <button class="btn full" type="button" onclick="v7HSaveSettings()">SAVE SETTINGS</button>
+    </div><div class="notice" style="margin-top:12px">Dynamic QRIS tetap membutuhkan provider + webhook server. Mengaktifkan flag ini tidak membuat pembayaran otomatis.</div>`;
+}
+async function v7HSaveSettings(){
+  try{
+    const {error}=await v7Sb.rpc('owner_save_workshop_settings',{p_name:document.getElementById('v7HWsName').value,p_whatsapp:document.getElementById('v7HWsWa').value,p_address:document.getElementById('v7HWsAddress').value,p_open_time:document.getElementById('v7HWsOpen').value,p_close_time:document.getElementById('v7HWsClose').value,p_booking_capacity:v7HNum(document.getElementById('v7HWsCapacity').value),p_maintenance_km:v7HNum(document.getElementById('v7HWsKm').value),p_static_qris:document.getElementById('v7HWsQris').value,p_dynamic_qris_enabled:document.getElementById('v7HWsDynamic').value==='true',p_release_policy:document.getElementById('v7HWsRelease').value,p_warranty_days:v7HNum(document.getElementById('v7HWsDays').value),p_warranty_km:v7HNum(document.getElementById('v7HWsWarrantyKm').value)});
+    if(error)throw error;v7HClearDirty();toast('Workshop Settings tersimpan');await v7HLoadDashboard();try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){v7FError(err,'Save settings gagal');}
+}
+
+/* ---------------- Vespa Second owner ---------------- */
+function v7HRenderUsedVespaOwner(){
+  const p=document.getElementById('o-units');if(!p||!v7HMaster)return;
+  p.innerHTML=`<div class="head"><div><div class="k">Used Vespa · Supabase</div><h2>Unit Vespa Second</h2></div><button class="btn" type="button" onclick="v7HOpenUnitForm()">+ UNIT</button></div>
+    <div id="v7HUnitForm"></div>
+    <div class="card tablewrap"><table class="tbl"><tr><th>Unit</th><th>Tahun</th><th>KM</th><th>Harga</th><th>Status</th><th>Foto</th><th>Aksi</th></tr>
+      ${(v7HMaster.usedVespa||[]).map(u=>{const photo=v7PublicMediaUrl(u.photos?.[0]?.url||'');return `<tr><td><b>${safeText(u.name)}</b><br><small>${safeText(u.code)}</small></td><td>${u.year}</td><td>${v7HNum(u.odometer).toLocaleString('id-ID')}</td><td>${rup(v7HNum(u.price))}</td><td>${wfPill(v7HUpper(u.status))}</td><td>${photo?`<img class="v7h-photo" src="${photo}">`:'—'}</td><td><button class="btn alt" type="button" onclick="v7HOpenUnitForm('${safeText(u.id)}')">EDIT</button></td></tr>`}).join('')}
+    </table></div>
+    <div class="card tablewrap v7h-section"><h3>Sales Leads</h3><table class="tbl"><tr><th>Lead</th><th>Unit</th><th>Customer</th><th>Type</th><th>DP</th><th>Status</th><th>Aksi</th></tr>
+      ${(v7HMaster.usedVespaLeads||[]).map(l=>`<tr><td><b>${safeText(l.code)}</b></td><td>${safeText(l.unit)}<br><small>${safeText(l.unitCode)}</small></td><td>${safeText(l.customerName)}<br><small>${safeText(l.customerPhone)}</small></td><td>${safeText(l.leadType)}</td><td>${rup(v7HNum(l.dpAmount))}</td><td>${wfPill(v7HUpper(l.status))}</td><td>${['RESERVATION_PENDING','DP_PENDING'].includes(l.status)?`<button class="btn" type="button" onclick="v7HLeadAction('${safeText(l.code)}','CONFIRM')">CONFIRM</button> <button class="btn bad" type="button" onclick="v7HLeadAction('${safeText(l.code)}','CANCEL')">CANCEL</button>`:l.status==='BOOKED'?`<button class="btn" type="button" onclick="v7HLeadAction('${safeText(l.code)}','SOLD')">SOLD</button> <button class="btn bad" type="button" onclick="v7HLeadAction('${safeText(l.code)}','CANCEL')">CANCEL</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="7">Belum ada lead.</td></tr>'}
+    </table></div>`;
+}
+function v7HOpenUnitForm(id=''){
+  const u=(v7HMaster?.usedVespa||[]).find(x=>x.id===id)||{code:'',name:'',year:new Date().getFullYear(),price:0,odometer:0,color:'',plate:'',taxUntil:'',condition:'',description:'',status:'TERSEDIA'};
+  v7HUnitFiles=[];
+  document.getElementById('v7HUnitForm').innerHTML=`<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>${id?'Edit':'Tambah'} Unit Vespa</h3><div class="form">
+    <div class="field"><label>Unit Code</label><input id="v7HUnitCode" value="${safeText(u.code||'')}" placeholder="kosong = auto"></div><div class="field"><label>Nama / Model *</label><input id="v7HUnitName" value="${safeText(u.name)}"></div>
+    <div class="field"><label>Tahun</label><input id="v7HUnitYear" type="number" value="${u.year}"></div><div class="field"><label>Harga</label><input id="v7HUnitPrice" type="number" min="0" value="${v7HNum(u.price)}"></div>
+    <div class="field"><label>Odometer</label><input id="v7HUnitKm" type="number" min="0" value="${v7HNum(u.odometer)}"></div><div class="field"><label>Warna</label><input id="v7HUnitColor" value="${safeText(u.color||'')}"></div>
+    <div class="field"><label>Plat</label><input id="v7HUnitPlate" value="${safeText(u.plate||'')}"></div><div class="field"><label>Pajak sampai</label><input id="v7HUnitTax" value="${safeText(u.taxUntil||'')}"></div>
+    <div class="field"><label>Status</label><select id="v7HUnitStatus">${['TERSEDIA','RESERVATION_PENDING','DP_PENDING','BOOKED','TERJUAL'].map(s=>`<option ${u.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field full"><label>Kondisi</label><textarea id="v7HUnitCondition">${safeText(u.condition||'')}</textarea></div><div class="field full"><label>Description</label><textarea id="v7HUnitDesc">${safeText(u.description||'')}</textarea></div>
+    <div class="field full"><label>Tambah Foto</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onchange="v7HUnitFiles=[...this.files].slice(0,8);v7HMarkDirty()"></div>
+    </div><div class="actions"><button class="btn" type="button" onclick="v7HSaveUnit('${safeText(id)}')">SIMPAN UNIT</button><button class="btn alt" type="button" onclick="document.getElementById('v7HUnitForm').innerHTML=''">BATAL</button></div></div>`;
+}
+async function v7HSaveUnit(id){
+  try{
+    const {data,error}=await v7Sb.rpc('owner_upsert_used_vespa',{p_unit_id:id||null,p_unit_code:document.getElementById('v7HUnitCode').value,p_name:document.getElementById('v7HUnitName').value,p_year:v7HNum(document.getElementById('v7HUnitYear').value),p_price:v7HNum(document.getElementById('v7HUnitPrice').value),p_odometer:v7HNum(document.getElementById('v7HUnitKm').value),p_color:document.getElementById('v7HUnitColor').value,p_plate:document.getElementById('v7HUnitPlate').value,p_tax_until:document.getElementById('v7HUnitTax').value,p_condition:document.getElementById('v7HUnitCondition').value,p_description:document.getElementById('v7HUnitDesc').value,p_status:document.getElementById('v7HUnitStatus').value});
+    if(error)throw error;
+    if(v7HUnitFiles.length&&data?.id)await v7EUploadEntityFiles('USED_VESPA',data.id,v7HUnitFiles);
+    v7HUnitFiles=[];v7HClearDirty();toast('Unit Vespa tersimpan');await v7HLoadMaster({render:true});try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){v7FError(err,'Simpan unit gagal');}
+}
+async function v7HLeadAction(code,action){
+  if(!confirm(action+' lead '+code+'?'))return;
+  try{const {error}=await v7Sb.rpc('owner_used_vespa_lead_action',{p_lead_code:code,p_action:action});if(error)throw error;toast('Lead '+action+' berhasil');await v7HLoadMaster({render:true});try{await v7LoadPublicCatalog();}catch(_){}}
+  catch(err){v7FError(err,'Lead action gagal');}
+}
+
+/* ---------------- audit ---------------- */
+function v7HRenderAudit(){
+  const p=document.getElementById('o-audit');if(!p||!v7HMaster)return;
+  p.innerHTML=`<div class="head"><div><div class="k">Database History</div><h2>Audit Log</h2></div><span class="pill">LAST ${(v7HMaster.audit||[]).length}</span></div><div class="card tablewrap"><table class="tbl"><tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th></tr>
+    ${(v7HMaster.audit||[]).map(a=>`<tr><td>${safeText(new Date(a.createdAt).toLocaleString('id-ID'))}</td><td>${safeText(a.actor||'-')}</td><td><b>${safeText(a.action)}</b></td><td>${safeText(a.entityType)}<br><small>${safeText(a.entityCode||'')}</small></td><td>${safeText(a.detail||'-')}</td></tr>`).join('')||'<tr><td colspan="5">Belum ada audit log.</td></tr>'}
+  </table></div>`;
+}
+
+/* ---------------- public Vespa Second -> Supabase catalog ---------------- */
+function v7HSyncPublicUsedVespa(){
+  if(!Array.isArray(v7Catalog?.usedVespa))return;
+  const mapped=v7Catalog.usedVespa.map(u=>{
+    const photos=(u.photos||[]).map(p=>v7PublicMediaUrl(p.url)).filter(Boolean);
+    return {
+      id:u.code,dbId:u.id,name:u.name,year:u.year,price:v7HNum(u.price),km:v7HNum(u.odometer),
+      color:u.color||'-',plate:u.plate||'-',tax:u.taxUntil||'-',condition:u.condition||'-',
+      desc:u.description||'-',status:u.status,image:photos[0]||'',gallery:photos
+    };
+  });
+  usedVespaUnits.splice(0,usedVespaUnits.length,...mapped);
+}
+window.addEventListener('vw:supabase-catalog-ready',()=>{v7HSyncPublicUsedVespa();if(document.querySelector('.page.on')?.id==='usedVespa')v7HRenderPublicUsedVespa();});
+
+function v7HRenderPublicUsedVespa(){
+  v7HSyncPublicUsedVespa();
+  const grid=document.getElementById('usedVespaGrid');if(!grid)return;
+  const q=(document.getElementById('uvSearch')?.value||'').toLowerCase();
+  const st=document.getElementById('uvStatus')?.value||'Semua';
+  const arr=usedVespaUnits.filter(u=>(u.name+' '+u.year+' '+u.color).toLowerCase().includes(q)&&(st==='Semua'||u.status===st));
+  grid.innerHTML=arr.map(u=>`<article class="card used-card"><div class="used-photo"><span class="pill">${safeText(u.status)}</span>${u.image?`<img src="${u.image}" alt="${safeText(u.name)}">`:'<div class="photo-placeholder">🛵</div>'}</div><div class="used-body"><div class="k">${safeText(u.id)}</div><h3>${safeText(u.name)}</h3><div class="used-price">${rupiah(u.price)}</div><div class="used-spec"><span>${u.year}</span><span>${v7HNum(u.km).toLocaleString('id-ID')} km</span><span>${safeText(u.color)}</span></div><button class="btn" type="button" onclick="openUsedUnit('${safeText(u.id)}')">LIHAT DETAIL</button></div></article>`).join('')||'<div class="card"><b>Unit tidak ditemukan.</b></div>';
+}
+renderUsedVespa=function(){
+  v7HRenderPublicUsedVespa();
+  if(Date.now()-v7HLastCatalogRefresh>8000 && v7Sb){
+    v7HLastCatalogRefresh=Date.now();
+    v7LoadPublicCatalog().then(()=>v7HRenderPublicUsedVespa()).catch(()=>{});
+  }
+};
+
+submitUsedVespaLead=async function(){
+  const u=usedVespaUnits.find(x=>x.id===activeUsedUnitId);if(!u){toast('Buka detail unit terlebih dahulu');return;}
+  const name=document.getElementById('wfUsedBuyer')?.value.trim(),phone=document.getElementById('wfUsedPhone')?.value.trim(),type=document.getElementById('wfUsedLeadType')?.value,dp=v7HNum(document.getElementById('wfUsedDp')?.value);
+  if(!name||!phone){toast('Nama dan WhatsApp wajib diisi');return;}
+  try{
+    const {data,error}=await v7Sb.rpc('public_create_used_vespa_lead',{p_workshop_slug:V7_WORKSHOP_SLUG,p_unit_code:u.id,p_name:name,p_phone:phone,p_lead_type:type,p_dp_amount:dp});
+    if(error)throw error;v7HLastPublicLead={...data,name,unit:u.name,type,dp};
+    const r=document.getElementById('wfUsedLeadResult');if(r){r.style.display='block';r.innerHTML=`<b>Data tercatat di Supabase.</b><br>Lead ID: <b>${safeText(data.leadCode)}</b><br>Status: ${safeText(data.status)}`;}
+    const a=document.getElementById('wfUsedLeadActions');if(a)a.style.display='flex';toast('Lead tersimpan di Supabase');await v7LoadPublicCatalog();v7HRenderPublicUsedVespa();
+  }catch(err){v7FError(err,'Lead Vespa Second gagal');}
+};
+continueUsedVespaWhatsApp=function(){
+  const l=v7HLastPublicLead;if(!l){toast('Simpan inquiry / booking terlebih dahulu');return;}
+  openWhatsAppTo(workshopWaNumber(),`Halo Vespa Wahyu, saya ${l.name}.\n\nLead ID: ${l.leadCode}\nUnit: ${l.unit}\nKeperluan: ${l.type}${l.dp?'\nDP: '+rup(l.dp):''}`);
+};
+
+/* ---------------- Owner routing / no legacy ---------------- */
+const v7HOtabLegacy=otab;
+otab=function(id,btn){
+  if(v7HOwner()){
+    v7HEnsureOwnerPanels();
+    document.querySelectorAll('#owner .panel').forEach(x=>x.classList.remove('on'));
+    document.getElementById('o-'+id)?.classList.add('on');
+    document.querySelectorAll('#owner .side button').forEach(x=>x.classList.remove('on'));
+    if(btn)btn.classList.add('on');
+    window.scrollTo({top:0,behavior:'smooth'});
+    if(id==='dash')v7HRenderDashboard();
+    if(id==='reports')v7HRenderReports();
+    if(id==='staff')v7HRenderStaff();
+    if(id==='roles')v7HRenderRoles();
+    if(id==='catalog')v7HRenderCatalog();
+    if(id==='inventoryadmin')v7HRenderInventoryAdmin();
+    if(id==='settings')v7HRenderSettings();
+    if(id==='units')v7HRenderUsedVespaOwner();
+    if(id==='audit')v7HRenderAudit();
+    v7RtSaveView?.();
+    return;
+  }
+  return v7HOtabLegacy(id,btn);
+};
+otabId=function(id){
+  const btn=[...document.querySelectorAll('#owner .side button')].find(x=>(x.getAttribute('onclick')||'').includes("'"+id+"'"));
+  otab(id,btn);
+};
+openInventoryFromOwner=function(){otabId('inventoryadmin');};
+
+const v7HRouteBase=v7ERouteStaff;
+v7ERouteStaff=function(){
+  if(v7ERole()==='owner'){
+    currentStaffRole='owner';
+    setStaffSession('owner','owner');
+    v7HEnsureOwnerPanels();
+    go('owner');otabId('dash');v7HLoadOwnerAll({force:true});
+    v7EStartAutoRefresh();
+    if(typeof v7RtStartStaffRealtime==='function')v7RtStartStaffRealtime();
+    return;
+  }
+  return v7HRouteBase();
+};
+
+const v7HRestoreRouteBase=v7RtRestoreRoute;
+v7RtRestoreRoute=async function(saved){
+  if(v7ERole()==='owner'){
+    v7HEnsureOwnerPanels();go('owner');
+    await v7HLoadOwnerAll({silent:true,force:true});
+    const panel=saved?.role==='owner'&&saved?.panel?.startsWith('o-')?saved.panel.slice(2):'dash';
+    otabId(document.getElementById('o-'+panel)?panel:'dash');
+    return;
+  }
+  return v7HRestoreRouteBase(saved);
+};
+
+const v7HRefreshStaffBase=v7RtRefreshStaff;
+v7RtRefreshStaff=async function(reason='change'){
+  if(v7HOwner()){
+    await v7HLoadDashboard({silent:true});
+    if(!v7HFormDirty)await v7HLoadMaster({silent:true,render:true});
+    v7RtBadge('','● OWNER LIVE');
+    return;
+  }
+  return v7HRefreshStaffBase(reason);
+};
+
+const v7HRealtimeBase=v7RtStartStaffRealtime;
+v7RtStartStaffRealtime=function(){
+  if(!v7HOwner())return v7HRealtimeBase();
+
+  v7RtStopStaffRealtime();
+  const tables=[
+    'workshops','staff_profiles','service_items','service_packages','service_package_items',
+    'parts','part_compatibilities','suppliers','purchase_orders','purchase_order_items',
+    'stock_movements','stock_opnames','stock_opname_items','used_vespa_units','used_vespa_photos',
+    'used_vespa_leads','audit_logs','bookings','work_orders','invoices','payments','vehicle_releases'
+  ];
+  let ch=v7Sb.channel('vw-owner-live-'+String(v7EStaff()?.id||'owner'));
+  tables.forEach(table=>{ch=ch.on('postgres_changes',{event:'*',schema:'public',table},payload=>v7RtScheduleRefresh('owner:'+table+':'+payload.eventType));});
+  v7RtChannel=ch.subscribe(status=>{if(status==='SUBSCRIBED')v7RtBadge('','● OWNER LIVE');else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')v7RtBadge('warn','OWNER LIVE FALLBACK');});
+};
+
+const v7HRenderAllBase=v3RenderAll;
+v3RenderAll=function(){
+  if(v7HOwner()){
+    v7HEnsureOwnerPanels();
+    v7HRenderDashboard();v7HRenderReports();v7HRenderRoles();
+    if(!v7HFormDirty){v7HRenderStaff();v7HRenderCatalog();v7HRenderInventoryAdmin();v7HRenderSettings();v7HRenderUsedVespaOwner();v7HRenderAudit();}
+    return;
+  }
+  return v7HRenderAllBase();
+};
+
+/* Boot */
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    v7HEnsureOwnerPanels();
+    if(v7HOwner())v7HLoadOwnerAll({silent:true,force:true});
+    if(v7CatalogReady){v7HSyncPublicUsedVespa();v7HRenderPublicUsedVespa();}
+  },1700);
+});
+
+window.vwOwnerIntegrationInfo=function(){
+  const result={
+    stage:'007H',
+    owner:v7HOwner(),
+    dashboardLoaded:!!v7HDashboard,
+    masterLoaded:!!v7HMaster,
+    staff:v7HMaster?.staff?.length||0,
+    services:v7HMaster?.serviceItems?.length||0,
+    packages:v7HMaster?.packages?.length||0,
+    parts:v7HMaster?.parts?.length||0,
+    suppliers:v7HMaster?.suppliers?.length||0,
+    purchaseOrders:v7HMaster?.purchaseOrders?.length||0,
+    usedVespa:v7HMaster?.usedVespa?.length||0,
+    dirty:v7HFormDirty
+  };
+  console.table(result);return result;
+};
+</script>
+
 </body>
 
 </html>
