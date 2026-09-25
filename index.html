@@ -6567,6 +6567,989 @@ window.vwEstimateApprovalInfo=function(){
 };
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007DE]
+     Staff Auth + Advisor + Mechanic Diagnosis/Multi Finding
+     + Customer Granular Approval
+     ====================================================================== -->
+<style>
+  .v7e-live{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 9px;
+    border:1px solid #c9e6d5;border-radius:999px;background:#e8f6ee;
+    color:#17653f;font-size:11px;font-weight:850
+  }
+  .v7e-login-user{margin-top:10px;padding:10px 12px;border-radius:13px;background:#f7faf8;border:1px solid var(--l)}
+  .v7e-row-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .v7e-remote-card{border:1px solid var(--l);border-radius:15px;padding:13px;background:#fff}
+  .v7e-remote-card+.v7e-remote-card{margin-top:10px}
+  .v7e-photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:9px}
+  .v7e-photo-grid img{width:100%;height:115px;object-fit:cover;border-radius:12px;border:1px solid var(--l);background:#f4f6f5;cursor:pointer}
+  .v7e-findings{display:grid;gap:10px;margin-top:12px}
+  .v7e-finding{padding:12px;border:1px solid var(--l);border-radius:14px;background:#f8faf9}
+  .v7e-db-note{font-size:11px;color:var(--m);margin-top:8px}
+  .v7e-upload-progress{font-size:12px;color:var(--m);margin-top:6px}
+  .v7e-login-hidden{display:none!important}
+  @media(max-width:600px){
+    .v7e-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .v7e-row-actions .btn{flex:1 1 auto}
+  }
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007DE]
+   Source of truth:
+     - Staff identity    : Supabase Auth + staff_get_context()
+     - Advisor booking  : public.bookings via staff RLS
+     - Check-in         : advisor_checkin_booking()
+     - Assignment       : advisor_assign_mechanic()
+     - Mechanic jobs    : work_orders via staff RLS
+     - Diagnosis        : mechanic_start/finish_diagnosis()
+     - Findings         : mechanic_add_finding()
+     - Media            : 006 prepare -> Storage -> finalize
+     - Customer decision: 007D public_submit_estimate_decision()
+   ====================================================================== */
+
+let v7EStaffContext=null;
+let v7EAdvisorBookings=[];
+let v7EAdvisorWorkOrders=[];
+let v7EMechanics=[];
+let v7EAdvisorSnapshot=null;
+let v7EMechanicJobs=[];
+let v7EMechanicSnapshot=null;
+let v7ERoleRefreshTimer=null;
+let v7EAdvisorBusy=false;
+let v7EMechanicBusy=false;
+let v7EFindingFiles=[];
+let v7EDiagnosisFiles=[];
+
+/* ---------- common ---------- */
+function v7EStaff(){
+  return v7EStaffContext?.staff||null;
+}
+function v7ERole(){
+  return String(v7EStaff()?.role||'').toLowerCase();
+}
+function v7EIsRemoteStaff(){
+  return !!v7EStaff()?.id;
+}
+function v7ETime(v){
+  return v?String(v).slice(0,5):'-';
+}
+function v7EDate(v){
+  if(!v)return '-';
+  try{
+    const d=new Date(String(v).length<=10?String(v)+'T00:00:00':v);
+    return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+  }catch(_){return String(v);}
+}
+function v7EStatus(v){
+  return safeText(String(v||'-').replaceAll('_',' '));
+}
+function v7EError(err,fallback='Terjadi kesalahan Supabase'){
+  console.error('[SUPABASE_007DE]',err);
+  const msg=String(err?.message||err?.details||err?.hint||fallback);
+  toast(msg.length>125?msg.slice(0,122)+'...':msg);
+}
+function v7EStartAutoRefresh(){
+  clearInterval(v7ERoleRefreshTimer);
+  v7ERoleRefreshTimer=setInterval(()=>{
+    if(document.hidden||!v7EIsRemoteStaff())return;
+    const role=v7ERole();
+    if(role==='advisor')v7ELoadAdvisor({silent:true});
+    if(role==='mechanic')v7ELoadMechanicJobs({silent:true});
+  },10000);
+}
+function v7EStopAutoRefresh(){
+  clearInterval(v7ERoleRefreshTimer);
+  v7ERoleRefreshTimer=null;
+}
+
+/* ---------- login UI + auth ---------- */
+function v7EPrepareLoginUI(){
+  const sec=document.getElementById('staffLogin');
+  if(!sec)return;
+  const card=sec.querySelector('.card');
+  if(!card)return;
+
+  const p=card.querySelector('p.muted');
+  if(p)p.textContent='Masuk menggunakan akun Supabase Auth staff. Role dashboard ditentukan otomatis dari staff profile.';
+
+  const su=document.getElementById('su');
+  const pw=document.getElementById('spw');
+  if(su){
+    su.value='';
+    su.type='email';
+    su.placeholder='nama@domain.com';
+    su.autocomplete='username';
+    const lab=su.closest('.field')?.querySelector('label');
+    if(lab)lab.textContent='Email Staff';
+  }
+  if(pw){
+    pw.value='';
+    pw.placeholder='Password';
+    pw.autocomplete='current-password';
+  }
+
+  const demo=document.getElementById('demoRole');
+  if(demo?.closest('.field'))demo.closest('.field').classList.add('v7e-login-hidden');
+  const mf=document.getElementById('v3MechanicLoginField');
+  if(mf)mf.classList.add('v7e-login-hidden');
+
+  const oldNotice=[...card.querySelectorAll('.notice')].find(x=>x.textContent.includes('Auth Supabase belum dipasang'));
+  if(oldNotice){
+    oldNotice.innerHTML='<b>Supabase Auth aktif.</b> Email harus terhubung ke satu staff profile ACTIVE.';
+  }
+
+  let info=document.getElementById('v7ELoginInfo');
+  if(!info){
+    info=document.createElement('div');
+    info.id='v7ELoginInfo';
+    info.className='v7e-login-user';
+    info.style.display='none';
+    card.appendChild(info);
+  }
+}
+
+async function v7EGetStaffContext(){
+  if(!v7Sb)throw new Error('Supabase client belum siap');
+  const {data,error}=await v7Sb.rpc('staff_get_context');
+  if(error)throw error;
+  if(!data?.staff?.id)throw new Error('Akun Auth belum terhubung ke staff profile ACTIVE');
+  return data;
+}
+
+function v7ERouteStaff(){
+  const role=v7ERole();
+  const s=v7EStaff();
+  currentStaffRole=role||'public';
+  if(role==='mechanic'&&typeof workflowState!=='undefined'){
+    workflowState.demoMechanic=s?.name||'Mechanic';
+  }
+  setStaffSession(role,role==='advisor'?'advisor':role==='mechanic'?'mechanic':role);
+
+  if(role==='advisor'){
+    go('advisor');stabId('dash');v7ELoadAdvisor();
+  }else if(role==='mechanic'){
+    go('mechanic');mtabId('jobs');v7ELoadMechanicJobs();
+  }else if(role==='inventory'){
+    go('inventory');itabId('dash');
+    toast('Auth Inventory aktif · integrasi operasional penuh pada 007F.');
+  }else if(role==='owner'){
+    go('owner');otabId('dash');
+    toast('Auth Owner aktif · dashboard Supabase penuh menyusul tahap Owner.');
+  }else{
+    throw new Error('Role staff tidak dikenali');
+  }
+  v7EStartAutoRefresh();
+}
+
+loginStaff=async function(){
+  if(!v7Sb){
+    toast('Supabase belum siap. Tunggu SUPABASE ONLINE.');
+    return;
+  }
+  const email=document.getElementById('su')?.value.trim()||'';
+  const password=document.getElementById('spw')?.value||'';
+  if(!email||!password){
+    toast('Isi email dan password staff');
+    return;
+  }
+
+  const btn=[...document.querySelectorAll('#staffLogin button')].find(b=>b.textContent.trim()==='LOGIN');
+  if(btn){btn.disabled=true;btn.textContent='LOGIN...';}
+
+  try{
+    const {error}=await v7Sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+
+    v7EStaffContext=await v7EGetStaffContext();
+    const info=document.getElementById('v7ELoginInfo');
+    if(info){
+      info.style.display='block';
+      info.innerHTML=`<b>${safeText(v7EStaff().name)}</b> · ${safeText(v7ERole().toUpperCase())}<br><small>${safeText(v7EStaff().staffCode||'')}</small>`;
+    }
+
+    v7ERouteStaff();
+    toast('Login Supabase berhasil · '+v7EStaff().name);
+  }catch(err){
+    try{await v7Sb.auth.signOut();}catch(_){}
+    v7EStaffContext=null;
+    v7EError(err,'Login staff gagal');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='LOGIN';}
+  }
+};
+
+staffLogout=async function(){
+  v7EStopAutoRefresh();
+  try{if(v7Sb)await v7Sb.auth.signOut();}catch(e){console.warn(e);}
+  v7EStaffContext=null;
+  v7EAdvisorSnapshot=null;
+  v7EMechanicSnapshot=null;
+  currentStaffRole='public';
+  const b=document.getElementById('notifBtn');if(b)b.style.display='none';
+  const cb=document.getElementById('customerNotifBtn');if(cb)cb.style.display='inline-block';
+  go('staffLogin');
+  toast('Logout berhasil');
+};
+
+async function v7ERestoreSession(){
+  if(!v7Sb)return;
+  try{
+    const {data}=await v7Sb.auth.getSession();
+    if(!data?.session)return;
+    v7EStaffContext=await v7EGetStaffContext();
+    const page=document.querySelector('.page.on')?.id;
+    if(page==='staffLogin'){
+      v7ERouteStaff();
+    }else{
+      currentStaffRole=v7ERole();
+      v7EStartAutoRefresh();
+    }
+  }catch(err){
+    console.warn('[SUPABASE_007DE] restore staff session failed',err);
+    try{await v7Sb.auth.signOut();}catch(_){}
+    v7EStaffContext=null;
+  }
+}
+
+/* ---------- advisor data ---------- */
+async function v7EQueryBookings(){
+  const {data,error}=await v7Sb
+    .from('bookings')
+    .select(`
+      id,booking_code,source,booking_date,slot_time,complaint,odometer_snapshot,status,created_at,
+      customer:customers(id,customer_code,name,phone,email),
+      vehicle:vehicles(id,vehicle_code,plate,model,year,odometer),
+      package:service_packages(id,code,name,price)
+    `)
+    .order('created_at',{ascending:false})
+    .limit(100);
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+async function v7EQueryWorkOrders(){
+  const {data,error}=await v7Sb
+    .from('work_orders')
+    .select(`
+      id,work_order_code,booking_id,status,diagnosis_status,job_status,qc_status,parts_status,
+      complaint,odometer_snapshot,checked_in_at,created_at,updated_at,
+      customer:customers(id,customer_code,name,phone),
+      vehicle:vehicles(id,vehicle_code,plate,model,year,odometer),
+      package:service_packages(id,code,name,price),
+      mechanic:staff_profiles(id,staff_code,name,role,status)
+    `)
+    .order('created_at',{ascending:false})
+    .limit(100);
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+async function v7EQueryMechanics(){
+  const {data,error}=await v7Sb
+    .from('staff_profiles')
+    .select('id,staff_code,name,role,status')
+    .eq('role','mechanic')
+    .eq('status','ACTIVE')
+    .order('name');
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+
+async function v7ELoadAdvisor({silent=false}={}){
+  if(v7ERole()!=='advisor')return;
+  if(v7EAdvisorBusy)return;
+  v7EAdvisorBusy=true;
+  try{
+    const [bookings,wos,mechanics]=await Promise.all([
+      v7EQueryBookings(),v7EQueryWorkOrders(),v7EQueryMechanics()
+    ]);
+    v7EAdvisorBookings=bookings;
+    v7EAdvisorWorkOrders=wos;
+    v7EMechanics=mechanics;
+    v7ERenderAdvisorRemote();
+  }catch(err){
+    if(!silent)v7EError(err,'Gagal memuat dashboard Advisor');
+    else console.warn('[SUPABASE_007DE] advisor refresh',err);
+  }finally{
+    v7EAdvisorBusy=false;
+  }
+}
+
+function v7EBookingHasWO(b){
+  return v7EAdvisorWorkOrders.some(w=>w.booking_id===b.id);
+}
+
+function v7ERenderAdvisorRemote(){
+  if(v7ERole()!=='advisor')return;
+  const s=v7EStaff();
+  const active=v7EAdvisorWorkOrders.filter(w=>!['CLOSED','CANCELLED'].includes(w.status));
+  const pendingApproval=active.filter(w=>w.status==='WAITING_APPROVAL');
+  const ready=active.filter(w=>w.status==='READY_FOR_PICKUP');
+  const confirmed=v7EAdvisorBookings.filter(b=>b.status==='CONFIRMED'&&!v7EBookingHasWO(b));
+
+  const dash=document.getElementById('p-dash');
+  if(dash)dash.innerHTML=`
+    <div class="head">
+      <div><div class="k">Service Advisor / Kasir</div><h2>${safeText(s?.name||'Advisor')}</h2></div>
+      <div class="v7e-row-actions"><span class="v7e-live">● SUPABASE</span><button class="btn alt" onclick="staffLogout()">Logout</button></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span class="muted">Booking menunggu check-in</span><strong>${confirmed.length}</strong></div>
+      <div class="metric"><span class="muted">WO Aktif</span><strong>${active.length}</strong></div>
+      <div class="metric"><span class="muted">Waiting Approval</span><strong>${pendingApproval.length}</strong></div>
+      <div class="metric"><span class="muted">Ready</span><strong>${ready.length}</strong></div>
+    </div>
+    <div class="card" style="margin-top:13px">
+      <h3>Quick Actions</h3>
+      <div class="actions">
+        <button class="btn" onclick="stabId('book')">BOOKING QUEUE</button>
+        <button class="btn alt" onclick="stabId('queue')">WORK ORDERS</button>
+        <button class="btn alt" onclick="v7ELoadAdvisor()">↻ REFRESH</button>
+      </div>
+      <div class="v7e-db-note">Data dashboard dibaca langsung dari Supabase.</div>
+    </div>`;
+
+  const book=document.getElementById('p-book');
+  if(book)book.innerHTML=`
+    <div class="head"><h2>Booking Management</h2><span class="pill">${confirmed.length} WAITING</span></div>
+    <div class="card tablewrap">
+      <table class="tbl">
+        <tr><th>Kode</th><th>Jadwal</th><th>Customer</th><th>Vespa</th><th>Paket</th><th>Status</th><th>Aksi</th></tr>
+        ${
+          v7EAdvisorBookings.map(b=>`
+            <tr>
+              <td><b>${safeText(b.booking_code)}</b><br><small>${safeText(b.source)}</small></td>
+              <td>${safeText(v7EDate(b.booking_date))}<br><small>${safeText(v7ETime(b.slot_time))}</small></td>
+              <td>${safeText(b.customer?.name||'-')}<br><small>${safeText(b.customer?.phone||'')}</small></td>
+              <td>${safeText(b.vehicle?.model||'-')}<br><small>${safeText(b.vehicle?.plate||'')}</small></td>
+              <td>${safeText(b.package?.name||'-')}</td>
+              <td>${wfPill(String(b.status||'-').toUpperCase())}</td>
+              <td>
+                ${
+                  b.status==='CONFIRMED'&&!v7EBookingHasWO(b)
+                  ? `<button class="btn" onclick="v7EAdvisorCheckIn('${safeText(b.booking_code)}')">CHECK-IN</button>`
+                  : v7EBookingHasWO(b)
+                    ? `<button class="btn alt" onclick="v7EOpenAdvisorWOByBooking('${safeText(b.id)}')">BUKA WO</button>`
+                    : '—'
+                }
+              </td>
+            </tr>`).join('') || '<tr><td colspan="7">Belum ada booking.</td></tr>'
+        }
+      </table>
+    </div>`;
+
+  const queue=document.getElementById('p-queue');
+  if(queue)queue.innerHTML=`
+    <div class="head"><h2>Work Order Queue</h2><span class="pill">${active.length} ACTIVE</span></div>
+    <div class="grid">
+      ${active.map(w=>`
+        <div class="card">
+          ${wfPill(String(w.status||'-').toUpperCase())}
+          <h3>${safeText(w.work_order_code)}</h3>
+          <b>${safeText(w.customer?.name||'-')}</b>
+          <p class="muted">
+            ${safeText(w.vehicle?.model||'-')} · ${safeText(w.vehicle?.plate||'-')}<br>
+            ${safeText(w.package?.name||'-')}<br>
+            Mechanic: ${safeText(w.mechanic?.name||'Belum ditentukan')}
+          </p>
+          <button class="btn" onclick="v7EOpenAdvisorWO('${safeText(w.work_order_code)}')">BUKA WO</button>
+        </div>`).join('') || '<div class="card">Tidak ada WO aktif.</div>'}
+    </div>`;
+
+  const cust=document.getElementById('p-cust');
+  if(cust){
+    const seen=new Map();
+    v7EAdvisorBookings.forEach(b=>{
+      const key=b.customer?.id||b.customer?.phone||b.booking_code;
+      if(!seen.has(key))seen.set(key,b);
+    });
+    cust.innerHTML=`
+      <div class="head"><h2>Customer Database</h2><span class="pill">${seen.size} CUSTOMER</span></div>
+      <div class="card tablewrap">
+        <table class="tbl">
+          <tr><th>Customer</th><th>WhatsApp</th><th>Vehicle</th><th>Plate</th><th>Booking terakhir</th></tr>
+          ${[...seen.values()].map(b=>`
+            <tr>
+              <td><b>${safeText(b.customer?.name||'-')}</b><br><small>${safeText(b.customer?.customer_code||'')}</small></td>
+              <td>${safeText(b.customer?.phone||'-')}</td>
+              <td>${safeText(b.vehicle?.model||'-')}</td>
+              <td>${safeText(b.vehicle?.plate||'-')}</td>
+              <td>${safeText(b.booking_code)}</td>
+            </tr>`).join('')}
+        </table>
+      </div>`;
+  }
+
+  const walk=document.getElementById('p-walk');
+  if(walk)walk.innerHTML=`
+    <div class="head"><h2>Registrasi Walk-In</h2><span class="pill">BELUM DIMIGRASIKAN</span></div>
+    <div class="card">
+      <div class="notice">
+        Online Booking, Check-In, Work Order, Assignment, Diagnosis dan Approval sudah memakai Supabase.
+        Walk-In sengaja dinonaktifkan sementara agar tidak membuat WO lokal yang tidak ada di database.
+      </div>
+    </div>`;
+
+  if(v7EAdvisorSnapshot)v7ERenderAdvisorSnapshot(v7EAdvisorSnapshot);
+}
+
+async function v7EAdvisorCheckIn(code){
+  if(v7ERole()!=='advisor')return;
+  if(!confirm('Check-in '+code+' dan buat Work Order di Supabase?'))return;
+  try{
+    const {data,error}=await v7Sb.rpc('advisor_checkin_booking',{
+      p_booking_code:code,
+      p_mechanic_code:null
+    });
+    if(error)throw error;
+    toast('Check-in berhasil · '+(data?.workOrderCode||'WO dibuat'));
+    await v7ELoadAdvisor();
+    if(data?.workOrderCode)await v7EOpenAdvisorWO(data.workOrderCode);
+  }catch(err){v7EError(err,'Check-in gagal');}
+}
+
+async function v7EOpenAdvisorWOByBooking(bookingId){
+  const w=v7EAdvisorWorkOrders.find(x=>x.booking_id===bookingId);
+  if(!w){toast('WO belum ditemukan');return;}
+  await v7EOpenAdvisorWO(w.work_order_code);
+}
+
+async function v7EOpenAdvisorWO(code){
+  try{
+    const {data,error}=await v7Sb.rpc('staff_get_work_order',{p_work_order_code:code});
+    if(error)throw error;
+    v7EAdvisorSnapshot=data;
+    v7ERenderAdvisorSnapshot(data);
+    stabId('wo');
+  }catch(err){v7EError(err,'Gagal membuka Work Order');}
+}
+
+function v7EAdvisorFindingHtml(f){
+  return `<div class="v7e-finding">
+    <b>${safeText(f.description||'-')}</b>
+    <div class="muted">${safeText(f.code||'')} · R${Number(f.revision||0)} · ${v7EStatus(f.status)}</div>
+    <div id="v7eAdvFindPhoto_${safeText(f.id)}" class="v7e-photo-grid"></div>
+  </div>`;
+}
+
+function v7ERenderAdvisorSnapshot(snap){
+  const wo=snap?.workOrder;if(!wo)return;
+  const p=document.getElementById('p-wo');
+  if(p)p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Work Order · Supabase</div><h2>${safeText(wo.code)}</h2></div>
+      ${wfPill(String(wo.status||'-').toUpperCase())}
+    </div>
+    <div class="grid">
+      <div class="card"><h3>Customer</h3><b>${safeText(snap.customer?.name||'-')}</b><p class="muted">${safeText(snap.customer?.phone||'-')}<br>${safeText(snap.vehicle?.model||'-')} · ${safeText(snap.vehicle?.plate||'-')}</p></div>
+      <div class="card"><h3>Paket</h3><b>${safeText(snap.package?.name||'-')}</b><p class="muted">${rup(Number(snap.package?.price||0))}</p></div>
+      <div class="card"><h3>Mechanic</h3><b>${safeText(snap.mechanic?.name||'Belum ditentukan')}</b><p class="muted">${v7EStatus(wo.diagnosisStatus)} · ${v7EStatus(wo.jobStatus)}</p></div>
+    </div>
+
+    <div class="card" style="margin-top:13px">
+      <h3>Assign Mechanic</h3>
+      <div class="form">
+        <div class="field">
+          <label>Mechanic</label>
+          <select id="v7EAdvisorMechanic">
+            <option value="">Pilih mechanic</option>
+            ${v7EMechanics.map(m=>`<option value="${safeText(m.staff_code)}" ${snap.mechanic?.staffCode===m.staff_code?'selected':''}>${safeText(m.name)} · ${safeText(m.staff_code)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="actions"><button class="btn" onclick="v7EAssignMechanic()">SIMPAN ASSIGNMENT</button><button class="btn alt" onclick="v7EOpenAdvisorWO('${safeText(wo.code)}')">↻ REFRESH WO</button></div>
+    </div>
+
+    <div class="card" style="margin-top:13px">
+      <h3>Diagnosis</h3>
+      <div class="line"><span>Status</span><b>${v7EStatus(snap.diagnosis?.status||wo.diagnosisStatus)}</b></div>
+      <p>${safeText(snap.diagnosis?.summary||'Belum ada ringkasan diagnosis.')}</p>
+      <div id="v7eAdvisorDiagnosisPhotos" class="v7e-photo-grid"></div>
+    </div>
+
+    <div class="card" style="margin-top:13px">
+      <h3>Additional Findings</h3>
+      <div class="v7e-findings">
+        ${(snap.findings||[]).map(v7EAdvisorFindingHtml).join('')||'<div class="muted">Belum ada finding.</div>'}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:13px">
+      <h3>Estimate</h3>
+      ${snap.estimate?`
+        <div class="line"><span>${safeText(snap.estimate.code)}</span><b>${v7EStatus(snap.estimate.approvalStatus)}</b></div>
+        ${(snap.estimate.items||[]).map(i=>`<div class="line"><span>${safeText(i.name)} ×${Number(i.qty||1)}<br><small>${v7EStatus(i.approvalStatus)}</small></span><b>${rup(Number(i.qty||1)*Number(i.unitPrice||0))}</b></div>`).join('')}
+        <div class="line"><b>Approved Total</b><span class="money">${rup(Number(snap.estimate.approvedTotal||0))}</span></div>
+      `:'<div class="muted">Estimate belum tersedia.</div>'}
+    </div>
+    <div class="v7e-db-note">Work Order ini dibaca langsung lewat staff_get_work_order().</div>`;
+
+  const pay=document.getElementById('p-pay');
+  if(pay)pay.innerHTML=`
+    <div class="head"><h2>Invoice / Payment</h2>${snap.invoice?wfPill(String(snap.invoice.status||'-').toUpperCase()):''}</div>
+    <div class="card">
+      ${snap.invoice?`
+        <div class="line"><span>Invoice</span><b>${safeText(snap.invoice.code||'-')}</b></div>
+        ${(snap.invoice.items||[]).map(i=>`<div class="line"><span>${safeText(i.name)} ×${Number(i.qty||1)}</span><b>${rup(Number(i.qty||1)*Number(i.unitPrice||0))}</b></div>`).join('')}
+        <div class="line"><b>Total</b><span class="money">${rup(Number(snap.invoice.total||0))}</span></div>
+        <div class="line"><span>Paid</span><b>${rup(Number(snap.invoice.paid||0))}</b></div>
+        <div class="line"><span>Outstanding</span><b>${rup(Number(snap.invoice.outstanding||0))}</b></div>
+        <div class="notice">Verifikasi pembayaran Supabase akan diaktifkan pada tahap payment/media berikutnya.</div>
+      `:'<div class="muted">Invoice belum tersedia.</div>'}
+    </div>`;
+
+  v7ERenderStaffPrivatePhotos(snap,'advisor');
+}
+
+async function v7EAssignMechanic(){
+  const code=v7EAdvisorSnapshot?.workOrder?.code;
+  const mech=document.getElementById('v7EAdvisorMechanic')?.value||'';
+  if(!code||!mech){toast('Pilih mechanic');return;}
+  try{
+    const {data,error}=await v7Sb.rpc('advisor_assign_mechanic',{
+      p_work_order_code:code,
+      p_mechanic_code:mech
+    });
+    if(error)throw error;
+    toast('Assigned ke '+(data?.mechanicName||mech));
+    await v7ELoadAdvisor();
+    await v7EOpenAdvisorWO(code);
+  }catch(err){v7EError(err,'Assign mechanic gagal');}
+}
+
+/* ---------- private image rendering for authenticated staff ---------- */
+async function v7ESignedUrl(path,expires=300){
+  if(!path)return '';
+  const {data,error}=await v7Sb.storage.from('vw-private-media').createSignedUrl(path,expires);
+  if(error)throw error;
+  return data?.signedUrl||'';
+}
+async function v7ERenderPhotoPaths(targetId,photos){
+  const host=document.getElementById(targetId);if(!host)return;
+  const rows=(photos||[]).filter(x=>x?.storagePath);
+  if(!rows.length){host.innerHTML='';return;}
+  host.innerHTML='<span class="muted">Memuat foto...</span>';
+  const html=[];
+  for(const p of rows.slice(0,12)){
+    try{
+      const url=await v7ESignedUrl(p.storagePath,300);
+      if(url)html.push(`<img src="${url}" alt="${safeText(p.originalName||'Foto')}" onclick="if(window.v4OpenViewer)v4OpenViewer(this.src,'${safeText(p.originalName||'Foto')}')">`);
+    }catch(e){console.warn(e);}
+  }
+  host.innerHTML=html.join('')||'<span class="muted">Foto tidak dapat dimuat.</span>';
+}
+async function v7ERenderStaffPrivatePhotos(snap,mode){
+  await v7ERenderPhotoPaths(
+    mode==='advisor'?'v7eAdvisorDiagnosisPhotos':'v7eMechanicDiagnosisPhotos',
+    snap?.diagnosis?.photos||[]
+  );
+  for(const f of (snap?.findings||[])){
+    await v7ERenderPhotoPaths(
+      (mode==='advisor'?'v7eAdvFindPhoto_':'v7eMechFindPhoto_')+f.id,
+      f.photos||[]
+    );
+  }
+}
+
+/* ---------- staff media upload ---------- */
+async function v7EUploadEntityFiles(entityType,entityId,files){
+  const arr=[...files||[]];
+  if(!arr.length)return [];
+  if(!entityId)throw new Error('Entity media belum tersedia');
+
+  const results=[];
+  for(let i=0;i<arr.length;i++){
+    const file=arr[i];
+    if(!file.type.startsWith('image/'))throw new Error('File harus berupa gambar');
+    if(file.size>8388608)throw new Error('Ukuran foto maksimal 8 MB');
+
+    const {data:prep,error:prepErr}=await v7Sb.rpc('staff_prepare_media_upload',{
+      p_entity_type:entityType,
+      p_entity_id:entityId,
+      p_original_name:file.name,
+      p_mime_type:file.type
+    });
+    if(prepErr)throw prepErr;
+
+    const {error:upErr}=await v7Sb.storage
+      .from(prep.bucket)
+      .upload(prep.storagePath,file,{contentType:file.type,upsert:false});
+    if(upErr)throw upErr;
+
+    const {data:fin,error:finErr}=await v7Sb.rpc('staff_finalize_media_upload',{
+      p_entity_type:entityType,
+      p_entity_id:entityId,
+      p_storage_path:prep.storagePath,
+      p_original_name:file.name,
+      p_sort_order:i
+    });
+    if(finErr)throw finErr;
+    results.push(fin);
+  }
+  return results;
+}
+
+/* ---------- mechanic data ---------- */
+async function v7EQueryMechanicJobs(){
+  const {data,error}=await v7Sb
+    .from('work_orders')
+    .select(`
+      id,work_order_code,status,diagnosis_status,job_status,qc_status,parts_status,
+      complaint,odometer_snapshot,checked_in_at,created_at,updated_at,
+      customer:customers(id,name,phone),
+      vehicle:vehicles(id,plate,model,year,odometer),
+      package:service_packages(id,code,name,price)
+    `)
+    .neq('status','CANCELLED')
+    .order('created_at',{ascending:false})
+    .limit(100);
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+async function v7ELoadMechanicJobs({silent=false}={}){
+  if(v7ERole()!=='mechanic')return;
+  if(v7EMechanicBusy)return;
+  v7EMechanicBusy=true;
+  try{
+    v7EMechanicJobs=await v7EQueryMechanicJobs();
+    v7ERenderMechanicJobs();
+    if(v7EMechanicSnapshot?.workOrder?.code){
+      const code=v7EMechanicSnapshot.workOrder.code;
+      const still=v7EMechanicJobs.some(w=>w.work_order_code===code);
+      if(still)await v7EOpenMechanicWO(code,null,true);
+    }
+  }catch(err){
+    if(!silent)v7EError(err,'Gagal memuat My Jobs');
+    else console.warn('[SUPABASE_007DE] mechanic refresh',err);
+  }finally{
+    v7EMechanicBusy=false;
+  }
+}
+function v7ERenderMechanicJobs(){
+  const p=document.getElementById('m-jobs');if(!p)return;
+  const s=v7EStaff();
+  const jobs=v7EMechanicJobs.filter(w=>w.status!=='CLOSED');
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Mechanic Workspace · Supabase</div><h2>My Jobs — ${safeText(s?.name||'Mechanic')}</h2></div>
+      <div class="v7e-row-actions"><span class="v7e-live">● SUPABASE</span><button class="btn alt" onclick="staffLogout()">Logout</button></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span class="muted">Assigned</span><strong>${jobs.length}</strong></div>
+      <div class="metric"><span class="muted">Diagnosis</span><strong>${jobs.filter(w=>['NOT_STARTED','IN_PROGRESS'].includes(w.diagnosis_status)).length}</strong></div>
+      <div class="metric"><span class="muted">Waiting Approval</span><strong>${jobs.filter(w=>w.status==='WAITING_APPROVAL').length}</strong></div>
+      <div class="metric"><span class="muted">In Progress</span><strong>${jobs.filter(w=>['IN_PROGRESS','PAUSED','REWORK'].includes(w.status)).length}</strong></div>
+    </div>
+    <div class="grid">
+      ${jobs.map(w=>`
+        <div class="card">
+          ${wfPill(String(w.status||'-').toUpperCase())}
+          <h3>${safeText(w.work_order_code)}</h3>
+          <b>${safeText(w.customer?.name||'-')}</b>
+          <p class="muted">
+            ${safeText(w.vehicle?.model||'-')} · ${safeText(w.vehicle?.plate||'-')}<br>
+            ${safeText(w.package?.name||'-')}<br>
+            ${safeText(w.complaint||'')}
+          </p>
+          <button class="btn" onclick="v7EOpenMechanicWO('${safeText(w.work_order_code)}','detail')">BUKA JOB</button>
+        </div>`).join('')||'<div class="card"><b>Tidak ada job aktif untuk akun mechanic ini.</b></div>'}
+    </div>`;
+}
+async function v7EOpenMechanicWO(code,tab='detail',silent=false){
+  try{
+    const {data,error}=await v7Sb.rpc('staff_get_work_order',{p_work_order_code:code});
+    if(error)throw error;
+    v7EMechanicSnapshot=data;
+    v7ERenderMechanicSnapshot(data);
+    if(tab)mtabId(tab);
+  }catch(err){
+    if(!silent)v7EError(err,'Gagal membuka job');
+    else console.warn(err);
+  }
+}
+function v7EDiagnosisCheckRows(snap){
+  const saved=new Map((snap?.diagnosis?.checks||[]).map(x=>[String(x.area),x]));
+  return ['Engine','CVT','Brake','Suspension','Electrical','Tires / Fluid / Body'].map(area=>{
+    const x=saved.get(area)||{};
+    const st=x.status||'Normal';
+    return `<tr data-area="${safeText(area)}">
+      <td>${safeText(area)}</td>
+      <td><select class="v7eDiagStatus">
+        ${['Normal','Perlu Perhatian','Perlu Perbaikan'].map(o=>`<option ${o===st?'selected':''}>${o}</option>`).join('')}
+      </select></td>
+      <td><input class="v7eDiagNote" value="${safeText(x.note||'')}" placeholder="Catatan"></td>
+    </tr>`;
+  }).join('');
+}
+function v7EApprovedScope(est){
+  return (est?.items||[]).filter(i=>String(i.approvalStatus).toUpperCase()==='APPROVED');
+}
+function v7EPendingScope(est){
+  return (est?.items||[]).filter(i=>String(i.approvalStatus).toUpperCase()==='PENDING');
+}
+function v7ERenderMechanicSnapshot(snap){
+  const wo=snap?.workOrder;if(!wo)return;
+
+  const detail=document.getElementById('m-detail');
+  if(detail)detail.innerHTML=`
+    <div class="head"><div><div class="k">Work Order · Supabase</div><h2>${safeText(wo.code)}</h2></div>${wfPill(String(wo.status||'-').toUpperCase())}</div>
+    <div class="grid">
+      <div class="card"><h3>Customer</h3><b>${safeText(snap.customer?.name||'-')}</b><p class="muted">${safeText(snap.vehicle?.model||'-')} · ${safeText(snap.vehicle?.plate||'-')}<br>${Number(wo.odometer||0).toLocaleString('id-ID')} km</p></div>
+      <div class="card"><h3>Paket</h3><b>${safeText(snap.package?.name||'-')}</b><p class="muted">${rup(Number(snap.package?.price||0))}</p></div>
+      <div class="card"><h3>Keluhan</h3><p>${safeText(wo.complaint||'-')}</p></div>
+    </div>
+    <div class="card" style="margin-top:13px">
+      <h3>Status</h3>
+      <div class="line"><span>Diagnosis</span><b>${v7EStatus(wo.diagnosisStatus)}</b></div>
+      <div class="line"><span>Approval / Job</span><b>${v7EStatus(wo.jobStatus)}</b></div>
+      <div class="actions"><button class="btn" onclick="mtabId('diagnosis')">BUKA DIAGNOSIS & FINDING</button><button class="btn alt" onclick="v7EOpenMechanicWO('${safeText(wo.code)}','detail')">↻ REFRESH</button></div>
+    </div>`;
+
+  const diag=document.getElementById('m-diagnosis');
+  if(diag)diag.innerHTML=`
+    <div class="head"><div><div class="k">Diagnosis + Additional Finding</div><h2>${safeText(wo.code)}</h2></div>${wfPill(String(snap.diagnosis?.status||wo.diagnosisStatus||'-').toUpperCase())}</div>
+    <div class="card">
+      <div class="actions">
+        <button class="btn" onclick="v7EStartDiagnosis()" ${wo.diagnosisStatus!=='NOT_STARTED'?'disabled':''}>MULAI DIAGNOSIS</button>
+        <button class="btn alt" onclick="v7EOpenMechanicWO('${safeText(wo.code)}','diagnosis')">↻ REFRESH</button>
+      </div>
+
+      <div class="tablewrap" style="margin-top:12px">
+        <table class="tbl">
+          <tr><th>Area</th><th>Kondisi</th><th>Catatan</th></tr>
+          ${v7EDiagnosisCheckRows(snap)}
+        </table>
+      </div>
+
+      <div class="field" style="margin-top:12px">
+        <label>Ringkasan diagnosis</label>
+        <textarea id="v7EDiagSummary" placeholder="Ringkasan hasil pemeriksaan...">${safeText(snap.diagnosis?.summary||'')}</textarea>
+      </div>
+
+      <div class="media-upload-box">
+        <h3>Foto Diagnosis</h3>
+        <input id="v7EDiagnosisFileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="v7ESelectDiagnosisFiles(this)">
+        <div id="v7EDiagnosisFileInfo" class="v7e-upload-progress"></div>
+        <div id="v7eMechanicDiagnosisPhotos" class="v7e-photo-grid"></div>
+        <div class="actions">
+          <button class="btn alt" onclick="v7EUploadDiagnosisPhotos()" ${!snap.diagnosis?.id?'disabled':''}>UPLOAD FOTO TERPILIH</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" onclick="v7EFinishDiagnosis()" ${wo.diagnosisStatus!=='IN_PROGRESS'?'disabled':''}>SELESAIKAN DIAGNOSIS</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:13px;background:#f8faf9">
+      <h3>+ Additional Finding</h3>
+      <div class="notice">
+        Mechanic boleh menambahkan beberapa temuan tanpa menunggu customer menjawab temuan sebelumnya.
+        Customer nanti memilih item mana yang disetujui.
+      </div>
+      <div class="form">
+        <div class="field full"><label>Temuan / rekomendasi *</label><textarea id="v7EFindingDesc" placeholder="Contoh: V-Belt retak dan harus diganti"></textarea></div>
+        <div class="field"><label>Part tambahan</label><select id="v7EFindingPart">
+          <option value="">Tanpa part / labor saja</option>
+          ${v7RemoteParts.map(x=>`<option value="${safeText(x.sku)}">${safeText(x.sku)} · ${safeText(x.name)} · ${rup(Number(x.sell||0))}</option>`).join('')}
+        </select></div>
+        <div class="field"><label>Qty</label><input id="v7EFindingQty" type="number" min="1" value="1"></div>
+        <div class="field"><label>Labor tambahan (Rp)</label><input id="v7EFindingLabor" type="number" min="0" value="0"></div>
+        <div class="field full"><label>Foto Finding</label><input id="v7EFindingFileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="v7ESelectFindingFiles(this)"><div id="v7EFindingFileInfo" class="v7e-upload-progress"></div></div>
+      </div>
+      <div class="actions"><button class="btn" onclick="v7EAddFinding()">TAMBAH TEMUAN</button></div>
+    </div>
+
+    <div class="card" style="margin-top:13px">
+      <h3>Temuan yang sudah dicatat</h3>
+      <div class="v7e-findings">
+        ${(snap.findings||[]).map(f=>`
+          <div class="v7e-finding">
+            <b>${safeText(f.description||'-')}</b>
+            <div class="muted">${safeText(f.code||'')} · R${Number(f.revision||0)} · ${v7EStatus(f.status)}</div>
+            <div id="v7eMechFindPhoto_${safeText(f.id)}" class="v7e-photo-grid"></div>
+          </div>`).join('')||'<div class="muted">Belum ada additional finding.</div>'}
+      </div>
+    </div>`;
+
+  const work=document.getElementById('m-work');
+  if(work)work.innerHTML=`
+    <div class="head"><div><div class="k">Approved Scope · Supabase</div><h2>${safeText(wo.code)}</h2></div>${wfPill(String(wo.jobStatus||'-').toUpperCase())}</div>
+    <div class="card">
+      <h3>Item yang boleh dikerjakan</h3>
+      ${v7EApprovedScope(snap.estimate).map(i=>`<div class="line"><span>${safeText(i.name)} ×${Number(i.qty||1)}</span><b>APPROVED</b></div>`).join('')||'<div class="muted">Belum ada approved scope.</div>'}
+      ${v7EPendingScope(snap.estimate).length?`<div class="notice" style="margin-top:12px"><b>${v7EPendingScope(snap.estimate).length} item masih PENDING customer.</b> Item tersebut belum boleh dikerjakan.</div>`:''}
+      <div class="notice" style="margin-top:12px">
+        Tahap 007D/E mengaktifkan diagnosis, finding, dan customer approval. Job execution + Part Request Supabase akan diteruskan pada tahap berikutnya agar tidak membuat transaksi inventory lokal.
+      </div>
+    </div>`;
+
+  const parts=document.getElementById('m-parts');
+  if(parts)parts.innerHTML=`
+    <div class="head"><div><div class="k">Part Request</div><h2>${safeText(wo.code)}</h2></div><span class="pill">NEXT STAGE</span></div>
+    <div class="card"><div class="notice">Approved part sudah dapat terlihat dari Estimate Supabase. Request/Reserve/Issue part akan diaktifkan pada tahap Inventory berikutnya agar stok tidak pernah berubah lokal.</div></div>`;
+
+  const finalqc=document.getElementById('m-finalqc');
+  if(finalqc)finalqc.innerHTML=`
+    <div class="head"><div><div class="k">Mechanic Final QC</div><h2>${safeText(wo.code)}</h2></div><span class="pill">BELUM AKTIF</span></div>
+    <div class="card"><div class="notice">Final QC Supabase diaktifkan setelah Job Execution + Inventory sudah berpindah penuh ke database.</div></div>`;
+
+  v7ERenderStaffPrivatePhotos(snap,'mechanic');
+}
+
+function v7EReadDiagnosisChecks(){
+  return [...document.querySelectorAll('#m-diagnosis tr[data-area]')].map(r=>({
+    area:r.dataset.area,
+    status:r.querySelector('.v7eDiagStatus')?.value||'Normal',
+    note:r.querySelector('.v7eDiagNote')?.value.trim()||''
+  }));
+}
+async function v7EStartDiagnosis(){
+  const code=v7EMechanicSnapshot?.workOrder?.code;if(!code)return;
+  try{
+    const {error}=await v7Sb.rpc('mechanic_start_diagnosis',{p_work_order_code:code});
+    if(error)throw error;
+    toast('Diagnosis dimulai di Supabase');
+    await v7EOpenMechanicWO(code,'diagnosis');
+  }catch(err){v7EError(err,'Gagal mulai diagnosis');}
+}
+async function v7EFinishDiagnosis(){
+  const code=v7EMechanicSnapshot?.workOrder?.code;if(!code)return;
+  const summary=document.getElementById('v7EDiagSummary')?.value.trim()||'Pemeriksaan selesai.';
+  const checks=v7EReadDiagnosisChecks();
+  if(!confirm('Selesaikan diagnosis '+code+'?'))return;
+  try{
+    const {data,error}=await v7Sb.rpc('mechanic_finish_diagnosis',{
+      p_work_order_code:code,
+      p_summary:summary,
+      p_checks:checks
+    });
+    if(error)throw error;
+    toast(data?.pendingItems>0?'Diagnosis selesai · menunggu customer approval':'Diagnosis selesai');
+    await v7EOpenMechanicWO(code,'diagnosis');
+    await v7ELoadMechanicJobs({silent:true});
+  }catch(err){v7EError(err,'Gagal menyelesaikan diagnosis');}
+}
+function v7ESelectDiagnosisFiles(input){
+  v7EDiagnosisFiles=[...(input?.files||[])].slice(0,6);
+  const host=document.getElementById('v7EDiagnosisFileInfo');
+  if(host)host.textContent=v7EDiagnosisFiles.length?v7EDiagnosisFiles.length+' foto dipilih':'';
+}
+async function v7EUploadDiagnosisPhotos(){
+  const diagId=v7EMechanicSnapshot?.diagnosis?.id;
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!diagId){toast('Mulai diagnosis terlebih dahulu');return;}
+  if(!v7EDiagnosisFiles.length){toast('Pilih foto diagnosis');return;}
+  try{
+    await v7EUploadEntityFiles('DIAGNOSIS',diagId,v7EDiagnosisFiles);
+    v7EDiagnosisFiles=[];
+    const inp=document.getElementById('v7EDiagnosisFileInput');if(inp)inp.value='';
+    toast('Foto diagnosis tersimpan di Supabase Storage');
+    await v7EOpenMechanicWO(code,'diagnosis');
+  }catch(err){v7EError(err,'Upload foto diagnosis gagal');}
+}
+function v7ESelectFindingFiles(input){
+  v7EFindingFiles=[...(input?.files||[])].slice(0,6);
+  const host=document.getElementById('v7EFindingFileInfo');
+  if(host)host.textContent=v7EFindingFiles.length?v7EFindingFiles.length+' foto dipilih':'';
+}
+async function v7EAddFinding(){
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code)return;
+  const desc=document.getElementById('v7EFindingDesc')?.value.trim()||'';
+  const sku=document.getElementById('v7EFindingPart')?.value||null;
+  const qty=Math.max(1,Number(document.getElementById('v7EFindingQty')?.value||1));
+  const labor=Math.max(0,Number(document.getElementById('v7EFindingLabor')?.value||0));
+  if(!desc){toast('Temuan wajib diisi');return;}
+  if(!sku&&!labor){toast('Pilih part atau isi biaya labor');return;}
+
+  try{
+    const {data,error}=await v7Sb.rpc('mechanic_add_finding',{
+      p_work_order_code:code,
+      p_description:desc,
+      p_part_sku:sku,
+      p_qty:qty,
+      p_labor_amount:labor,
+      p_labor_label:labor>0?'Labor Tambahan — '+desc:null
+    });
+    if(error)throw error;
+
+    if(v7EFindingFiles.length&&data?.findingId){
+      try{
+        await v7EUploadEntityFiles('FINDING',data.findingId,v7EFindingFiles);
+      }catch(photoErr){
+        console.error('[SUPABASE_007DE] finding created, photo upload failed',photoErr);
+        toast('Temuan tersimpan, tetapi sebagian foto gagal upload');
+      }
+    }
+
+    v7EFindingFiles=[];
+    toast('Temuan ditambahkan ke '+(data?.estimateCode||'Estimate Revisi'));
+    await v7EOpenMechanicWO(code,'diagnosis');
+    await v7ELoadMechanicJobs({silent:true});
+  }catch(err){v7EError(err,'Gagal menambahkan finding');}
+}
+
+/* ---------- block legacy local operational handlers during remote staff session ---------- */
+const v7ELocalStartDiag=typeof startDiag==='function'?startDiag:null;
+startDiag=function(){
+  if(v7ERole()==='mechanic'&&v7EMechanicSnapshot)return v7EStartDiagnosis();
+  if(v7ELocalStartDiag)return v7ELocalStartDiag();
+};
+const v7ELocalFinishDiag=typeof finishDiag==='function'?finishDiag:null;
+finishDiag=function(){
+  if(v7ERole()==='mechanic'&&v7EMechanicSnapshot)return v7EFinishDiagnosis();
+  if(v7ELocalFinishDiag)return v7ELocalFinishDiag();
+};
+const v7ELocalFinding=typeof v3CreateAdditionalFinding==='function'?v3CreateAdditionalFinding:null;
+v3CreateAdditionalFinding=function(){
+  if(v7ERole()==='mechanic'&&v7EMechanicSnapshot)return v7EAddFinding();
+  if(v7ELocalFinding)return v7ELocalFinding();
+};
+
+/* Existing v3RenderAll must never overwrite active remote Advisor/Mechanic panels. */
+const v7ERenderAllBase=typeof v3RenderAll==='function'?v3RenderAll:null;
+if(v7ERenderAllBase){
+  v3RenderAll=function(){
+    v7ERenderAllBase();
+    if(v7ERole()==='advisor'&&v7EIsRemoteStaff())v7ERenderAdvisorRemote();
+    if(v7ERole()==='mechanic'&&v7EIsRemoteStaff()){
+      v7ERenderMechanicJobs();
+      if(v7EMechanicSnapshot)v7ERenderMechanicSnapshot(v7EMechanicSnapshot);
+    }
+  };
+}
+
+/* ---------- customer approval: refresh mechanics/advisor indirectly ----------
+   Customer is anonymous, so staff devices use 10s polling. Customer page itself
+   refreshes immediately after decision via 007D.
+   -------------------------------------------------------------------------- */
+window.vwStaffIntegrationInfo=function(){
+  const s=v7EStaff();
+  const result={
+    stage:'007D/E',
+    authenticated:!!s,
+    staffCode:s?.staffCode||null,
+    name:s?.name||null,
+    role:s?.role||null,
+    advisorBookings:v7EAdvisorBookings.length,
+    advisorWorkOrders:v7EAdvisorWorkOrders.length,
+    mechanicJobs:v7EMechanicJobs.length,
+    selectedWO:v7EMechanicSnapshot?.workOrder?.code||v7EAdvisorSnapshot?.workOrder?.code||null
+  };
+  console.table(result);
+  return result;
+};
+
+function v7EInit(){
+  v7EPrepareLoginUI();
+  // 007A init happens earlier. Give it time to create v7Sb.
+  setTimeout(v7ERestoreSession,500);
+}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(v7EInit,380));
+</script>
+
 </body>
 
 </html>
