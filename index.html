@@ -10009,6 +10009,277 @@ window.vwFinalFlowInfo=function(){
 };
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007G_VEHICLE_RELEASE_FIX]
+     Prevent realtime from resetting Advisor Vehicle Release form
+     ====================================================================== -->
+<style>
+  #v7GReleaseEditState{
+    margin:8px 0 0;
+    font-size:11px;color:var(--m)
+  }
+  #v7GReleaseEditState.editing{
+    color:#8b6200;font-weight:800
+  }
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007G_VEHICLE_RELEASE_FIX]
+
+   Problem:
+   Realtime calls v7GLoadAdvisorFinance(), which previously rebuilt
+   #p-release and erased receiver/note while Advisor was typing.
+
+   Fix:
+   - keep a draft per Work Order
+   - mark release form dirty while user edits
+   - realtime may refresh DB arrays, but cannot rebuild active dirty form
+   - manual REFRESH intentionally reloads the form
+   - successful RELEASE clears the draft then refreshes
+   ====================================================================== */
+
+let v7GReleaseDirty=false;
+const v7GReleaseDrafts=new Map();
+
+function v7GReleasePanelActive(){
+  return document.querySelector('#advisor .panel.on')?.id==='p-release';
+}
+
+function v7GSaveReleaseDraft(id){
+  const receiver=document.getElementById('v7GReceiver_'+id)?.value ?? '';
+  const note=document.getElementById('v7GReleaseNote_'+id)?.value ?? '';
+  v7GReleaseDrafts.set(String(id),{receiver,note});
+}
+
+function v7GMarkReleaseDirty(id){
+  v7GReleaseDirty=true;
+  v7GSaveReleaseDraft(id);
+  const state=document.getElementById('v7GReleaseEditState');
+  if(state){
+    state.classList.add('editing');
+    state.textContent='Sedang mengisi form · realtime tidak akan mereset input.';
+  }
+}
+
+function v7GRestoreReleaseDrafts(){
+  for(const [id,draft] of v7GReleaseDrafts.entries()){
+    const receiver=document.getElementById('v7GReceiver_'+id);
+    const note=document.getElementById('v7GReleaseNote_'+id);
+    if(receiver && !receiver.value)receiver.value=draft.receiver||'';
+    if(note && !note.value)note.value=draft.note||'';
+  }
+}
+
+function v7GInstallReleaseDraftListeners(){
+  const p=document.getElementById('p-release');
+  if(!p || p.dataset.releaseDraftSafe==='1')return;
+  p.dataset.releaseDraftSafe='1';
+
+  const handler=e=>{
+    const el=e.target;
+    if(!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement))return;
+    const m=String(el.id||'').match(/^v7G(?:Receiver|ReleaseNote)_(.+)$/);
+    if(!m)return;
+    v7GMarkReleaseDirty(m[1]);
+  };
+
+  p.addEventListener('input',handler);
+  p.addEventListener('change',handler);
+}
+
+const v7GRenderAdvisorReleaseUnsafe=v7GRenderAdvisorRelease;
+
+v7GRenderAdvisorRelease=function(force=false){
+  // Realtime/background refresh must not touch a form being edited.
+  if(!force && v7GReleaseDirty && v7GReleasePanelActive()){
+    const state=document.getElementById('v7GReleaseEditState');
+    if(state){
+      state.classList.add('editing');
+      state.textContent='Ada update realtime · form dipertahankan sampai disimpan atau Refresh manual.';
+    }
+    return;
+  }
+
+  v7GRenderAdvisorReleaseUnsafe();
+
+  const p=document.getElementById('p-release');
+  if(!p)return;
+
+  // Replace the original generic refresh with an explicit safe refresh.
+  const refresh=[...p.querySelectorAll('button')]
+    .find(b=>b.textContent.includes('REFRESH'));
+  if(refresh){
+    refresh.onclick=v7GManualRefreshRelease;
+    refresh.type='button';
+  }
+
+  let state=document.getElementById('v7GReleaseEditState');
+  if(!state){
+    state=document.createElement('div');
+    state.id='v7GReleaseEditState';
+    const head=p.querySelector('.head');
+    if(head)head.insertAdjacentElement('afterend',state);
+  }
+  if(state){
+    state.className=v7GReleaseDirty?'editing':'';
+    state.textContent=v7GReleaseDirty
+      ? 'Draft form dipertahankan. Realtime tidak akan mereset input.'
+      : 'Realtime aktif · form hanya dimuat ulang jika belum sedang diedit.';
+  }
+
+  v7GRestoreReleaseDrafts();
+  v7GInstallReleaseDraftListeners();
+};
+
+async function v7GManualRefreshRelease(){
+  if(v7GReleaseDirty){
+    if(!confirm('Refresh akan memuat ulang data Vehicle Release dan menghapus input yang belum disimpan. Lanjutkan?'))return;
+  }
+  v7GReleaseDirty=false;
+  v7GReleaseDrafts.clear();
+
+  try{
+    const [pays,rels]=await Promise.all([
+      v7Sb.rpc('staff_get_payment_queue'),
+      v7Sb.rpc('staff_get_release_queue')
+    ]);
+    if(pays.error)throw pays.error;
+    if(rels.error)throw rels.error;
+
+    v7GPaymentQueue=Array.isArray(pays.data)?pays.data:[];
+    v7GReleaseQueue=Array.isArray(rels.data)?rels.data:[];
+
+    v7GRenderAdvisorPayments();
+    v7GRenderAdvisorRelease(true);
+    toast('Vehicle Release diperbarui');
+  }catch(err){
+    v7FError(err,'Gagal refresh Vehicle Release');
+  }
+}
+
+/* Finance loading may update arrays/payment UI, but release rendering now
+   respects the dirty guard above. */
+const v7GLoadAdvisorFinanceUnsafe=v7GLoadAdvisorFinance;
+v7GLoadAdvisorFinance=async function({silent=false,forceRelease=false}={}){
+  if(!['advisor','owner'].includes(v7ERole()))return;
+  try{
+    const [pays,rels]=await Promise.all([
+      v7Sb.rpc('staff_get_payment_queue'),
+      v7Sb.rpc('staff_get_release_queue')
+    ]);
+    if(pays.error)throw pays.error;
+    if(rels.error)throw rels.error;
+
+    v7GPaymentQueue=Array.isArray(pays.data)?pays.data:[];
+    v7GReleaseQueue=Array.isArray(rels.data)?rels.data:[];
+
+    v7GRenderAdvisorPayments();
+    v7GRenderAdvisorRelease(!!forceRelease);
+  }catch(err){
+    if(!silent)v7FError(err,'Gagal memuat Payment / Release');
+    else console.warn('[VEHICLE_RELEASE_FIX] finance refresh',err);
+  }
+};
+
+/* Successful release intentionally clears draft and forces fresh state. */
+v7GReleaseVehicle=async function(code,id){
+  const key=String(id);
+  v7GSaveReleaseDraft(key);
+
+  const draft=v7GReleaseDrafts.get(key)||{};
+  const receiver=String(
+    document.getElementById('v7GReceiver_'+key)?.value ?? draft.receiver ?? ''
+  ).trim();
+  const noteRaw=String(
+    document.getElementById('v7GReleaseNote_'+key)?.value ?? draft.note ?? ''
+  ).trim();
+  const note=noteRaw||null;
+
+  if(receiver.length<2){
+    toast('Nama penerima wajib diisi');
+    return;
+  }
+  if(!confirm('Serahkan kendaraan '+code+' ke '+receiver+' dan CLOSE WO?'))return;
+
+  // Lock only the selected release button, not the whole panel.
+  const btn=[...document.querySelectorAll('#p-release button')]
+    .find(b=>(b.getAttribute('onclick')||'').includes("'"+code+"'"));
+  if(btn){btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent='MENYIMPAN...';}
+
+  try{
+    const {data,error}=await v7Sb.rpc('advisor_release_vehicle',{
+      p_work_order_code:code,
+      p_receiver_name:receiver,
+      p_note:note
+    });
+    if(error)throw error;
+
+    v7GReleaseDrafts.delete(key);
+    v7GReleaseDirty=v7GReleaseDrafts.size>0;
+
+    toast('Vehicle released · WO CLOSED ✓');
+    await v7GLoadAdvisorFinance({forceRelease:true});
+    await v7ELoadAdvisor({silent:true});
+  }catch(err){
+    // Preserve draft when backend rejects the release.
+    v7GReleaseDirty=true;
+    v7GReleaseDrafts.set(key,{receiver,note:noteRaw});
+    v7FError(err,'Vehicle Release gagal');
+    v7GRenderAdvisorRelease(false);
+  }finally{
+    if(btn && document.body.contains(btn)){
+      btn.disabled=false;
+      btn.textContent=btn.dataset.oldText||'RELEASE VEHICLE & CLOSE WO';
+    }
+  }
+};
+
+/* When Advisor explicitly leaves the Release panel, keep the draft.
+   Returning to Release restores it. Only manual Refresh / successful release
+   discards the relevant draft. */
+const v7GStabIdBase=stabId;
+stabId=function(id){
+  v7GStabIdBase(id);
+  if(id==='release'){
+    requestAnimationFrame(()=>{
+      v7GRenderAdvisorRelease(false);
+      v7GRestoreReleaseDrafts();
+      v7GInstallReleaseDraftListeners();
+    });
+  }
+};
+
+/* Protect against the Advisor renderer calling release render after any
+   unrelated realtime update. The dirty-aware function above is used. */
+const v7GAdvisorRenderSafeBase=v7ERenderAdvisorRemote;
+v7ERenderAdvisorRemote=function(){
+  v7GAdvisorRenderSafeBase();
+  if(v7ERole()==='advisor'){
+    v7GRenderAdvisorPayments();
+    v7GRenderAdvisorRelease(false);
+  }
+};
+
+window.vwReleaseFormInfo=function(){
+  const result={
+    stage:'007G-RELEASE-FIX',
+    active:v7GReleasePanelActive(),
+    dirty:v7GReleaseDirty,
+    drafts:v7GReleaseDrafts.size,
+    realtimeProtected:true
+  };
+  console.table(result);
+  return result;
+};
+
+setTimeout(()=>{
+  if(v7ERole()==='advisor'){
+    v7GRenderAdvisorRelease(false);
+  }
+},1200);
+</script>
+
 </body>
 
 </html>
