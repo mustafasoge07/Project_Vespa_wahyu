@@ -7550,6 +7550,477 @@ function v7EInit(){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(v7EInit,380));
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007DE_MECHANIC_FIX]
+     Fix mechanic diagnosis form reset / renderer collision
+     ====================================================================== -->
+<style>
+  .v7e-mech-safe-note{
+    margin-top:10px;padding:9px 11px;border-radius:12px;
+    border:1px solid #c9e6d5;background:#eef9f2;color:#17653f;
+    font-size:11px;font-weight:800
+  }
+  .v7e-mech-error{
+    display:none;margin-top:10px;padding:10px 12px;border-radius:12px;
+    border:1px solid #efcfcb;background:#fff0ef;color:#a33a32;
+    white-space:pre-wrap;font-size:12px
+  }
+</style>
+<script>
+/* ======================================================================
+   [SUPABASE_007DE_MECHANIC_FIX]
+
+   Root issue fixed:
+   1) background refresh must NEVER rebuild an active mechanic form;
+   2) Supabase staff pages must not be rendered by legacy local workflow first;
+   3) mechanic status comparison is normalized;
+   4) backend errors are shown inside the mechanic page, not only as toast;
+   5) Additional Finding is disabled until diagnosis has started.
+   ====================================================================== */
+
+let v7EMechanicFormDirty=false;
+let v7EMechanicActionBusy=false;
+
+function v7ENormStatus(v){
+  return String(v||'').trim().toUpperCase();
+}
+
+function v7EActiveMechanicPanel(){
+  return document.querySelector('#mechanic .panel.on')?.id || '';
+}
+
+function v7ESetMechanicDirty(v=true){
+  v7EMechanicFormDirty=!!v;
+}
+
+function v7EMechanicError(message=''){
+  let host=document.getElementById('v7EMechanicErrorBox');
+  if(!host){
+    const panel=document.getElementById('m-diagnosis');
+    if(panel){
+      host=document.createElement('div');
+      host.id='v7EMechanicErrorBox';
+      host.className='v7e-mech-error';
+      panel.prepend(host);
+    }
+  }
+  if(!host)return;
+  if(message){
+    host.style.display='block';
+    host.textContent=message;
+  }else{
+    host.style.display='none';
+    host.textContent='';
+  }
+}
+
+function v7EAttachMechanicDirtyTracking(){
+  const panel=document.getElementById('m-diagnosis');
+  if(!panel || panel.dataset.safeTracking==='1')return;
+  panel.dataset.safeTracking='1';
+  panel.addEventListener('input',()=>v7ESetMechanicDirty(true));
+  panel.addEventListener('change',()=>v7ESetMechanicDirty(true));
+}
+
+/* Background refresh:
+   - advisor may refresh normally
+   - mechanic refreshes ONLY My Jobs list
+   - active diagnosis/finding form is untouched
+*/
+v7EStartAutoRefresh=function(){
+  clearInterval(v7ERoleRefreshTimer);
+  v7ERoleRefreshTimer=setInterval(async()=>{
+    if(document.hidden||!v7EIsRemoteStaff())return;
+    const role=v7ERole();
+
+    if(role==='advisor'){
+      await v7ELoadAdvisor({silent:true});
+      return;
+    }
+
+    if(role==='mechanic'){
+      try{
+        const jobs=await v7EQueryMechanicJobs();
+        v7EMechanicJobs=jobs;
+        v7ERenderMechanicJobs();
+        // IMPORTANT: do not call v7EOpenMechanicWO() here.
+      }catch(err){
+        console.warn('[SUPABASE_007DE_MECHANIC_FIX] background jobs refresh failed',err);
+      }
+    }
+  },10000);
+};
+
+/* Manual mechanic job refresh may update list but never silently rebuild
+   the currently edited diagnosis form.
+*/
+v7ELoadMechanicJobs=async function({silent=false,refreshSelected=false}={}){
+  if(v7ERole()!=='mechanic')return;
+  if(v7EMechanicBusy)return;
+
+  v7EMechanicBusy=true;
+  try{
+    v7EMechanicJobs=await v7EQueryMechanicJobs();
+    v7ERenderMechanicJobs();
+
+    if(refreshSelected &&
+       v7EMechanicSnapshot?.workOrder?.code &&
+       !v7EMechanicFormDirty){
+      await v7EOpenMechanicWO(
+        v7EMechanicSnapshot.workOrder.code,
+        null,
+        true
+      );
+    }
+  }catch(err){
+    if(!silent)v7EError(err,'Gagal memuat My Jobs');
+    else console.warn('[SUPABASE_007DE_MECHANIC_FIX] mechanic refresh',err);
+  }finally{
+    v7EMechanicBusy=false;
+  }
+};
+
+/* Completely separate remote staff render from legacy localStorage render.
+   This prevents the old V3/V6 layers from rebuilding mechanic panels. */
+if(typeof v7ERenderAllBase==='function'){
+  v3RenderAll=function(){
+    if(v7EIsRemoteStaff()){
+      const role=v7ERole();
+
+      if(role==='advisor'){
+        v7ERenderAdvisorRemote();
+        return;
+      }
+
+      if(role==='mechanic'){
+        v7ERenderMechanicJobs();
+
+        const active=v7EActiveMechanicPanel();
+        const editingDiagnosis=active==='m-diagnosis' && v7EMechanicFormDirty;
+
+        if(v7EMechanicSnapshot && !editingDiagnosis){
+          v7ERenderMechanicSnapshot(v7EMechanicSnapshot);
+          v7EAttachMechanicDirtyTracking();
+        }
+        return;
+      }
+    }
+
+    return v7ERenderAllBase();
+  };
+}
+
+/* Wrap snapshot renderer:
+   normalize backend status and inject clear DB-state information.
+*/
+const v7ERenderMechanicSnapshotBase=v7ERenderMechanicSnapshot;
+v7ERenderMechanicSnapshot=function(snap){
+  if(!snap?.workOrder)return;
+
+  snap.workOrder.diagnosisStatus=
+    v7ENormStatus(snap.workOrder.diagnosisStatus||'NOT_STARTED');
+  snap.workOrder.status=
+    v7ENormStatus(snap.workOrder.status||'WAITING_DIAGNOSIS');
+  snap.workOrder.jobStatus=
+    v7ENormStatus(snap.workOrder.jobStatus||'ASSIGNED');
+
+  if(snap.diagnosis){
+    snap.diagnosis.status=
+      v7ENormStatus(snap.diagnosis.status||snap.workOrder.diagnosisStatus);
+  }
+
+  v7ERenderMechanicSnapshotBase(snap);
+  v7EAttachMechanicDirtyTracking();
+
+  const diag=document.getElementById('m-diagnosis');
+  if(diag && !document.getElementById('v7EMechanicSafeNote')){
+    const note=document.createElement('div');
+    note.id='v7EMechanicSafeNote';
+    note.className='v7e-mech-safe-note';
+    note.textContent='Form Diagnosis aman dari auto-refresh. Data hanya dimuat ulang setelah aksi berhasil atau saat Anda menekan Refresh.';
+    const head=diag.querySelector('.head');
+    if(head)head.insertAdjacentElement('afterend',note);
+  }
+
+  const ds=snap.workOrder.diagnosisStatus;
+  const findingBtn=[...document.querySelectorAll('#m-diagnosis button')]
+    .find(b=>b.textContent.includes('TAMBAH TEMUAN'));
+
+  if(findingBtn){
+    findingBtn.disabled=!['IN_PROGRESS','COMPLETED'].includes(ds);
+    findingBtn.title=findingBtn.disabled
+      ? 'Mulai diagnosis terlebih dahulu'
+      : '';
+  }
+};
+
+/* Opening WO is an explicit user navigation, so it is allowed to refresh
+   the selected snapshot and clears "dirty" state. */
+const v7EOpenMechanicWOBase=v7EOpenMechanicWO;
+v7EOpenMechanicWO=async function(code,tab='detail',silent=false){
+  try{
+    v7EMechanicFormDirty=false;
+    v7EMechanicError('');
+    await v7EOpenMechanicWOBase(code,tab,silent);
+    v7EAttachMechanicDirtyTracking();
+  }catch(err){
+    v7EMechanicError(String(err?.message||err));
+    if(!silent)v7EError(err,'Gagal membuka job');
+  }
+};
+
+/* Start diagnosis:
+   - block double click
+   - show real backend error inline
+   - refresh only after RPC success
+*/
+v7EStartDiagnosis=async function(){
+  if(v7EMechanicActionBusy)return;
+
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code){
+    toast('Pilih Work Order terlebih dahulu');
+    return;
+  }
+
+  const state=v7ENormStatus(
+    v7EMechanicSnapshot?.workOrder?.diagnosisStatus
+  );
+
+  if(state==='IN_PROGRESS'){
+    toast('Diagnosis sudah berjalan');
+    return;
+  }
+  if(state==='COMPLETED'){
+    toast('Diagnosis sudah selesai');
+    return;
+  }
+
+  v7EMechanicActionBusy=true;
+  v7EMechanicError('');
+
+  try{
+    const {data,error}=await v7Sb.rpc(
+      'mechanic_start_diagnosis',
+      {p_work_order_code:code}
+    );
+    if(error)throw error;
+
+    v7EMechanicFormDirty=false;
+    await v7EOpenMechanicWO(code,'diagnosis',false);
+    toast('Diagnosis dimulai di Supabase ✓');
+
+    console.info(
+      '[SUPABASE_007DE_MECHANIC_FIX] diagnosis started',
+      data
+    );
+  }catch(err){
+    const msg=String(
+      err?.message||
+      err?.details||
+      err?.hint||
+      'Gagal mulai diagnosis'
+    );
+    v7EMechanicError('START DIAGNOSIS GAGAL\n'+msg);
+    v7EError(err,'Gagal mulai diagnosis');
+  }finally{
+    v7EMechanicActionBusy=false;
+  }
+};
+
+/* Finish diagnosis:
+   preserve fields until server confirms successful write. */
+v7EFinishDiagnosis=async function(){
+  if(v7EMechanicActionBusy)return;
+
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code)return;
+
+  const state=v7ENormStatus(
+    v7EMechanicSnapshot?.workOrder?.diagnosisStatus
+  );
+
+  if(state!=='IN_PROGRESS'){
+    toast('Diagnosis harus berstatus IN PROGRESS');
+    return;
+  }
+
+  const summary=
+    document.getElementById('v7EDiagSummary')?.value.trim()||
+    'Pemeriksaan selesai.';
+  const checks=v7EReadDiagnosisChecks();
+
+  if(!confirm('Selesaikan diagnosis '+code+'?'))return;
+
+  v7EMechanicActionBusy=true;
+  v7EMechanicError('');
+
+  try{
+    const {data,error}=await v7Sb.rpc(
+      'mechanic_finish_diagnosis',
+      {
+        p_work_order_code:code,
+        p_summary:summary,
+        p_checks:checks
+      }
+    );
+    if(error)throw error;
+
+    v7EMechanicFormDirty=false;
+    await v7EOpenMechanicWO(code,'diagnosis',false);
+    await v7ELoadMechanicJobs({silent:true});
+
+    toast(
+      Number(data?.pendingItems||0)>0
+        ? 'Diagnosis selesai · menunggu customer approval'
+        : 'Diagnosis selesai ✓'
+    );
+  }catch(err){
+    const msg=String(
+      err?.message||
+      err?.details||
+      err?.hint||
+      'Gagal menyelesaikan diagnosis'
+    );
+    v7EMechanicError('FINISH DIAGNOSIS GAGAL\n'+msg);
+    v7EError(err,'Gagal menyelesaikan diagnosis');
+  }finally{
+    v7EMechanicActionBusy=false;
+  }
+};
+
+/* Finding:
+   do not clear user input before server success.
+*/
+v7EAddFinding=async function(){
+  if(v7EMechanicActionBusy)return;
+
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code)return;
+
+  const diagState=v7ENormStatus(
+    v7EMechanicSnapshot?.workOrder?.diagnosisStatus
+  );
+
+  if(!['IN_PROGRESS','COMPLETED'].includes(diagState)){
+    toast('Mulai diagnosis terlebih dahulu');
+    return;
+  }
+
+  const desc=document.getElementById('v7EFindingDesc')?.value.trim()||'';
+  const sku=document.getElementById('v7EFindingPart')?.value||null;
+  const qty=Math.max(
+    1,
+    Number(document.getElementById('v7EFindingQty')?.value||1)
+  );
+  const labor=Math.max(
+    0,
+    Number(document.getElementById('v7EFindingLabor')?.value||0)
+  );
+
+  if(!desc){
+    toast('Temuan wajib diisi');
+    return;
+  }
+  if(!sku&&!labor){
+    toast('Pilih part atau isi biaya labor');
+    return;
+  }
+
+  v7EMechanicActionBusy=true;
+  v7EMechanicError('');
+
+  try{
+    const {data,error}=await v7Sb.rpc(
+      'mechanic_add_finding',
+      {
+        p_work_order_code:code,
+        p_description:desc,
+        p_part_sku:sku,
+        p_qty:qty,
+        p_labor_amount:labor,
+        p_labor_label:labor>0
+          ? 'Labor Tambahan — '+desc
+          : null
+      }
+    );
+    if(error)throw error;
+
+    if(v7EFindingFiles.length&&data?.findingId){
+      try{
+        await v7EUploadEntityFiles(
+          'FINDING',
+          data.findingId,
+          v7EFindingFiles
+        );
+      }catch(photoErr){
+        console.error(
+          '[SUPABASE_007DE_MECHANIC_FIX] finding photo upload failed',
+          photoErr
+        );
+        toast('Temuan tersimpan, tetapi foto gagal upload');
+      }
+    }
+
+    v7EFindingFiles=[];
+    v7EMechanicFormDirty=false;
+    await v7EOpenMechanicWO(code,'diagnosis',false);
+    await v7ELoadMechanicJobs({silent:true});
+
+    toast(
+      'Temuan ditambahkan ke '+
+      (data?.estimateCode||'Estimate Revisi')
+    );
+  }catch(err){
+    const msg=String(
+      err?.message||
+      err?.details||
+      err?.hint||
+      'Gagal menambahkan finding'
+    );
+    v7EMechanicError('ADDITIONAL FINDING GAGAL\n'+msg);
+    v7EError(err,'Gagal menambahkan finding');
+  }finally{
+    v7EMechanicActionBusy=false;
+  }
+};
+
+/* When login routes to mechanic, restart the safer refresh scheduler. */
+const v7ERouteStaffBase=v7ERouteStaff;
+v7ERouteStaff=function(){
+  v7ERouteStaffBase();
+  if(v7ERole()==='mechanic'){
+    v7EStartAutoRefresh();
+  }
+};
+
+/* Restart scheduler if a mechanic session was already restored before this
+   fix layer initialized. */
+setTimeout(()=>{
+  if(v7ERole()==='mechanic'&&v7EIsRemoteStaff()){
+    v7EStartAutoRefresh();
+  }
+},900);
+
+window.vwMechanicIntegrationInfo=function(){
+  const snap=v7EMechanicSnapshot;
+  const result={
+    stage:'007D/E-MECHANIC-FIX',
+    authenticated:v7EIsRemoteStaff(),
+    role:v7ERole(),
+    staff:v7EStaff()?.name||null,
+    selectedWO:snap?.workOrder?.code||null,
+    woStatus:snap?.workOrder?.status||null,
+    diagnosisStatus:snap?.workOrder?.diagnosisStatus||null,
+    formDirty:v7EMechanicFormDirty,
+    backgroundRefreshSafe:true
+  };
+  console.table(result);
+  return result;
+};
+</script>
+
 </body>
 
 </html>
