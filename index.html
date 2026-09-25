@@ -11289,6 +11289,928 @@ window.vwReceiveGoodsInfo=function(){
 };
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007H_STOCK_OPNAME_FIX]
+     Reliable Stock Opname UI + scroll/focus + validation + realtime guard
+     ====================================================================== -->
+<style>
+  #v7HOpnameForm{
+    border:2px solid currentColor;
+    scroll-margin-top:90px;
+  }
+  #v7HOpnameForm .v7h-opname-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 120px minmax(180px,1fr) 44px;
+    gap:10px;
+    align-items:end;
+    padding:10px 0;
+    border-bottom:1px solid var(--l);
+  }
+  #v7HOpnameForm .v7h-opname-row:last-child{border-bottom:0}
+  @media(max-width:700px){
+    #v7HOpnameForm .v7h-opname-row{grid-template-columns:1fr 1fr}
+    #v7HOpnameForm .v7h-opname-wide{grid-column:1/-1}
+  }
+</style>
+<script>
+let v7HOpnameBusy=false;
+let v7HOpnameActive=false;
+
+function v7HCloseOpnameForm(){
+  v7HOpnameActive=false;
+  v7HOpnameLines=[];
+  const h=document.getElementById('v7HInventoryForm');
+  if(h)h.innerHTML='';
+  v7HClearDirty();
+}
+
+v7HOpenOpnameForm=function(){
+  const parts=(v7HMaster?.parts||[]).filter(p=>v7HUpper(p.status)==='ACTIVE');
+
+  if(!parts.length){
+    toast('Belum ada part ACTIVE untuk Stock Opname.');
+    return;
+  }
+
+  const p=parts[0];
+  v7HOpnameLines=[{
+    partId:p.id,
+    physicalQty:v7HNum(p.onHand),
+    reason:'Stock opname fisik'
+  }];
+  v7HOpnameActive=true;
+  v7HFormDirty=true;
+
+  const host=document.getElementById('v7HInventoryForm');
+  if(!host){
+    toast('Area Stock Opname tidak ditemukan.');
+    return;
+  }
+
+  host.innerHTML=`
+    <div id="v7HOpnameForm" class="v7h-formbox">
+      <div class="head">
+        <div>
+          <div class="k">Inventory Control · Supabase</div>
+          <h3>Stock Opname</h3>
+        </div>
+        <span class="pill">PHYSICAL COUNT</span>
+      </div>
+
+      <div class="notice">
+        Bandingkan <b>stok fisik nyata</b> dengan stok sistem.
+        Jika berbeda, backend akan membuat <b>ADJUSTMENT</b> pada Stock Movement.
+      </div>
+
+      <div id="v7HOpnameLines" style="margin-top:10px"></div>
+
+      <div id="v7HOpnameError" class="notice" style="display:none;margin-top:10px"></div>
+
+      <div class="actions">
+        <button class="btn alt" type="button" onclick="v7HAddOpnameLine()">+ ITEM</button>
+        <button id="v7HCompleteOpnameBtn" class="btn" type="button" onclick="v7HSubmitOpname()">COMPLETE OPNAME</button>
+        <button class="btn alt" type="button" onclick="v7HCloseOpnameForm()">BATAL</button>
+      </div>
+
+      <div class="v7h-mini">
+        Physical Qty tidak boleh lebih kecil dari Reserved Qty.
+        Reserved stock sedang dipakai/dicadangkan untuk Work Order aktif.
+      </div>
+    </div>`;
+
+  v7HRenderOpnameLines();
+
+  requestAnimationFrame(()=>{
+    const form=document.getElementById('v7HOpnameForm');
+    form?.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(()=>{
+      const first=document.querySelector('#v7HOpnameForm .v7HOpPhysical');
+      first?.focus();
+      first?.select();
+    },350);
+  });
+
+  toast('Form Stock Opname dibuka');
+};
+
+v7HRenderOpnameLines=function(){
+  const h=document.getElementById('v7HOpnameLines');
+  if(!h)return;
+
+  const parts=(v7HMaster?.parts||[]).filter(p=>v7HUpper(p.status)==='ACTIVE');
+
+  h.innerHTML=v7HOpnameLines.map((x,i)=>{
+    const part=parts.find(p=>String(p.id)===String(x.partId)) || parts[0] || {};
+    const onHand=v7HNum(part.onHand);
+    const reserved=v7HNum(part.reservedQty);
+    const physical=v7HNum(x.physicalQty);
+    const diff=physical-onHand;
+
+    return `
+      <div class="v7h-opname-row">
+        <div class="v7h-opname-wide">
+          <label>Part</label>
+          <select onchange="
+            v7HOpnameLines[${i}].partId=this.value;
+            const p=(v7HMaster.parts||[]).find(x=>String(x.id)===String(this.value));
+            v7HOpnameLines[${i}].physicalQty=v7HNum(p?.onHand);
+            v7HRenderOpnameLines();
+            v7HMarkDirty();
+          ">
+            ${parts.map(p=>`
+              <option value="${safeText(p.id)}" ${String(p.id)===String(x.partId)?'selected':''}>
+                ${safeText(p.sku)} · ${safeText(p.name)}
+                · System ${v7HNum(p.onHand)}
+                · Reserved ${v7HNum(p.reservedQty)}
+              </option>`).join('')}
+          </select>
+          <div class="v7h-mini">
+            System: <b>${onHand}</b>
+            · Reserved: <b>${reserved}</b>
+            · Available: <b>${Math.max(0,onHand-reserved)}</b>
+          </div>
+        </div>
+
+        <div>
+          <label>Physical Qty</label>
+          <input
+            class="v7HOpPhysical"
+            type="number"
+            min="${reserved}"
+            step="1"
+            value="${physical}"
+            onchange="
+              v7HOpnameLines[${i}].physicalQty=Math.trunc(v7HNum(this.value));
+              v7HRenderOpnameLines();
+              v7HMarkDirty();
+            ">
+          <div class="v7h-mini">Diff: <b>${diff>0?'+':''}${diff}</b></div>
+        </div>
+
+        <div class="v7h-opname-wide">
+          <label>Reason *</label>
+          <input
+            value="${safeText(x.reason||'')}"
+            placeholder="Contoh: hasil hitung fisik gudang"
+            onchange="v7HOpnameLines[${i}].reason=this.value;v7HMarkDirty()">
+        </div>
+
+        <button class="btn bad" type="button" onclick="
+          v7HOpnameLines.splice(${i},1);
+          v7HRenderOpnameLines();
+          v7HMarkDirty();
+        ">×</button>
+      </div>`;
+  }).join('') || '<div class="notice">Tambahkan minimal 1 item opname.</div>';
+};
+
+v7HAddOpnameLine=function(){
+  const parts=(v7HMaster?.parts||[]).filter(p=>v7HUpper(p.status)==='ACTIVE');
+  const used=new Set(v7HOpnameLines.map(x=>String(x.partId)));
+  const p=parts.find(x=>!used.has(String(x.id))) || parts[0];
+
+  if(!p){
+    toast('Tidak ada part yang tersedia.');
+    return;
+  }
+
+  v7HOpnameLines.push({
+    partId:p.id,
+    physicalQty:v7HNum(p.onHand),
+    reason:'Stock opname fisik'
+  });
+
+  v7HRenderOpnameLines();
+  v7HMarkDirty();
+
+  requestAnimationFrame(()=>{
+    const rows=document.querySelectorAll('#v7HOpnameForm .v7h-opname-row');
+    rows[rows.length-1]?.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+};
+
+v7HSubmitOpname=async function(){
+  if(v7HOpnameBusy)return;
+
+  const errBox=document.getElementById('v7HOpnameError');
+  const fail=(msg)=>{
+    if(errBox){
+      errBox.style.display='block';
+      errBox.innerHTML='<b>Belum bisa diposting:</b> '+safeText(msg);
+    }
+    toast(msg);
+  };
+
+  if(!v7HOpnameActive){
+    fail('Form Stock Opname belum dibuka.');
+    return;
+  }
+
+  if(!v7HOpnameLines.length){
+    fail('Tambahkan minimal 1 part.');
+    return;
+  }
+
+  const seen=new Set();
+  const payload=[];
+
+  for(let i=0;i<v7HOpnameLines.length;i++){
+    const x=v7HOpnameLines[i];
+    const part=(v7HMaster?.parts||[]).find(p=>String(p.id)===String(x.partId));
+
+    if(!part){
+      fail('Part pada baris '+(i+1)+' tidak ditemukan.');
+      return;
+    }
+
+    if(seen.has(String(x.partId))){
+      fail('Part '+part.sku+' dipilih lebih dari sekali.');
+      return;
+    }
+    seen.add(String(x.partId));
+
+    const physical=Math.trunc(v7HNum(x.physicalQty));
+    const reserved=v7HNum(part.reservedQty);
+    const reason=String(x.reason||'').trim();
+
+    if(physical<0){
+      fail('Physical Qty '+part.sku+' tidak boleh negatif.');
+      return;
+    }
+    if(physical<reserved){
+      fail(
+        'Physical Qty '+part.sku+' ('+physical+
+        ') lebih kecil dari Reserved Qty ('+reserved+').'
+      );
+      return;
+    }
+    if(reason.length<2){
+      fail('Reason untuk '+part.sku+' wajib diisi.');
+      return;
+    }
+
+    payload.push({
+      partId:x.partId,
+      physicalQty:physical,
+      reason
+    });
+  }
+
+  if(errBox)errBox.style.display='none';
+
+  const changed=payload.filter(x=>{
+    const p=(v7HMaster?.parts||[]).find(y=>String(y.id)===String(x.partId));
+    return v7HNum(p?.onHand)!==v7HNum(x.physicalQty);
+  }).length;
+
+  if(!confirm(
+    'Complete Stock Opname '+payload.length+' part?\n'+
+    changed+' part memiliki perbedaan dan akan membuat adjustment.'
+  ))return;
+
+  const btn=document.getElementById('v7HCompleteOpnameBtn');
+  v7HOpnameBusy=true;
+  if(btn){
+    btn.disabled=true;
+    btn.dataset.oldText=btn.textContent;
+    btn.textContent='POSTING OPNAME...';
+  }
+
+  try{
+    const {data,error}=await v7Sb.rpc(
+      'inventory_complete_stock_opname',
+      {p_items:payload}
+    );
+    if(error)throw error;
+
+    v7HOpnameActive=false;
+    v7HOpnameLines=[];
+    v7HFormDirty=false;
+
+    toast('Stock Opname '+(data?.code||'')+' selesai ✓');
+
+    await Promise.all([
+      v7HLoadMaster({silent:false,render:true}),
+      v7HLoadDashboard({silent:true})
+    ]);
+
+    otabId('inventoryadmin');
+
+    requestAnimationFrame(()=>{
+      const host=document.getElementById('o-inventoryadmin');
+      host?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+
+    try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){
+    // Preserve current form and input if DB rejects transaction.
+    v7HOpnameActive=true;
+    v7HFormDirty=true;
+
+    const msg=String(
+      err?.message || err?.details || 'Stock Opname gagal'
+    );
+
+    if(errBox){
+      errBox.style.display='block';
+      errBox.innerHTML='<b>Supabase menolak opname:</b> '+safeText(msg);
+    }
+
+    v7FError(err,'Stock Opname gagal');
+  }finally{
+    v7HOpnameBusy=false;
+    if(btn && document.body.contains(btn)){
+      btn.disabled=false;
+      btn.textContent=btn.dataset.oldText||'COMPLETE OPNAME';
+    }
+  }
+};
+
+/* Keep Inventory Admin renderer from silently replacing an active opname form. */
+const v7HRenderInventoryOpnameBase=v7HRenderInventoryAdmin;
+v7HRenderInventoryAdmin=function(){
+  const hadActive=v7HOpnameActive && !!document.getElementById('v7HOpnameForm');
+
+  if(hadActive){
+    // update table data is deliberately postponed while physical count is being entered
+    return;
+  }
+
+  v7HRenderInventoryOpnameBase();
+
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('#o-inventoryadmin button').forEach(b=>{
+      if((b.textContent||'').trim()==='BUAT OPNAME'){
+        b.type='button';
+        b.disabled=false;
+        b.style.pointerEvents='auto';
+        b.title='Buka form Stock Opname';
+        b.onclick=v7HOpenOpnameForm;
+      }
+    });
+  });
+};
+
+/* If realtime fires while opname is open, update dashboard only.
+   Master refresh is deferred until form completes/cancels. */
+const v7HRefreshStaffOpnameBase=v7RtRefreshStaff;
+v7RtRefreshStaff=async function(reason='change'){
+  if(v7HOwner() && v7HOpnameActive){
+    await v7HLoadDashboard({silent:true});
+    v7RtBadge('','● OWNER LIVE');
+    return;
+  }
+  return v7HRefreshStaffOpnameBase(reason);
+};
+
+function v7HRepairOpnameButton(){
+  document.querySelectorAll('#o-inventoryadmin button').forEach(b=>{
+    if((b.textContent||'').trim()==='BUAT OPNAME'){
+      b.type='button';
+      b.disabled=false;
+      b.style.pointerEvents='auto';
+      b.onclick=v7HOpenOpnameForm;
+    }
+  });
+}
+
+setTimeout(v7HRepairOpnameButton,1500);
+
+window.vwStockOpnameInfo=function(){
+  const result={
+    stage:'007H-STOCK-OPNAME-FIX',
+    active:v7HOpnameActive,
+    formOpen:!!document.getElementById('v7HOpnameForm'),
+    lines:v7HOpnameLines.length,
+    dirty:v7HFormDirty,
+    busy:v7HOpnameBusy,
+    buttonCount:[...document.querySelectorAll('#o-inventoryadmin button')]
+      .filter(b=>(b.textContent||'').trim()==='BUAT OPNAME').length
+  };
+  console.table(result);
+  return result;
+};
+</script>
+
+
+<!-- ======================================================================
+     [SUPABASE_007H_INTERACTION_HARDENING]
+     Full click / form / realtime regression hardening
+     ====================================================================== -->
+<style>
+  button{
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button:not(:disabled){
+    cursor:pointer;
+  }
+  .btn:not(:disabled),
+  .side button:not(:disabled),
+  .nav button:not(:disabled){
+    pointer-events:auto;
+  }
+  .btn{
+    min-height:40px;
+  }
+  .side button{
+    min-height:40px;
+  }
+  .v7q-form-focus{
+    outline:2px solid rgba(23,101,63,.22);
+    outline-offset:3px;
+    scroll-margin-top:90px;
+  }
+  .v7q-click-error{
+    border:1px solid #efcfcb;
+    background:#fff0ef;
+    color:#8d2c25;
+    border-radius:12px;
+    padding:9px 11px;
+    font-size:11px;
+    margin:8px 0;
+  }
+</style>
+
+<script>
+/* ======================================================================
+   [SUPABASE_007H_INTERACTION_HARDENING]
+
+   Goals:
+   - All dynamically rendered action buttons become proper type=button.
+   - Real submit buttons remain submit (notably Customer Booking).
+   - Owner forms are protected from realtime rerenders while being edited.
+   - Every Owner form opener auto-scrolls/focuses the form that it opened.
+   - Advisor mechanic assignment survives background refresh while selected.
+   - Mechanic navigation/action state repair keeps running after every render.
+   - Disabled business-rule buttons remain disabled, but accidental disabled
+     navigation is repaired.
+   - Runtime diagnostics can audit missing handlers / overlays / disabled
+     states without guessing.
+   ====================================================================== */
+
+let v7QOwnerDirtyPanel='';
+let v7QAdvisorAssignDirty=false;
+let v7QLastClickedButton=null;
+let v7QLastClickAt=0;
+let v7QMutationQueued=false;
+
+/* ---------- button normalization ---------- */
+function v7QButtonHasSubmitIntent(btn){
+  if(!btn || btn.tagName!=='BUTTON')return false;
+  const form=btn.closest('form');
+  if(!form)return false;
+
+  // Buttons without inline action in a real form are submits by default.
+  // Booking form #bf is the important production case.
+  if(!btn.getAttribute('onclick'))return true;
+
+  return String(btn.getAttribute('type')||'').toLowerCase()==='submit';
+}
+
+function v7QRepairButton(btn){
+  if(!btn || btn.tagName!=='BUTTON')return;
+
+  if(!btn.hasAttribute('type')){
+    btn.type=v7QButtonHasSubmitIntent(btn)?'submit':'button';
+  }
+
+  // Navigation must never be accidentally disabled by stale legacy state.
+  const side=btn.closest('.side');
+  if(side && (
+    side.closest('#advisor') ||
+    side.closest('#mechanic') ||
+    side.closest('#inventory') ||
+    side.closest('#owner')
+  )){
+    btn.disabled=false;
+  }
+
+  // Operational states may intentionally disable a button.
+  if(!btn.disabled){
+    btn.style.pointerEvents='auto';
+  }
+
+  // Accessibility / mobile hit target.
+  if(!btn.getAttribute('aria-label')){
+    const label=(btn.textContent||'').trim().replace(/\s+/g,' ');
+    if(label)btn.setAttribute('aria-label',label.slice(0,120));
+  }
+}
+
+function v7QRepairButtons(root=document){
+  if(root?.tagName==='BUTTON')v7QRepairButton(root);
+  root?.querySelectorAll?.('button').forEach(v7QRepairButton);
+
+  // Re-apply specialized state repair layers if present.
+  try{ if(typeof v7BtnRepair==='function')v7BtnRepair(); }catch(_){}
+  try{ if(typeof v7HRepairReceiveButtons==='function')v7HRepairReceiveButtons(); }catch(_){}
+  try{ if(typeof v7HRepairOpnameButton==='function')v7HRepairOpnameButton(); }catch(_){}
+}
+
+function v7QQueueRepair(){
+  if(v7QMutationQueued)return;
+  v7QMutationQueued=true;
+  requestAnimationFrame(()=>{
+    v7QMutationQueued=false;
+    v7QRepairButtons(document);
+  });
+}
+
+/* ---------- Owner form protection ---------- */
+function v7QOwnerPanelId(el){
+  return el?.closest?.('#owner .panel')?.id||'';
+}
+
+function v7QOwnerFormExists(panelId){
+  if(!panelId)return false;
+  const p=document.getElementById(panelId);
+  if(!p)return false;
+  return !!p.querySelector(
+    '.v7h-formbox,#v7HReceiveForm,#v7HOpnameForm,'+
+    '#v7HWsName,#v7HStaffForm:not(:empty),#v7HServiceForm:not(:empty),'+
+    '#v7HPackageForm:not(:empty),#v7HInventoryForm:not(:empty),#v7HUnitForm:not(:empty)'
+  );
+}
+
+function v7QMarkOwnerPanelDirty(panelId){
+  if(!panelId)return;
+  v7QOwnerDirtyPanel=panelId;
+  v7HFormDirty=true;
+  try{v7HMarkDirty();}catch(_){}
+}
+
+function v7QOwnerPanelProtected(panelId){
+  return !!(
+    v7HOwner?.() &&
+    v7HFormDirty &&
+    v7QOwnerDirtyPanel===panelId &&
+    v7QOwnerFormExists(panelId)
+  );
+}
+
+function v7QClearOwnerDirtyIfNoForm(){
+  if(!v7QOwnerDirtyPanel)return;
+  if(!v7QOwnerFormExists(v7QOwnerDirtyPanel)){
+    v7QOwnerDirtyPanel='';
+    try{v7HClearDirty();}catch(_){v7HFormDirty=false;}
+  }
+}
+
+/* protect the panels whose renderers can be called by realtime */
+function v7QWrapOwnerRenderer(name,panelId){
+  const base=window[name];
+  if(typeof base!=='function' || base.__v7QWrapped)return;
+
+  const wrapped=function(...args){
+    if(v7QOwnerPanelProtected(panelId))return;
+    return base.apply(this,args);
+  };
+  wrapped.__v7QWrapped=true;
+  wrapped.__v7QBase=base;
+  window[name]=wrapped;
+}
+
+[
+  ['v7HRenderStaff','o-staff'],
+  ['v7HRenderCatalog','o-catalog'],
+  ['v7HRenderInventoryAdmin','o-inventoryadmin'],
+  ['v7HRenderSettings','o-settings'],
+  ['v7HRenderUsedVespaOwner','o-units']
+].forEach(x=>v7QWrapOwnerRenderer(x[0],x[1]));
+
+/* Dashboard refresh previously rebuilt Settings even while typing. */
+const v7QLoadDashboardBase=v7HLoadDashboard;
+v7HLoadDashboard=async function(opts={}){
+  const protectSettings=v7QOwnerPanelProtected('o-settings');
+  if(!protectSettings)return v7QLoadDashboardBase(opts);
+
+  // Fetch fresh dashboard data without allowing Settings to be overwritten.
+  try{
+    const days=Number(opts?.days||v7HReportDays||30);
+    const {data,error}=await v7Sb.rpc('owner_get_dashboard',{p_days:days});
+    if(error)throw error;
+    v7HDashboard=data;
+    v7HReportDays=Number(data?.periodDays||days||30);
+    v7HRenderDashboard();
+    v7HRenderReports();
+    v7HRenderRoles();
+    // Intentionally do not v7HRenderSettings() while dirty.
+  }catch(err){
+    if(!opts?.silent)v7FError(err,'Gagal memuat Owner Dashboard');
+    else console.warn('[INTERACTION_HARDENING] dashboard refresh',err);
+  }
+};
+
+/* ---------- auto-scroll/focus for every Owner editor ---------- */
+function v7QFocusOwnerForm(hostSelector,focusSelector){
+  requestAnimationFrame(()=>{
+    const host=document.querySelector(hostSelector);
+    if(!host)return;
+    host.classList.add('v7q-form-focus');
+    host.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(()=>{
+      const target=host.querySelector(focusSelector||'input:not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled])');
+      target?.focus?.();
+    },300);
+    setTimeout(()=>host.classList.remove('v7q-form-focus'),1500);
+  });
+}
+
+function v7QWrapOwnerOpener(name,panelId,hostSelector,focusSelector){
+  const base=window[name];
+  if(typeof base!=='function' || base.__v7QOpenWrapped)return;
+
+  const wrapped=function(...args){
+    v7QMarkOwnerPanelDirty(panelId);
+    const result=base.apply(this,args);
+    v7QFocusOwnerForm(hostSelector,focusSelector);
+    v7QQueueRepair();
+    return result;
+  };
+  wrapped.__v7QOpenWrapped=true;
+  wrapped.__v7QBase=base;
+  window[name]=wrapped;
+}
+
+[
+  ['v7HOpenStaffForm','o-staff','#v7HStaffForm','.v7h-formbox input'],
+  ['v7HOpenServiceForm','o-catalog','#v7HServiceForm','.v7h-formbox input'],
+  ['v7HOpenPackageForm','o-catalog','#v7HPackageForm','.v7h-formbox input'],
+  ['v7HOpenPartForm','o-inventoryadmin','#v7HInventoryForm','.v7h-formbox input'],
+  ['v7HOpenSupplierForm','o-inventoryadmin','#v7HInventoryForm','.v7h-formbox input'],
+  ['v7HOpenPoForm','o-inventoryadmin','#v7HInventoryForm','.v7h-formbox select'],
+  ['v7HOpenReceivePo','o-inventoryadmin','#v7HReceiveForm','.v7HRecvInput'],
+  ['v7HOpenOpnameForm','o-inventoryadmin','#v7HOpnameForm','.v7HOpPhysical'],
+  ['v7HOpenUnitForm','o-units','#v7HUnitForm','.v7h-formbox input']
+].forEach(x=>v7QWrapOwnerOpener(...x));
+
+/* Close helpers should also release the global owner dirty lock. */
+if(typeof v7HCloseReceiveForm==='function'){
+  const base=v7HCloseReceiveForm;
+  v7HCloseReceiveForm=function(...args){
+    const r=base.apply(this,args);
+    v7QOwnerDirtyPanel='';
+    try{v7HClearDirty();}catch(_){v7HFormDirty=false;}
+    return r;
+  };
+}
+if(typeof v7HCloseOpnameForm==='function'){
+  const base=v7HCloseOpnameForm;
+  v7HCloseOpnameForm=function(...args){
+    const r=base.apply(this,args);
+    v7QOwnerDirtyPanel='';
+    try{v7HClearDirty();}catch(_){v7HFormDirty=false;}
+    return r;
+  };
+}
+
+/* ---------- Advisor assignment draft protection ---------- */
+const v7QAdvisorSnapshotBase=v7ERenderAdvisorSnapshot;
+v7ERenderAdvisorSnapshot=function(snap){
+  const current=document.getElementById('v7EAdvisorMechanic');
+  const draft=v7QAdvisorAssignDirty?current?.value:null;
+
+  v7QAdvisorSnapshotBase(snap);
+
+  if(v7QAdvisorAssignDirty && draft){
+    const next=document.getElementById('v7EAdvisorMechanic');
+    if(next && [...next.options].some(o=>o.value===draft)){
+      next.value=draft;
+    }
+  }
+  v7QQueueRepair();
+};
+
+/* ---------- generic active-form input tracking ---------- */
+document.addEventListener('input',e=>{
+  const target=e.target;
+  if(!target)return;
+
+  const ownerPanel=v7QOwnerPanelId(target);
+  if(ownerPanel)v7QMarkOwnerPanelDirty(ownerPanel);
+
+  if(target.id==='v7EAdvisorMechanic')v7QAdvisorAssignDirty=true;
+},true);
+
+document.addEventListener('change',e=>{
+  const target=e.target;
+  if(!target)return;
+
+  const ownerPanel=v7QOwnerPanelId(target);
+  if(ownerPanel)v7QMarkOwnerPanelDirty(ownerPanel);
+
+  if(target.id==='v7EAdvisorMechanic')v7QAdvisorAssignDirty=true;
+},true);
+
+/* SIMPAN ASSIGNMENT means the selected value is no longer a local draft. */
+document.addEventListener('click',e=>{
+  const btn=e.target?.closest?.('button');
+  if(!btn)return;
+
+  v7QLastClickedButton=btn;
+  v7QLastClickAt=Date.now();
+
+  const label=(btn.textContent||'').trim().replace(/\s+/g,' ');
+
+  if(label.includes('SIMPAN ASSIGNMENT')){
+    v7QAdvisorAssignDirty=false;
+  }
+
+  // Most Owner cancel buttons simply clear an innerHTML host.
+  if(v7HOwner?.() && ['BATAL','CANCEL'].includes(label.toUpperCase())){
+    setTimeout(v7QClearOwnerDirtyIfNoForm,0);
+  }
+},true);
+
+/* ---------- navigation sanity ---------- */
+function v7QRepairNavigation(){
+  const scopes=['#advisor .side','#mechanic .side','#inventory .side','#owner .side'];
+  scopes.forEach(sel=>{
+    document.querySelectorAll(sel+' button').forEach(b=>{
+      b.disabled=false;
+      b.type='button';
+      b.style.pointerEvents='auto';
+    });
+  });
+}
+
+/* ---------- runtime button audit ---------- */
+function v7QHandlerNames(code){
+  if(!code)return [];
+  const out=[];
+  const re=/(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(/g;
+  let m;
+  while((m=re.exec(code))){
+    if(!['if','confirm','prompt','setTimeout','encodeURIComponent','Number','String'].includes(m[1]))out.push(m[1]);
+  }
+  return [...new Set(out)];
+}
+
+function v7QHitTarget(btn){
+  const r=btn.getBoundingClientRect();
+  if(r.width<2||r.height<2)return {ok:false,reason:'zero-size'};
+  const rawX=r.left+r.width/2;
+  const rawY=r.top+r.height/2;
+
+  // elementFromPoint only makes sense for an element inside viewport.
+  if(rawX<0||rawY<0||rawX>=innerWidth||rawY>=innerHeight){
+    return {ok:true,reason:'offscreen'};
+  }
+
+  const x=rawX;
+  const y=rawY;
+  const hit=document.elementFromPoint(x,y);
+  const ok=!!hit && (hit===btn || btn.contains(hit) || hit.contains(btn));
+  return {ok,reason:ok?'ok':(hit?.tagName||'NONE')+'#'+(hit?.id||'')+'.'+(hit?.className||'')};
+}
+
+window.vwFullButtonAudit=function(root=document){
+  v7QRepairButtons(root);
+  v7QRepairNavigation();
+
+  const rows=[...root.querySelectorAll('button')].map((b,index)=>{
+    const style=getComputedStyle(b);
+    const visible=!!(
+      style.display!=='none' &&
+      style.visibility!=='hidden' &&
+      Number(style.opacity)!==0 &&
+      (b.offsetWidth||b.offsetHeight||b.getClientRects().length)
+    );
+    const onclick=b.getAttribute('onclick')||'';
+    const handlers=v7QHandlerNames(onclick);
+    const missingHandlers=handlers.filter(name=>typeof window[name]!=='function');
+    const form=b.closest('form');
+    const actionable=!!onclick || b.type==='submit' || !!b.onclick || (
+      b.id==='my' // modal confirmation is assigned dynamically by ask()
+    );
+    const hit=visible&&!b.disabled?v7QHitTarget(b):{ok:true,reason:'n/a'};
+
+    return {
+      index,
+      page:b.closest('.page')?.id||'',
+      panel:b.closest('.panel')?.id||'',
+      text:(b.textContent||'').trim().replace(/\s+/g,' ').slice(0,70),
+      visible,
+      disabled:!!b.disabled,
+      type:b.type||'',
+      pointerEvents:style.pointerEvents,
+      actionable,
+      missingHandlers,
+      hitOk:hit.ok,
+      hitReason:hit.reason,
+      formId:form?.id||''
+    };
+  });
+
+  const problems={
+    visibleNoAction:rows.filter(x=>x.visible&&!x.disabled&&!x.actionable),
+    missingHandlers:rows.filter(x=>x.visible&&x.missingHandlers.length),
+    pointerBlocked:rows.filter(x=>x.visible&&!x.disabled&&x.pointerEvents==='none'),
+    hitBlocked:rows.filter(x=>x.visible&&!x.disabled&&!x.hitOk),
+    disabledNavigation:rows.filter(x=>x.visible&&x.disabled&&['advisor','mechanic','inventory','owner'].includes(x.page)&&x.panel==='')
+  };
+
+  console.table(rows);
+  Object.entries(problems).forEach(([k,v])=>{
+    if(v.length)console.warn('[BUTTON AUDIT]',k,v);
+  });
+
+  return {
+    total:rows.length,
+    visible:rows.filter(x=>x.visible).length,
+    enabledVisible:rows.filter(x=>x.visible&&!x.disabled).length,
+    disabledVisible:rows.filter(x=>x.visible&&x.disabled).length,
+    ...problems,
+    pass:!Object.values(problems).some(v=>v.length)
+  };
+};
+
+/* Duplicate DOM IDs can silently route getElementById() to the wrong control. */
+window.vwDomIntegrityAudit=function(){
+  const idMap=new Map();
+  document.querySelectorAll('[id]').forEach(el=>{
+    if(!idMap.has(el.id))idMap.set(el.id,[]);
+    idMap.get(el.id).push(el);
+  });
+  const duplicates=[...idMap.entries()]
+    .filter(([,els])=>els.length>1)
+    .map(([id,els])=>({
+      id,
+      count:els.length,
+      pages:[...new Set(els.map(x=>x.closest('.page')?.id||''))]
+    }));
+
+  const buttons=vwFullButtonAudit();
+  const result={duplicates,buttons,pass:duplicates.length===0&&buttons.pass};
+  if(duplicates.length)console.warn('[DOM AUDIT] duplicate IDs',duplicates);
+  return result;
+};
+
+/* ---------- silent JS errors should no longer look like dead buttons ---------- */
+window.addEventListener('error',e=>{
+  if(Date.now()-v7QLastClickAt>1200)return;
+  console.error('[INTERACTION_HARDENING] click error',e.error||e.message);
+  try{toast('Aksi gagal dijalankan. Cek Console / kirim screenshot error.');}catch(_){}
+});
+
+window.addEventListener('unhandledrejection',e=>{
+  if(Date.now()-v7QLastClickAt>2500)return;
+  console.error('[INTERACTION_HARDENING] rejected click action',e.reason);
+  try{toast(String(e.reason?.message||'Aksi gagal diproses').slice(0,120));}catch(_){}
+});
+
+/* ---------- DOM mutation self-heal ---------- */
+const v7QObserver=new MutationObserver(mutations=>{
+  let relevant=false;
+  for(const m of mutations){
+    if(m.type==='childList' && (m.addedNodes?.length||m.removedNodes?.length)){
+      relevant=true;break;
+    }
+    if(m.type==='attributes'){relevant=true;break;}
+  }
+  if(relevant)v7QQueueRepair();
+});
+
+document.addEventListener('DOMContentLoaded',()=>{
+  v7QRepairButtons(document);
+  v7QRepairNavigation();
+
+  v7QObserver.observe(document.body,{
+    subtree:true,
+    childList:true,
+    attributes:true,
+    attributeFilter:['class','disabled','style']
+  });
+
+  // Post-boot passes catch renderers that run after Supabase/session restore.
+  [300,900,1800,3500].forEach(ms=>setTimeout(()=>{
+    v7QRepairButtons(document);
+    v7QRepairNavigation();
+  },ms));
+});
+
+/* Console helper */
+window.vwInteractionHardeningInfo=function(){
+  const audit=vwDomIntegrityAudit();
+  const result={
+    stage:'007H-INTERACTION-HARDENED',
+    role:typeof v7ERole==='function'?v7ERole():null,
+    page:document.querySelector('.page.on')?.id||null,
+    panel:document.querySelector('.page.on .panel.on')?.id||null,
+    ownerDirtyPanel:v7QOwnerDirtyPanel||null,
+    advisorAssignDirty:v7QAdvisorAssignDirty,
+    totalButtons:audit.buttons.total,
+    visibleButtons:audit.buttons.visible,
+    duplicateIds:audit.duplicates.length,
+    pass:audit.pass
+  };
+  console.table(result);
+  return result;
+};
+</script>
+
 </body>
 
 </html>
