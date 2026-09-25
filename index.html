@@ -6101,6 +6101,472 @@ function v7CInstall(){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(v7CInstall,320));
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007D] Customer Estimate Approval -> Supabase
+     ====================================================================== -->
+<style>
+  .v7d-scope-list{display:grid;gap:9px;margin-top:10px}
+  .v7d-scope-item{
+    display:grid;grid-template-columns:26px minmax(0,1fr) auto;
+    gap:10px;align-items:start;padding:12px;border:1px solid var(--l);
+    border-radius:14px;background:#fff
+  }
+  .v7d-scope-item input{width:19px;height:19px;margin-top:2px}
+  .v7d-scope-item small{display:block;color:var(--m);margin-top:4px}
+  .v7d-approved-item,.v7d-declined-item{
+    padding:9px 0;border-bottom:1px solid var(--l);
+    display:flex;justify-content:space-between;gap:12px
+  }
+  .v7d-photo-grid{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;margin-top:8px
+  }
+  .v7d-photo-grid img{
+    width:100%;height:120px;object-fit:cover;border-radius:12px;
+    border:1px solid var(--l);background:#f4f6f5;cursor:pointer
+  }
+  .v7d-db-note{font-size:11px;color:var(--m);margin-top:10px}
+  @media(max-width:560px){
+    .v7d-scope-item{grid-template-columns:26px 1fr}
+    .v7d-scope-item>b{grid-column:2}
+    .v7d-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+</style>
+
+<script>
+/* ======================================================================
+   [SUPABASE_007D]
+   Customer granular estimate decision:
+   - remote estimate from public_track_service()
+   - approve selected pending UUIDs
+   - unchecked pending items become DECLINED
+   - approve all / reject all
+   - RPC public_submit_estimate_decision()
+   - immediately refresh tracking from Supabase after decision
+   ====================================================================== */
+
+let v7DDecisionBusy=false;
+let v7DApprovalSnapshot=null;
+
+function v7DCurrentAccess(){
+  const a=v7BReadCustomerAccess();
+  return a?.accessToken?a:null;
+}
+
+function v7DPendingItems(data=v7DApprovalSnapshot||v7CLastTrack){
+  return (data?.estimate?.items||[]).filter(
+    x=>String(x?.approvalStatus||'').toUpperCase()==='PENDING'
+  );
+}
+
+function v7DApprovedItems(data=v7DApprovalSnapshot||v7CLastTrack){
+  return (data?.estimate?.items||[]).filter(
+    x=>String(x?.approvalStatus||'').toUpperCase()==='APPROVED'
+  );
+}
+
+function v7DDeclinedItems(data=v7DApprovalSnapshot||v7CLastTrack){
+  return (data?.estimate?.items||[]).filter(
+    x=>String(x?.approvalStatus||'').toUpperCase()==='DECLINED'
+  );
+}
+
+function v7DItemTotal(i){
+  return Number(i?.qty||1)*Number(i?.unitPrice||0);
+}
+
+function v7DPhotoHtml(item){
+  const photos=Array.isArray(item?.photos)?item.photos.filter(x=>x?.url):[];
+  if(!photos.length)return '';
+  return `<div class="v7d-photo-grid">${
+    photos.map(p=>`<img src="${safeText(p.url)}" alt="${safeText(p.name||item.name||'Foto finding')}" onclick="if(window.v4OpenViewer)v4OpenViewer(this.src,'${safeText(p.name||item.name||'Foto finding')}')">`).join('')
+  }</div>`;
+}
+
+function v7DRenderApproval(data=v7DApprovalSnapshot||v7CLastTrack){
+  const sec=document.getElementById('approval');
+  if(!sec)return;
+
+  const est=data?.estimate;
+  const wo=data?.workOrder;
+  const pending=v7DPendingItems(data);
+  const approved=v7DApprovedItems(data);
+  const declined=v7DDeclinedItems(data);
+
+  const title=sec.querySelector('.head h2');
+  if(title)title.textContent=est?.code||'ESTIMATE';
+
+  const badge=sec.querySelector('.head .pill');
+  if(badge){
+    badge.textContent=pending.length?'PILIH ITEM':'KEPUTUSAN TERSIMPAN';
+  }
+
+  const card=sec.querySelector('.card');
+  if(!card)return;
+
+  if(!est){
+    card.innerHTML=`
+      <div class="notice">
+        Estimate belum tersedia di Supabase untuk booking ini.
+      </div>
+      <div class="actions">
+        <button class="btn alt" onclick="go('tracking');track()">KEMBALI KE TRACKING</button>
+      </div>`;
+    return;
+  }
+
+  const approvedTotal=approved.reduce((s,i)=>s+v7DItemTotal(i),0);
+  const pendingTotal=pending.reduce((s,i)=>s+v7DItemTotal(i),0);
+
+  card.innerHTML=`
+    <div class="notice">
+      <b>Estimate dari Supabase</b><br>
+      ${safeText(est.code||'-')} · Revisi R${Number(est.revision||0)}
+      ${wo?.code?` · ${safeText(wo.code)}`:''}
+      <br>Customer boleh menyetujui semua item tambahan atau hanya sebagian.
+      Item pending yang tidak dicentang saat <b>SETUJUI PILIHAN</b> akan ditolak.
+    </div>
+
+    <h3 style="margin-top:16px">Scope yang sudah disetujui</h3>
+    ${
+      approved.length
+      ? approved.map(i=>`
+        <div class="v7d-approved-item">
+          <span>
+            <b>${safeText(i.name||'-')}</b>
+            <small class="muted">${safeText(i.type||'')} · Qty ${Number(i.qty||1)}</small>
+          </span>
+          <b>${rup(v7DItemTotal(i))}</b>
+        </div>`).join('')
+      : '<div class="muted">Belum ada scope approved.</div>'
+    }
+    <div class="line">
+      <b>Total approved saat ini</b>
+      <span class="money">${rup(approvedTotal)}</span>
+    </div>
+
+    ${
+      pending.length
+      ? `
+        <h3 style="margin-top:18px">Temuan yang menunggu keputusan</h3>
+        <div class="v7d-scope-list">
+          ${pending.map(i=>`
+            <label class="v7d-scope-item">
+              <input type="checkbox" class="v7dApprovalChoice" value="${safeText(i.id)}" checked>
+              <span>
+                <b>${safeText(i.name||'-')}</b>
+                <small>
+                  ${safeText(i.note||'Temuan mechanic')} ·
+                  ${safeText(i.type||'')} · Qty ${Number(i.qty||1)}
+                </small>
+                ${v7DPhotoHtml(i)}
+              </span>
+              <b>${rup(v7DItemTotal(i))}</b>
+            </label>`).join('')}
+        </div>
+        <div class="line">
+          <b>Total item pending</b>
+          <span class="money">${rup(pendingTotal)}</span>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="button" onclick="v7DSubmitDecision('SELECTED')">
+            SETUJUI PILIHAN
+          </button>
+          <button class="btn alt" type="button" onclick="v7DSubmitDecision('ALL')">
+            SETUJUI SEMUA
+          </button>
+          <button class="btn bad" type="button" onclick="v7DSubmitDecision('NONE')">
+            TOLAK SEMUA
+          </button>
+        </div>
+      `
+      : `
+        <div class="notice" style="margin-top:16px">
+          Tidak ada item tambahan yang menunggu keputusan.
+          Status estimate: <b>${safeText(String(est.approvalStatus||est.status||'-').replaceAll('_',' '))}</b>.
+        </div>
+      `
+    }
+
+    ${
+      declined.length
+      ? `
+        <h3 style="margin-top:18px">Item yang ditolak</h3>
+        ${declined.map(i=>`
+          <div class="v7d-declined-item">
+            <span>${safeText(i.name||'-')}</span>
+            <span class="pill">DECLINED</span>
+          </div>`).join('')}
+      `
+      : ''
+    }
+
+    <div class="v7d-db-note">
+      Keputusan pada halaman ini disimpan langsung ke Supabase.
+    </div>
+    <div class="actions">
+      <button class="btn alt" type="button" onclick="go('tracking');track()">
+        ← KEMBALI KE TRACKING
+      </button>
+    </div>`;
+}
+
+async function v7DFetchFreshTracking(){
+  const access=v7DCurrentAccess();
+  if(!access?.accessToken)throw new Error('Access token customer tidak tersedia');
+
+  const fresh=await v7CTrackWithToken(access.accessToken);
+  v7CLastTrack=fresh;
+  v7DApprovalSnapshot=fresh;
+  window.vwLastSupabaseTracking=fresh;
+  sessionStorage.setItem('vw_remote_tracking_snapshot',JSON.stringify(fresh));
+  return fresh;
+}
+
+async function v7DOpenApproval(){
+  if(!v7Sb || !v7CatalogReady){
+    toast('Supabase belum siap.');
+    return;
+  }
+
+  try{
+    let data=v7CLastTrack;
+
+    // Always prefer fresh server state before a financial decision.
+    data=await v7DFetchFreshTracking();
+
+    if(!data?.estimate){
+      toast('Estimate belum tersedia.');
+      return;
+    }
+
+    const pending=v7DPendingItems(data);
+    if(!pending.length){
+      v7DApprovalSnapshot=data;
+      go('approval');
+      v7DRenderApproval(data);
+      toast('Tidak ada item estimate yang menunggu keputusan.');
+      return;
+    }
+
+    v7DApprovalSnapshot=data;
+    go('approval');
+    v7DRenderApproval(data);
+  }catch(err){
+    console.error('[SUPABASE_007D] open approval failed',err);
+    const msg=String(err?.message||'Gagal memuat estimate');
+    toast(msg.length>110?msg.slice(0,107)+'...':msg);
+  }
+}
+
+function v7DSelectedIds(mode){
+  const pending=v7DPendingItems();
+  if(mode==='ALL')return pending.map(i=>String(i.id));
+  if(mode==='NONE')return [];
+  return [...document.querySelectorAll('.v7dApprovalChoice:checked')]
+    .map(x=>String(x.value))
+    .filter(Boolean);
+}
+
+function v7DConfirmText(mode,selected,total){
+  if(mode==='NONE'){
+    return `Tolak seluruh ${total} item tambahan?`;
+  }
+  if(mode==='ALL'){
+    return `Setujui seluruh ${total} item tambahan?`;
+  }
+  return `Setujui ${selected} item dan tolak ${Math.max(0,total-selected)} item lainnya?`;
+}
+
+function v7DSetBusy(busy){
+  v7DDecisionBusy=!!busy;
+  document.querySelectorAll('#approval .actions button').forEach(b=>{
+    b.disabled=!!busy;
+  });
+}
+
+function v7DApplyRemoteDecisionToShadow(fresh){
+  // Compatibility only. Supabase remains source of truth.
+  try{
+    if(typeof workflowState==='undefined')return;
+    const code=fresh?.booking?.code;
+    const c=(workflowState.cases||[]).find(x=>x.booking?.code===code);
+    if(!c)return;
+
+    const remote=fresh?.estimate;
+    if(remote){
+      c.estimate.id=remote.code||c.estimate.id;
+      c.estimate.revision=Number(remote.revision||0);
+      c.estimate.status=remote.status||c.estimate.status;
+      c.estimate.approval=remote.approvalStatus||c.estimate.approval;
+      c.estimate.total=Number(remote.approvedTotal||0);
+
+      const byId=new Map((remote.items||[]).map(x=>[String(x.id),x]));
+      (c.estimate.items||[]).forEach(local=>{
+        const id=String(local.itemId||local.id||'');
+        const r=byId.get(id);
+        if(r)local.approval=r.approvalStatus;
+      });
+    }
+
+    if(fresh?.workOrder){
+      c.wo.status=fresh.workOrder.status||c.wo.status;
+      c.wo.jobStatus=fresh.workOrder.jobStatus||c.wo.jobStatus;
+    }
+
+    if(fresh?.invoice){
+      c.invoice.id=fresh.invoice.code||c.invoice.id;
+      c.invoice.total=Number(fresh.invoice.total||0);
+      c.invoice.paid=Number(fresh.invoice.paid||0);
+      c.invoice.outstanding=Number(fresh.invoice.outstanding||0);
+      c.invoice.status=fresh.invoice.status||c.invoice.status;
+    }
+
+    if(typeof saveWorkflow==='function')saveWorkflow();
+  }catch(e){
+    console.warn('[SUPABASE_007D] shadow sync failed',e);
+  }
+}
+
+async function v7DSubmitDecision(mode){
+  if(v7DDecisionBusy)return;
+  if(!v7Sb){toast('Supabase belum siap.');return;}
+
+  const data=v7DApprovalSnapshot||v7CLastTrack;
+  const estimate=data?.estimate;
+  const pending=v7DPendingItems(data);
+  const access=v7DCurrentAccess();
+
+  if(!access?.accessToken){
+    toast('Akses customer tidak tersedia. Buka Tracking dan pulihkan akses.');
+    return;
+  }
+  if(!estimate?.code){
+    toast('Kode estimate tidak tersedia.');
+    return;
+  }
+  if(!pending.length){
+    toast('Tidak ada item pending.');
+    return;
+  }
+
+  const ids=v7DSelectedIds(mode);
+
+  if(mode==='SELECTED' && ids.length===0){
+    toast('Pilih minimal satu item atau gunakan TOLAK SEMUA.');
+    return;
+  }
+
+  if(!confirm(v7DConfirmText(mode,ids.length,pending.length)))return;
+
+  v7DSetBusy(true);
+
+  try{
+    const {data:result,error}=await v7Sb.rpc(
+      'public_submit_estimate_decision',
+      {
+        p_access_token:access.accessToken,
+        p_estimate_code:estimate.code,
+        p_approved_item_ids:ids
+      }
+    );
+
+    if(error)throw error;
+
+    const fresh=await v7DFetchFreshTracking();
+    v7DApplyRemoteDecisionToShadow(fresh);
+    v7CRenderTracking(fresh);
+
+    console.info('[SUPABASE_007D] Estimate decision saved',{
+      estimateCode:result?.estimateCode,
+      approvalStatus:result?.approvalStatus,
+      approvedTotal:result?.approvedTotal,
+      invoiceCode:result?.invoiceCode,
+      invoiceTotal:result?.invoiceTotal
+    });
+
+    go('tracking');
+
+    const approvedLabel=String(result?.approvalStatus||'').replaceAll('_',' ');
+    toast(
+      'Keputusan tersimpan · '+
+      (approvedLabel||'ESTIMATE UPDATED')+
+      ' · '+rup(Number(result?.invoiceTotal||0))
+    );
+
+    window.dispatchEvent(new CustomEvent(
+      'vw:supabase-estimate-decided',
+      {detail:result||{}}
+    ));
+
+  }catch(err){
+    console.error('[SUPABASE_007D] decision failed',err);
+    const msg=String(
+      err?.message||
+      err?.details||
+      err?.hint||
+      'Keputusan estimate gagal disimpan'
+    );
+    toast(msg.length>120?msg.slice(0,117)+'...':msg);
+  }finally{
+    v7DSetBusy(false);
+  }
+}
+
+// Replace 007C placeholder action.
+v7COpenPendingEstimate=v7DOpenApproval;
+
+// If older UI code tries to render the approval page while we have a
+// Supabase snapshot, force the remote renderer instead of stale local data.
+const v7DLocalRenderApproval =
+  typeof v3RenderApproval==='function' ? v3RenderApproval : null;
+
+if(v7DLocalRenderApproval){
+  v3RenderApproval=function(){
+    const access=v7DCurrentAccess();
+    if(access?.accessToken && (v7DApprovalSnapshot||v7CLastTrack)?.estimate){
+      v7DRenderApproval(v7DApprovalSnapshot||v7CLastTrack);
+      return;
+    }
+    return v7DLocalRenderApproval();
+  };
+}
+
+// Old approval buttons / direct go('approval') should not silently execute
+// local ask() against a remote booking.
+const v7DLegacyAsk = typeof ask==='function' ? ask : null;
+ask=function(ok){
+  const access=v7DCurrentAccess();
+  const remote=v7DApprovalSnapshot||v7CLastTrack;
+  if(access?.accessToken && remote?.estimate){
+    if(ok){
+      v7DSubmitDecision('ALL');
+    }else{
+      v7DSubmitDecision('NONE');
+    }
+    return;
+  }
+  if(v7DLegacyAsk)return v7DLegacyAsk(ok);
+};
+
+window.vwEstimateApprovalInfo=function(){
+  const remote=v7DApprovalSnapshot||v7CLastTrack;
+  const result={
+    stage:'007D',
+    estimateCode:remote?.estimate?.code||null,
+    approvalStatus:remote?.estimate?.approvalStatus||null,
+    pendingItems:v7DPendingItems(remote).length,
+    approvedItems:v7DApprovedItems(remote).length,
+    declinedItems:v7DDeclinedItems(remote).length,
+    accessTokenAvailable:!!v7DCurrentAccess()?.accessToken
+  };
+  console.table(result);
+  return result;
+};
+</script>
+
 </body>
 
 </html>
