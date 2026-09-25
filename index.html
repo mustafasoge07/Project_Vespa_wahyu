@@ -8270,6 +8270,775 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007F]
+     Mechanic Part Request + Inventory + Job Execution
+     ====================================================================== -->
+<style>
+  .v7f-status-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .v7f-item{
+    border:1px solid var(--l);border-radius:14px;padding:12px;background:#fff;
+    margin-top:9px
+  }
+  .v7f-item-grid{
+    display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center
+  }
+  .v7f-stock-good{color:#17653f;font-weight:800}
+  .v7f-stock-low{color:#8b6200;font-weight:800}
+  .v7f-stock-out{color:#a33a32;font-weight:800}
+  .v7f-live-note{font-size:11px;color:var(--m);margin-top:8px}
+  .v7f-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+  .v7f-request-state{font-size:11px;margin-top:5px}
+  .v7f-disabled-card{opacity:.82}
+  @media(max-width:560px){
+    .v7f-item-grid{grid-template-columns:1fr}
+    .v7f-actions .btn{flex:1 1 auto}
+  }
+</style>
+
+<script>
+/* ======================================================================
+   [SUPABASE_007F]
+   Source of truth:
+   - Approved estimate scope : staff_get_work_order()
+   - Mechanic part request   : mechanic_request_part()
+   - Inventory queue         : inventory_get_part_requests()
+   - Issue/reject/OOS        : inventory_part_request_action()
+   - Stock                   : public.parts under RLS
+   - Stock movement          : public.stock_movements under RLS
+   - Job start/pause/resume  : mechanic_job_action()
+   - Complete job            : mechanic_complete_job()
+   ====================================================================== */
+
+let v7FInventoryParts=[];
+let v7FInventoryRequests=[];
+let v7FInventoryMovements=[];
+let v7FInventoryBusy=false;
+let v7FMechanicRequestRows=[];
+let v7FMechanicActionBusy=false;
+
+function v7FRole(){
+  return String(v7ERole()||'').toLowerCase();
+}
+function v7FInventoryRole(){
+  return ['inventory','owner'].includes(v7FRole());
+}
+function v7FUpper(v){
+  return String(v||'').trim().toUpperCase();
+}
+function v7FStockClass(p){
+  const available=Math.max(0,Number(p.on_hand||0)-Number(p.reserved_qty||0));
+  if(available<=0)return 'v7f-stock-out';
+  if(available<=Number(p.min_stock||0))return 'v7f-stock-low';
+  return 'v7f-stock-good';
+}
+function v7FStockLabel(p){
+  const available=Math.max(0,Number(p.on_hand||0)-Number(p.reserved_qty||0));
+  if(available<=0)return 'OUT OF STOCK';
+  if(available<=Number(p.min_stock||0))return 'LOW STOCK · '+available;
+  return 'IN STOCK · '+available;
+}
+function v7FRequestPill(status){
+  const s=v7FUpper(status);
+  if(s==='ISSUED')return '<span class="pill">ISSUED</span>';
+  if(s==='OUT_OF_STOCK')return '<span class="pill" style="background:#fff0ef;color:#a33a32">OUT OF STOCK</span>';
+  if(s==='REJECTED')return '<span class="pill" style="background:#fff0ef;color:#a33a32">REJECTED</span>';
+  return '<span class="pill" style="background:#fff8e8;color:#8b6200">'+safeText(s||'REQUESTED')+'</span>';
+}
+function v7FError(err,fallback='Operasi Supabase gagal'){
+  console.error('[SUPABASE_007F]',err);
+  const msg=String(err?.message||err?.details||err?.hint||fallback);
+  toast(msg.length>130?msg.slice(0,127)+'...':msg);
+  return msg;
+}
+
+/* ----------------------------------------------------------------------
+   INVENTORY — live database
+   ---------------------------------------------------------------------- */
+async function v7FQueryInventoryParts(){
+  const {data,error}=await v7Sb.from('parts')
+    .select('id,sku,name,model,category,brand,location,cost_price,sell_price,on_hand,reserved_qty,min_stock,status,image_url,image_bucket,image_storage_path,updated_at')
+    .eq('status','ACTIVE')
+    .order('name');
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+
+async function v7FQueryInventoryMovements(){
+  const {data,error}=await v7Sb.from('stock_movements')
+    .select(`
+      id,movement_type,qty,reference_type,reference_code,note,created_at,
+      part:parts(id,sku,name),
+      actor:staff_profiles(id,staff_code,name)
+    `)
+    .order('created_at',{ascending:false})
+    .limit(100);
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+
+async function v7FQueryInventoryRequests(){
+  const {data,error}=await v7Sb.rpc('inventory_get_part_requests',{p_status:null});
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+
+async function v7FLoadInventory({silent=false}={}){
+  if(!v7FInventoryRole() || !v7Sb)return;
+  if(v7FInventoryBusy)return;
+  v7FInventoryBusy=true;
+  try{
+    const [parts,requests,movements]=await Promise.all([
+      v7FQueryInventoryParts(),
+      v7FQueryInventoryRequests(),
+      v7FQueryInventoryMovements()
+    ]);
+    v7FInventoryParts=parts;
+    v7FInventoryRequests=requests;
+    v7FInventoryMovements=movements;
+    v7FRenderInventory();
+  }catch(err){
+    if(!silent)v7FError(err,'Gagal memuat Inventory Supabase');
+    else console.warn('[SUPABASE_007F] inventory refresh failed',err);
+  }finally{
+    v7FInventoryBusy=false;
+  }
+}
+
+function v7FRenderInventoryDashboard(){
+  const p=document.getElementById('i-dash');if(!p)return;
+  const pending=v7FInventoryRequests.filter(r=>v7FUpper(r.status)==='REQUESTED').length;
+  const low=v7FInventoryParts.filter(x=>{
+    const av=Number(x.on_hand||0)-Number(x.reserved_qty||0);
+    return av>0 && av<=Number(x.min_stock||0);
+  }).length;
+  const out=v7FInventoryParts.filter(x=>Number(x.on_hand||0)-Number(x.reserved_qty||0)<=0).length;
+
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Parts / Inventory · Supabase</div><h2>Inventory Dashboard</h2></div>
+      <div class="actions" style="margin-top:0">
+        ${v7FRole()==='owner'?'<button class="btn alt" type="button" onclick="go(\'owner\');otabId(\'dash\')">← OWNER</button>':''}
+        <button class="btn alt" type="button" onclick="staffLogout()">Logout</button>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span class="muted">Total SKU</span><strong>${v7FInventoryParts.length}</strong></div>
+      <div class="metric"><span class="muted">Low Stock</span><strong>${low}</strong></div>
+      <div class="metric"><span class="muted">Out of Stock</span><strong>${out}</strong></div>
+      <div class="metric"><span class="muted">Pending Request</span><strong>${pending}</strong></div>
+    </div>
+    <div class="card" style="margin-top:13px">
+      <h3>Quick Actions</h3>
+      <div class="actions">
+        <button class="btn" type="button" onclick="itabId('requests')">PART REQUESTS</button>
+        <button class="btn alt" type="button" onclick="itabId('stock')">STOCK LIST</button>
+        <button class="btn alt" type="button" onclick="itabId('movement')">STOCK MOVEMENT</button>
+        <button class="btn alt" type="button" onclick="v7FLoadInventory()">↻ REFRESH</button>
+      </div>
+      <div class="v7f-live-note">On Hand, Reserved, Available, dan Part Request dibaca langsung dari Supabase.</div>
+    </div>
+    <div class="card" style="margin-top:13px">
+      <h3>Perlu Perhatian</h3>
+      ${
+        v7FInventoryParts.filter(x=>{
+          const av=Number(x.on_hand||0)-Number(x.reserved_qty||0);
+          return av<=Number(x.min_stock||0);
+        }).slice(0,8).map(x=>`
+          <div class="line">
+            <span>${safeText(x.name)}<br><small>${safeText(x.sku)}</small></span>
+            <span class="${v7FStockClass(x)}">${safeText(v7FStockLabel(x))}</span>
+          </div>`).join('')
+        || '<div class="muted">Tidak ada stok kritis.</div>'
+      }
+    </div>`;
+}
+
+function v7FRenderInventoryStock(){
+  const p=document.getElementById('i-stock');if(!p)return;
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Inventory · Supabase</div><h2>Stock List</h2></div>
+      <button class="btn alt" type="button" onclick="v7FLoadInventory()">↻ REFRESH</button>
+    </div>
+    <div class="card">
+      <div class="form">
+        <div class="field"><label>Cari SKU / Part</label><input id="v7FStockSearch" placeholder="V-Belt, roller..." oninput="v7FRenderStockRows()"></div>
+        <div class="field"><label>Status</label><select id="v7FStockStatus" onchange="v7FRenderStockRows()">
+          <option value="ALL">Semua</option>
+          <option value="IN">In Stock</option>
+          <option value="LOW">Low Stock</option>
+          <option value="OUT">Out of Stock</option>
+        </select></div>
+      </div>
+    </div>
+    <div class="card tablewrap" style="margin-top:12px">
+      <table class="tbl">
+        <thead><tr>
+          <th>SKU</th><th>Part</th><th>Model</th><th>On Hand</th><th>Reserved</th><th>Available</th><th>Min.</th><th>Status</th><th>Cost</th><th>Sell</th>
+        </tr></thead>
+        <tbody id="v7FStockRows"></tbody>
+      </table>
+    </div>
+    <div class="notice" style="margin-top:12px">
+      <b>Live rule:</b> Available = On Hand − Reserved. Reservation belum mengurangi stok fisik; ISSUE baru mengurangi On Hand.
+    </div>`;
+  v7FRenderStockRows();
+}
+
+function v7FRenderStockRows(){
+  const body=document.getElementById('v7FStockRows');if(!body)return;
+  const q=(document.getElementById('v7FStockSearch')?.value||'').toLowerCase();
+  const st=document.getElementById('v7FStockStatus')?.value||'ALL';
+
+  const rows=v7FInventoryParts.filter(x=>{
+    const av=Math.max(0,Number(x.on_hand||0)-Number(x.reserved_qty||0));
+    const low=av>0&&av<=Number(x.min_stock||0);
+    const matchStatus=st==='ALL'||(st==='OUT'&&av<=0)||(st==='LOW'&&low)||(st==='IN'&&av>Number(x.min_stock||0));
+    const matchQ=(String(x.sku)+' '+String(x.name)+' '+String(x.model)+' '+String(x.brand)).toLowerCase().includes(q);
+    return matchStatus&&matchQ;
+  });
+
+  body.innerHTML=rows.map(x=>{
+    const av=Math.max(0,Number(x.on_hand||0)-Number(x.reserved_qty||0));
+    return `<tr>
+      <td><b>${safeText(x.sku)}</b></td>
+      <td>${safeText(x.name)}</td>
+      <td>${safeText(x.model||'All')}</td>
+      <td>${Number(x.on_hand||0)}</td>
+      <td>${Number(x.reserved_qty||0)}</td>
+      <td><b>${av}</b></td>
+      <td>${Number(x.min_stock||0)}</td>
+      <td><span class="${v7FStockClass(x)}">${safeText(v7FStockLabel(x))}</span></td>
+      <td>${rup(Number(x.cost_price||0))}</td>
+      <td>${rup(Number(x.sell_price||0))}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="10">Part tidak ditemukan.</td></tr>';
+}
+
+function v7FRenderInventoryRequests(){
+  const p=document.getElementById('i-requests');if(!p)return;
+  const pending=v7FInventoryRequests.filter(r=>v7FUpper(r.status)==='REQUESTED').length;
+
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Mechanic Requests · Supabase</div><h2>Part Requests</h2></div>
+      <div class="v7f-status-row"><span class="pill">${pending} PENDING</span><button class="btn alt" type="button" onclick="v7FLoadInventory()">↻ REFRESH</button></div>
+    </div>
+    <div class="card tablewrap">
+      <table class="tbl">
+        <tr><th>Request</th><th>WO</th><th>Mechanic</th><th>Part</th><th>Qty</th><th>Reserved</th><th>Available</th><th>Status</th><th>Aksi</th></tr>
+        ${v7FInventoryRequests.map(r=>`
+          <tr>
+            <td><b>${safeText(r.requestCode)}</b><br><small>${safeText(v7EDate(r.requestedAt))}</small></td>
+            <td>${safeText(r.workOrderCode)}</td>
+            <td>${safeText(r.mechanic||'-')}</td>
+            <td>${safeText(r.partName)}<br><small>${safeText(r.sku)}</small></td>
+            <td>${Number(r.qty||0)}</td>
+            <td>${Number(r.reservedQty||0)}</td>
+            <td>${Number(r.availableQty||0)}</td>
+            <td>${v7FRequestPill(r.status)}</td>
+            <td>
+              ${
+                ['REQUESTED','OUT_OF_STOCK'].includes(v7FUpper(r.status))
+                ? `<div class="v7f-actions">
+                    <button class="btn" type="button" onclick="v7FInventoryRequestAction('${safeText(r.requestCode)}','ISSUE')">ISSUE</button>
+                    <button class="btn alt" type="button" onclick="v7FInventoryRequestAction('${safeText(r.requestCode)}','REJECT')">REJECT</button>
+                    <button class="btn bad" type="button" onclick="v7FInventoryRequestAction('${safeText(r.requestCode)}','OUT_OF_STOCK')">OUT OF STOCK</button>
+                   </div>`
+                : '—'
+              }
+            </td>
+          </tr>`).join('')||'<tr><td colspan="9">Belum ada Part Request.</td></tr>'}
+      </table>
+    </div>`;
+}
+
+function v7FRenderPartsDatabase(){
+  const p=document.getElementById('i-partsdb');if(!p)return;
+  p.innerHTML=`
+    <div class="head"><div><div class="k">Master Part · Supabase</div><h2>Parts Database</h2></div><span class="pill">READ LIVE</span></div>
+    <div class="card tablewrap">
+      <table class="tbl">
+        <tr><th>SKU</th><th>Nama</th><th>Kategori</th><th>Brand</th><th>Lokasi</th><th>Cost</th><th>Selling Price</th><th>Stock</th></tr>
+        ${v7FInventoryParts.map(x=>`
+          <tr>
+            <td><b>${safeText(x.sku)}</b></td><td>${safeText(x.name)}</td><td>${safeText(x.category)}</td><td>${safeText(x.brand)}</td>
+            <td>${safeText(x.location||'-')}</td><td>${rup(Number(x.cost_price||0))}</td><td>${rup(Number(x.sell_price||0))}</td>
+            <td>${Number(x.on_hand||0)} / R${Number(x.reserved_qty||0)}</td>
+          </tr>`).join('')||'<tr><td colspan="8">Belum ada part.</td></tr>'}
+      </table>
+    </div>
+    <div class="notice" style="margin-top:12px">Tambah/Edit master part sengaja belum diaktifkan di tahap 007F. Tidak ada lagi tombol demo yang menulis state lokal.</div>`;
+}
+
+function v7FRenderMovements(){
+  const p=document.getElementById('i-movement');if(!p)return;
+  p.innerHTML=`
+    <div class="head"><div><div class="k">Inventory Ledger · Supabase</div><h2>Stock Movement</h2></div><button class="btn alt" type="button" onclick="v7FLoadInventory()">↻ REFRESH</button></div>
+    <div class="card tablewrap">
+      <table class="tbl">
+        <tr><th>Waktu</th><th>SKU</th><th>Part</th><th>Type</th><th>Qty</th><th>Reference</th><th>Actor</th></tr>
+        ${v7FInventoryMovements.map(m=>`
+          <tr>
+            <td>${safeText(new Date(m.created_at).toLocaleString('id-ID'))}</td>
+            <td>${safeText(m.part?.sku||'-')}</td>
+            <td>${safeText(m.part?.name||'-')}</td>
+            <td><b>${safeText(String(m.movement_type||'').replaceAll('_',' '))}</b></td>
+            <td>${Number(m.qty||0)>0?'+':''}${Number(m.qty||0)}</td>
+            <td>${safeText(m.reference_code||'-')}</td>
+            <td>${safeText(m.actor?.name||'-')}</td>
+          </tr>`).join('')||'<tr><td colspan="7">Belum ada stock movement.</td></tr>'}
+      </table>
+    </div>
+    <div class="notice" style="margin-top:12px">Ledger movement dibaca langsung dari database. Reservation dan Issue dari Part Request otomatis tercatat oleh RPC.</div>`;
+}
+
+function v7FRenderDeferredInventoryPanels(){
+  const messages={
+    'i-compat':'Compatibility mapping belum dimigrasikan ke editor Supabase pada tahap 007F. Data master part tetap aman di database.',
+    'i-supplier':'Supplier master belum diaktifkan untuk write pada tahap 007F.',
+    'i-po':'Purchase Order belum diaktifkan pada tahap 007F agar stok hanya berubah lewat transaksi backend yang sudah tervalidasi.',
+    'i-receive':'Goods Receiving belum diaktifkan pada tahap 007F. Tombol demo lokal dinonaktifkan.',
+    'i-opname':'Stock Opname belum diaktifkan pada tahap 007F.'
+  };
+  Object.entries(messages).forEach(([id,msg])=>{
+    const p=document.getElementById(id);if(!p)return;
+    const title=id==='i-compat'?'Part Compatibility':id==='i-supplier'?'Suppliers':id==='i-po'?'Purchase Order':id==='i-receive'?'Goods Receiving':'Stock Opname';
+    p.innerHTML=`<div class="head"><h2>${title}</h2><span class="pill">NEXT INVENTORY PHASE</span></div><div class="card"><div class="notice">${safeText(msg)}</div></div>`;
+  });
+}
+
+function v7FRenderInventory(){
+  if(!v7FInventoryRole())return;
+  v7FRenderInventoryDashboard();
+  v7FRenderInventoryStock();
+  v7FRenderInventoryRequests();
+  v7FRenderPartsDatabase();
+  v7FRenderMovements();
+  v7FRenderDeferredInventoryPanels();
+  v7BtnNormalizeDocument(document);
+}
+
+async function v7FInventoryRequestAction(code,action){
+  if(!v7FInventoryRole()||v7FInventoryBusy)return;
+  const act=v7FUpper(action);
+  const labels={ISSUE:'Issue part ke mechanic',REJECT:'Reject Part Request',OUT_OF_STOCK:'Tandai Out of Stock'};
+  if(!confirm((labels[act]||act)+' untuk '+code+'?'))return;
+
+  let note=null;
+  if(act!=='ISSUE'){
+    note=prompt('Catatan '+act+' (opsional):','')||null;
+  }
+
+  try{
+    const {data,error}=await v7Sb.rpc('inventory_part_request_action',{
+      p_request_code:code,
+      p_action:act,
+      p_note:note
+    });
+    if(error)throw error;
+    toast((data?.requestCode||code)+' → '+(data?.status||act));
+    await v7FLoadInventory();
+    try{await v7LoadPublicCatalog();}catch(_){}
+  }catch(err){
+    v7FError(err,'Aksi Part Request gagal');
+  }
+}
+
+/* Remote inventory navigation must not call the old local renderInventory(). */
+const v7FItabLegacy=itab;
+itab=function(id,btn){
+  if(v7FInventoryRole()&&v7EIsRemoteStaff()){
+    document.querySelectorAll('#inventory .panel').forEach(x=>x.classList.remove('on'));
+    const p=document.getElementById('i-'+id);if(p)p.classList.add('on');
+    document.querySelectorAll('#inventory .side button').forEach(x=>x.classList.remove('on'));
+    if(btn)btn.classList.add('on');
+    window.scrollTo({top:0,behavior:'smooth'});
+    if(['dash','stock','requests','partsdb','movement'].includes(id))v7FRenderInventory();
+    return;
+  }
+  return v7FItabLegacy(id,btn);
+};
+itabId=function(id){
+  const btn=[...document.querySelectorAll('#inventory .side button')]
+    .find(x=>(x.getAttribute('onclick')||'').includes("'"+id+"'"));
+  itab(id,btn);
+};
+
+/* ----------------------------------------------------------------------
+   MECHANIC — approved parts / request status
+   ---------------------------------------------------------------------- */
+async function v7FQueryMechanicRequests(workOrderId){
+  const {data,error}=await v7Sb.from('part_requests')
+    .select(`
+      id,request_code,work_order_id,estimate_item_id,part_id,qty,reserved_qty,status,requested_at,issued_at,note,
+      part:parts(id,sku,name,on_hand,reserved_qty,min_stock)
+    `)
+    .eq('work_order_id',workOrderId)
+    .order('requested_at',{ascending:true});
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+
+async function v7FRefreshMechanicOperational({rerender=true}={}){
+  const snap=v7EMechanicSnapshot;
+  if(v7ERole()!=='mechanic'||!snap?.workOrder?.id)return;
+  try{
+    v7FMechanicRequestRows=await v7FQueryMechanicRequests(snap.workOrder.id);
+    if(rerender)v7FRenderMechanicOperational(snap);
+  }catch(err){
+    console.warn('[SUPABASE_007F] mechanic request refresh failed',err);
+  }
+}
+
+function v7FFindRequestForItem(item){
+  return v7FMechanicRequestRows.find(r=>String(r.estimate_item_id||'')===String(item.id||''));
+}
+
+function v7FApprovedPartItems(snap){
+  return (snap?.estimate?.items||[]).filter(i=>
+    v7FUpper(i.itemType)==='PART' &&
+    v7FUpper(i.approvalStatus)==='APPROVED'
+  );
+}
+function v7FPendingEstimateItems(snap){
+  return (snap?.estimate?.items||[]).filter(i=>v7FUpper(i.approvalStatus)==='PENDING');
+}
+
+function v7FRenderMechanicParts(snap){
+  const p=document.getElementById('m-parts');if(!p)return;
+  const items=v7FApprovedPartItems(snap);
+  const pending=v7FPendingEstimateItems(snap).length;
+  const wo=snap.workOrder;
+
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Approved Parts · Supabase</div><h2>${safeText(wo.code)}</h2></div>
+      ${wfPill(v7FUpper(wo.partsStatus||'NOT_REQUESTED'))}
+    </div>
+    ${pending?`<div class="notice"><b>${pending} item masih menunggu keputusan customer.</b> Part Request baru boleh dibuat setelah keputusan selesai.</div>`:''}
+    <div class="card" style="margin-top:12px">
+      <h3>Part yang disetujui customer</h3>
+      ${
+        items.map(i=>{
+          const req=v7FFindRequestForItem(i);
+          const canRequest=!pending && !req && !['CLOSED','CANCELLED'].includes(v7FUpper(wo.status));
+          return `<div class="v7f-item">
+            <div class="v7f-item-grid">
+              <div>
+                <b>${safeText(i.name)}</b>
+                <div class="muted">${safeText(i.code||'')} · Qty ${Number(i.qty||1)} · ${rup(Number(i.unitPrice||0))}</div>
+                <div class="v7f-request-state">
+                  ${req?`Request ${safeText(req.request_code)} · ${v7FRequestPill(req.status)}`:'Belum di-request'}
+                </div>
+              </div>
+              <div>
+                ${canRequest
+                  ? `<button class="btn" type="button" onclick="v7FMechanicRequestPart('${safeText(i.id)}',${Math.ceil(Number(i.qty||1))})">REQUEST PART</button>`
+                  : req
+                    ? v7FRequestPill(req.status)
+                    : '<span class="pill">LOCKED</span>'
+                }
+              </div>
+            </div>
+          </div>`;
+        }).join('')
+        || '<div class="muted">Tidak ada part approved pada estimate terbaru.</div>'
+      }
+    </div>
+    <div class="notice" style="margin-top:12px">
+      REQUEST yang stoknya cukup akan langsung membuat reservation di Supabase. On Hand baru berkurang saat Inventory menekan ISSUE.
+    </div>`;
+}
+
+function v7FJobActionState(snap){
+  const wo=snap.workOrder||{};
+  const job=v7FUpper(wo.jobStatus);
+  const status=v7FUpper(wo.status);
+  const diag=v7FUpper(wo.diagnosisStatus);
+  const pending=v7FPendingEstimateItems(snap).length;
+  const terminal=['CLOSED','CANCELLED','WAITING_FINAL_QC','READY_FOR_PICKUP'].includes(status) ||
+                 ['CLOSED','WAITING_FINAL_QC'].includes(job);
+
+  return {
+    job,status,diag,pending,terminal,
+    canStart:!terminal && diag==='COMPLETED' && pending===0 && !['IN_PROGRESS','PAUSED'].includes(job),
+    canPause:!terminal && ['IN_PROGRESS','STARTED'].includes(job),
+    canResume:!terminal && ['PAUSED','REWORK'].includes(job),
+    canComplete:!terminal && diag==='COMPLETED' && pending===0 && ['IN_PROGRESS','PAUSED','REWORK','STARTED'].includes(job)
+  };
+}
+
+function v7FRenderMechanicWork(snap){
+  const p=document.getElementById('m-work');if(!p)return;
+  const wo=snap.workOrder;
+  const st=v7FJobActionState(snap);
+  const approved=(snap.estimate?.items||[]).filter(i=>v7FUpper(i.approvalStatus)==='APPROVED');
+  const partItems=v7FApprovedPartItems(snap);
+  const issueSummary=partItems.map(i=>{
+    const req=v7FFindRequestForItem(i);
+    return {item:i,req};
+  });
+
+  p.innerHTML=`
+    <div class="head">
+      <div><div class="k">Job Execution · Supabase</div><h2>${safeText(wo.code)}</h2></div>
+      ${wfPill(v7FUpper(wo.jobStatus||wo.status||'-'))}
+    </div>
+    <div class="card">
+      <h3>Approved Scope</h3>
+      ${approved.map(i=>`
+        <div class="line">
+          <span>${safeText(i.name)} ×${Number(i.qty||1)}<br><small>${safeText(i.itemType||'')}</small></span>
+          <b>${rup(Number(i.qty||1)*Number(i.unitPrice||0))}</b>
+        </div>`).join('')||'<div class="muted">Belum ada approved scope.</div>'}
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3>Part Readiness</h3>
+      ${
+        issueSummary.map(x=>`
+          <div class="line">
+            <span>${safeText(x.item.name)} ×${Number(x.item.qty||1)}</span>
+            <span>${x.req?v7FRequestPill(x.req.status):'<span class="pill">NOT REQUESTED</span>'}</span>
+          </div>`).join('')
+        || '<div class="muted">Scope ini tidak membutuhkan part.</div>'
+      }
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3>Kontrol Pengerjaan</h3>
+      <div class="line"><span>Diagnosis</span><b>${v7EStatus(st.diag)}</b></div>
+      <div class="line"><span>Job</span><b>${v7EStatus(st.job)}</b></div>
+      <div class="line"><span>Part</span><b>${v7EStatus(wo.partsStatus||'NOT_REQUESTED')}</b></div>
+      <div class="line"><span>Pending customer decision</span><b>${st.pending}</b></div>
+      <div class="actions">
+        <button class="btn" type="button" onclick="v7FMechanicJobAction('START')" ${st.canStart?'':'disabled'}>START JOB</button>
+        <button class="btn alt" type="button" onclick="v7FMechanicJobAction('PAUSE')" ${st.canPause?'':'disabled'}>PAUSE</button>
+        <button class="btn alt" type="button" onclick="v7FMechanicJobAction('RESUME')" ${st.canResume?'':'disabled'}>RESUME</button>
+        <button class="btn" type="button" onclick="v7FMechanicCompleteJob()" ${st.canComplete?'':'disabled'}>COMPLETE JOB</button>
+        <button class="btn alt" type="button" onclick="v7FRefreshMechanicWO()">↻ REFRESH</button>
+      </div>
+      ${st.diag!=='COMPLETED'?'<div class="notice" style="margin-top:10px">Diagnosis harus selesai sebelum Job Execution dimulai.</div>':''}
+      ${st.pending?'<div class="notice" style="margin-top:10px">Masih ada keputusan customer yang PENDING.</div>':''}
+      <div class="v7f-live-note">COMPLETE JOB akan ditolak backend bila ada approved part yang belum ISSUED.</div>
+    </div>`;
+}
+
+function v7FRenderMechanicOperational(snap=v7EMechanicSnapshot){
+  if(v7ERole()!=='mechanic'||!snap?.workOrder)return;
+  v7FRenderMechanicParts(snap);
+  v7FRenderMechanicWork(snap);
+  v7BtnNormalizeDocument(document);
+}
+
+async function v7FMechanicRequestPart(estimateItemId,qty){
+  if(v7FMechanicActionBusy)return;
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code)return;
+
+  if(!confirm('Request part untuk '+code+'?'))return;
+  v7FMechanicActionBusy=true;
+  try{
+    const {data,error}=await v7Sb.rpc('mechanic_request_part',{
+      p_work_order_code:code,
+      p_estimate_item_id:estimateItemId,
+      p_qty:Number(qty)
+    });
+    if(error)throw error;
+
+    toast((data?.requestCode||'Part Request')+' · '+(data?.status||'REQUESTED'));
+    await v7FRefreshMechanicWO();
+  }catch(err){
+    v7FError(err,'Part Request gagal');
+  }finally{
+    v7FMechanicActionBusy=false;
+  }
+}
+
+async function v7FMechanicJobAction(action){
+  if(v7FMechanicActionBusy)return;
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code)return;
+  const act=v7FUpper(action);
+
+  v7FMechanicActionBusy=true;
+  try{
+    const {data,error}=await v7Sb.rpc('mechanic_job_action',{
+      p_work_order_code:code,
+      p_action:act
+    });
+    if(error)throw error;
+    toast('Job '+String(data?.jobStatus||act).replaceAll('_',' '));
+    await v7FRefreshMechanicWO();
+  }catch(err){
+    v7FError(err,'Job action gagal');
+  }finally{
+    v7FMechanicActionBusy=false;
+  }
+}
+
+async function v7FMechanicCompleteJob(){
+  if(v7FMechanicActionBusy)return;
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code)return;
+  if(!confirm('Selesaikan pekerjaan '+code+' dan kirim ke Final QC?'))return;
+
+  v7FMechanicActionBusy=true;
+  try{
+    const {data,error}=await v7Sb.rpc('mechanic_complete_job',{
+      p_work_order_code:code
+    });
+    if(error)throw error;
+    toast('Job selesai · WAITING FINAL QC');
+    await v7FRefreshMechanicWO();
+    await v7ELoadMechanicJobs({silent:true});
+  }catch(err){
+    v7FError(err,'Complete Job gagal');
+  }finally{
+    v7FMechanicActionBusy=false;
+  }
+}
+
+async function v7FRefreshMechanicWO(){
+  const code=v7EMechanicSnapshot?.workOrder?.code;
+  if(!code)return;
+  try{
+    // Fetch the authoritative snapshot without triggering legacy/local render.
+    const {data,error}=await v7Sb.rpc('staff_get_work_order',{p_work_order_code:code});
+    if(error)throw error;
+    v7EMechanicSnapshot=data;
+    v7EMechanicFormDirty=false;
+    v7ERenderMechanicSnapshot(data);
+    v7FMechanicRequestRows=await v7FQueryMechanicRequests(data.workOrder.id);
+    v7FRenderMechanicOperational(data);
+  }catch(err){
+    v7FError(err,'Refresh Work Order gagal');
+  }
+}
+
+/* Extend the existing mechanic snapshot renderer with 007F operational panels. */
+const v7FMechanicRenderBase=v7ERenderMechanicSnapshot;
+v7ERenderMechanicSnapshot=function(snap){
+  v7FMechanicRenderBase(snap);
+  if(v7ERole()==='mechanic'&&snap?.workOrder?.id){
+    // render immediately using the snapshot's request summary,
+    // then replace with exact estimate_item mapping from direct RLS query.
+    v7FMechanicRequestRows=(snap.partRequests||[]).map(x=>({
+      id:x.id,request_code:x.code,estimate_item_id:null,qty:x.qty,
+      reserved_qty:x.reservedQty,status:x.status,requested_at:x.requestedAt,
+      issued_at:x.issuedAt,part:{sku:x.sku,name:x.part}
+    }));
+    v7FRenderMechanicOperational(snap);
+    v7FRefreshMechanicOperational({rerender:true});
+  }
+};
+
+/* ----------------------------------------------------------------------
+   LOGIN / ROUTING / AUTO REFRESH
+   ---------------------------------------------------------------------- */
+const v7FRouteStaffBase=v7ERouteStaff;
+v7ERouteStaff=function(){
+  v7FRouteStaffBase();
+  if(v7FInventoryRole()){
+    go('inventory');
+    itabId('dash');
+    v7FLoadInventory();
+  }
+};
+
+const v7FAutoRefreshBase=v7EStartAutoRefresh;
+v7EStartAutoRefresh=function(){
+  clearInterval(v7ERoleRefreshTimer);
+  v7ERoleRefreshTimer=setInterval(async()=>{
+    if(document.hidden||!v7EIsRemoteStaff())return;
+    const role=v7ERole();
+
+    if(role==='advisor'){
+      await v7ELoadAdvisor({silent:true});
+      return;
+    }
+    if(role==='mechanic'){
+      try{
+        v7EMechanicJobs=await v7EQueryMechanicJobs();
+        v7ERenderMechanicJobs();
+        // do NOT rebuild diagnosis/work forms automatically.
+        if(v7EMechanicSnapshot?.workOrder?.id){
+          v7FMechanicRequestRows=await v7FQueryMechanicRequests(v7EMechanicSnapshot.workOrder.id);
+          const active=document.querySelector('#mechanic .panel.on')?.id;
+          if(active==='m-parts'||active==='m-work'){
+            v7FRenderMechanicOperational(v7EMechanicSnapshot);
+          }
+        }
+      }catch(err){console.warn('[SUPABASE_007F] mechanic background refresh',err);}
+      return;
+    }
+    if(['inventory','owner'].includes(role)){
+      await v7FLoadInventory({silent:true});
+    }
+  },10000);
+};
+
+/* Remote inventory pages must not be overwritten by old local V6 renderer. */
+const v7FRenderAllBase=v3RenderAll;
+v3RenderAll=function(){
+  if(v7EIsRemoteStaff()&&v7FInventoryRole()){
+    v7FRenderInventory();
+    return;
+  }
+  v7FRenderAllBase();
+  if(v7ERole()==='mechanic'&&v7EMechanicSnapshot){
+    v7FRenderMechanicOperational(v7EMechanicSnapshot);
+  }
+};
+
+/* Console diagnostics */
+window.vwInventoryIntegrationInfo=function(){
+  const result={
+    stage:'007F',
+    role:v7ERole(),
+    parts:v7FInventoryParts.length,
+    requests:v7FInventoryRequests.length,
+    pendingRequests:v7FInventoryRequests.filter(x=>v7FUpper(x.status)==='REQUESTED').length,
+    movements:v7FInventoryMovements.length
+  };
+  console.table(result);
+  return result;
+};
+window.vwJobExecutionInfo=function(){
+  const s=v7EMechanicSnapshot;
+  const st=s? v7FJobActionState(s):null;
+  const result={
+    stage:'007F',
+    workOrder:s?.workOrder?.code||null,
+    diagnosis:s?.workOrder?.diagnosisStatus||null,
+    job:s?.workOrder?.jobStatus||null,
+    parts:s?.workOrder?.partsStatus||null,
+    approvedParts:s?v7FApprovedPartItems(s).length:0,
+    pendingApproval:s?v7FPendingEstimateItems(s).length:0,
+    partRequests:v7FMechanicRequestRows.length,
+    canStart:st?.canStart||false,
+    canPause:st?.canPause||false,
+    canResume:st?.canResume||false,
+    canComplete:st?.canComplete||false
+  };
+  console.table(result);
+  return result;
+};
+
+/* Restore live Inventory if user refreshes page with existing staff session. */
+setTimeout(()=>{
+  if(v7EIsRemoteStaff()&&v7FInventoryRole()){
+    v7FLoadInventory({silent:true});
+  }
+  if(v7ERole()==='mechanic'&&v7EMechanicSnapshot?.workOrder?.id){
+    v7FRefreshMechanicOperational({rerender:true});
+  }
+},1300);
+</script>
+
 </body>
 
 </html>
