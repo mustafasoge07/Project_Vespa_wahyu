@@ -5384,6 +5384,302 @@ window.vwSupabaseSelfTest=async function(){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(v7InitSupabase,180));
 </script>
 
+
+<!-- ======================================================================
+     [SUPABASE_007B] Customer Booking -> Supabase
+     Supabase is authoritative for NEW online bookings.
+     ====================================================================== -->
+<script>
+/* ======================================================================
+   [SUPABASE_007B]
+   - intercept booking submit before legacy handlers
+   - RPC public_create_booking()
+   - store booking access token locally on CUSTOMER device
+   - create a local shadow case ONLY for temporary UI compatibility
+   - never claim success if Supabase booking failed
+   ====================================================================== */
+
+const V7B_ACCESS_PREFIX = 'vw_customer_access_';
+const V7B_CURRENT_ACCESS_KEY = 'vw_customer_current_access';
+let v7BBookingBusy = false;
+
+function v7BField(id){
+  return document.getElementById(id);
+}
+
+function v7BSetBookingBusy(busy){
+  v7BBookingBusy=!!busy;
+  const form=v7BField('bf');
+  if(!form)return;
+  const submit=form.querySelector('button[type="submit"],input[type="submit"]');
+  if(submit){
+    if(!submit.dataset.v7bLabel) submit.dataset.v7bLabel=submit.textContent||submit.value||'BOOKING';
+    submit.disabled=!!busy;
+    if(submit.tagName==='INPUT') submit.value=busy?'MENYIMPAN...':submit.dataset.v7bLabel;
+    else submit.textContent=busy?'MENYIMPAN KE SUPABASE...':submit.dataset.v7bLabel;
+  }
+}
+
+function v7BNormalizeSlot(raw){
+  const s=String(raw||'').trim();
+  const m=s.match(/(\d{1,2}):(\d{2})/);
+  if(!m)return null;
+  return String(m[1]).padStart(2,'0')+':'+m[2]+':00';
+}
+
+function v7BSaveCustomerAccess(payload){
+  const data={
+    bookingCode:String(payload?.bookingCode||''),
+    accessToken:String(payload?.accessToken||''),
+    status:String(payload?.status||'CONFIRMED'),
+    bookingDate:payload?.bookingDate||null,
+    slotTime:payload?.slotTime||null,
+    savedAt:new Date().toISOString()
+  };
+  if(!data.bookingCode || !data.accessToken){
+    throw new Error('Booking berhasil tetapi access token tidak lengkap');
+  }
+  localStorage.setItem(
+    V7B_ACCESS_PREFIX+data.bookingCode.toUpperCase(),
+    JSON.stringify(data)
+  );
+  localStorage.setItem(V7B_CURRENT_ACCESS_KEY,JSON.stringify(data));
+  window.vwCustomerAccess=data;
+  return data;
+}
+
+function v7BReadCustomerAccess(code=''){
+  try{
+    const key=String(code||'').trim().toUpperCase();
+    const raw=key
+      ? localStorage.getItem(V7B_ACCESS_PREFIX+key)
+      : localStorage.getItem(V7B_CURRENT_ACCESS_KEY);
+    return raw?JSON.parse(raw):null;
+  }catch(e){
+    console.warn('[SUPABASE_007B] access token read failed',e);
+    return null;
+  }
+}
+window.vwReadCustomerAccess=v7BReadCustomerAccess;
+
+function v7BCreateLocalShadow(remote,formData){
+  // This state is temporary UI compatibility only.
+  // Operational source of truth for this NEW booking is Supabase.
+  try{
+    booking={
+      code:remote.bookingCode,
+      name:formData.name,
+      phone:formData.phone,
+      plate:formData.plate,
+      model:formData.model,
+      date:formData.bookingDate,
+      slot:formData.slotDisplay
+    };
+    localStorage.setItem('vespa_booking',JSON.stringify(booking));
+
+    if(typeof v3CreateBaseCase==='function' &&
+       typeof v3AddCase==='function' &&
+       typeof workflowState!=='undefined'){
+      const bookingData={
+        code:remote.bookingCode,
+        name:formData.name,
+        phone:formData.phone,
+        model:formData.model,
+        plate:formData.plate,
+        year:formData.year||'',
+        odometer:formData.odometer||0,
+        date:formData.bookingDate,
+        slot:formData.slotDisplay,
+        complaint:formData.complaint,
+        packageId:formData.packageCode,
+        status:'CONFIRMED',
+        backend:'SUPABASE'
+      };
+      const c=v3CreateBaseCase({source:'ONLINE_SUPABASE',bookingData});
+      c.backend='SUPABASE';
+      c.remoteBookingCode=remote.bookingCode;
+      c.customerAccessToken=remote.accessToken;
+
+      const old=(workflowState.cases||[]).findIndex(
+        x=>x.booking?.code===remote.bookingCode
+      );
+      if(old>=0)workflowState.cases.splice(old,1);
+
+      v3AddCase(c);
+      workflowState.customerActiveCaseId=c.caseId;
+      if(typeof saveWorkflow==='function')saveWorkflow();
+    }
+  }catch(err){
+    // Booking already exists in Supabase. Local shadow failure must not
+    // turn a valid server booking into an apparent failure.
+    console.warn('[SUPABASE_007B] local shadow failed',err);
+  }
+}
+
+function v7BShowBookingSuccess(remote,formData){
+  const code=v7BField('scode');
+  const info=v7BField('sinfo');
+  if(code)code.textContent=remote.bookingCode;
+  if(info){
+    info.innerHTML=
+      '<b>'+safeText(formData.name)+'</b><br>'+
+      safeText(formData.model)+' · '+safeText(formData.plate)+'<br>'+
+      safeText(formData.bookingDate)+' · '+safeText(formData.slotDisplay)+
+      '<br><small class="muted">Tersimpan di Supabase · Access token tersimpan di perangkat ini</small>';
+  }
+  go('success');
+}
+
+async function v7BSubmitBooking(event){
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
+  if(v7BBookingBusy)return false;
+
+  if(!v7Sb || !v7CatalogReady){
+    toast('Supabase belum siap. Tunggu status SUPABASE ONLINE lalu coba lagi.');
+    return false;
+  }
+
+  const name=v7BField('bn')?.value.trim()||'';
+  const phone=v7BField('bp')?.value.trim()||'';
+  const plate=(v7BField('bpl')?.value||'').trim().toUpperCase();
+  const model=v7BField('bm')?.value||'';
+  const yearRaw=v7BField('by')?.value;
+  const odoRaw=v7BField('bo')?.value;
+  const bookingDate=v7BField('bd')?.value||'';
+  const slotRaw=v7BField('bs')?.value||'';
+  const complaint=v7BField('bc')?.value.trim()||'';
+  const packageCode=v7BField('bPackage')?.value||'';
+
+  const slotTime=v7BNormalizeSlot(slotRaw);
+  const slotDisplay=slotRaw.split('—')[0].trim() || slotRaw;
+
+  if(!name || !phone || !plate || !model || !bookingDate ||
+     !slotTime || !complaint || !packageCode){
+    toast('Lengkapi seluruh data booking wajib.');
+    return false;
+  }
+
+  const year=yearRaw?Number(yearRaw):null;
+  const odometer=odoRaw!==''?Number(odoRaw):null;
+
+  if(year!==null && (!Number.isFinite(year) || year<1940 || year>2100)){
+    toast('Tahun kendaraan tidak valid.');
+    return false;
+  }
+  if(odometer!==null && (!Number.isFinite(odometer) || odometer<0)){
+    toast('Odometer tidak valid.');
+    return false;
+  }
+
+  const formData={
+    name,phone,plate,model,year,odometer,
+    bookingDate,slotTime,slotDisplay,complaint,packageCode
+  };
+
+  v7BSetBookingBusy(true);
+
+  try{
+    const {data,error}=await v7Sb.rpc('public_create_booking',{
+      p_workshop_slug:V7_WORKSHOP_SLUG,
+      p_name:name,
+      p_phone:phone,
+      p_plate:plate,
+      p_model:model,
+      p_year:year,
+      p_odometer:odometer,
+      p_booking_date:bookingDate,
+      p_slot_time:slotTime,
+      p_complaint:complaint,
+      p_package_code:packageCode,
+      p_email:null
+    });
+
+    if(error)throw error;
+    if(!data?.bookingCode || !data?.accessToken){
+      throw new Error('Response booking Supabase tidak lengkap');
+    }
+
+    const access=v7BSaveCustomerAccess(data);
+    v7BCreateLocalShadow(access,formData);
+    v7BShowBookingSuccess(access,formData);
+
+    if(typeof pushCustomerNotification==='function'){
+      try{
+        pushCustomerNotification(
+          'Booking berhasil',
+          access.bookingCode+' tersimpan di Supabase.',
+          'booking','tracking'
+        );
+      }catch(_){}
+    }
+
+    console.info('[SUPABASE_007B] Booking created',{
+      bookingCode:access.bookingCode,
+      status:access.status,
+      bookingDate:access.bookingDate,
+      slotTime:access.slotTime
+    });
+
+    toast('Booking tersimpan di Supabase ✓');
+    window.dispatchEvent(new CustomEvent(
+      'vw:supabase-booking-created',
+      {detail:{bookingCode:access.bookingCode}}
+    ));
+
+  }catch(err){
+    console.error('[SUPABASE_007B] booking failed',err);
+    const msg=String(
+      err?.message ||
+      err?.details ||
+      err?.hint ||
+      'Booking gagal disimpan ke Supabase'
+    );
+    toast(msg.length>110?msg.slice(0,107)+'...':msg);
+  }finally{
+    v7BSetBookingBusy(false);
+  }
+
+  return false;
+}
+
+function v7BInstallBooking(){
+  const form=v7BField('bf');
+  if(!form || form.dataset.supabase007b==='1')return;
+  form.dataset.supabase007b='1';
+
+  // CAPTURE phase + stopImmediatePropagation means old booking handlers
+  // cannot also generate a second local booking.
+  form.addEventListener('submit',v7BSubmitBooking,true);
+
+  const note=document.createElement('div');
+  note.id='v7BBookingBackendNote';
+  note.className='notice';
+  note.style.marginTop='10px';
+  note.innerHTML='<b>Online database aktif.</b> Booking baru pada form ini akan disimpan ke Supabase.';
+  form.appendChild(note);
+}
+
+// Manual console helper.
+// Does not create data; only checks if the booking RPC is visible to anon.
+window.vwBookingIntegrationInfo=function(){
+  const access=v7BReadCustomerAccess();
+  const result={
+    stage:'007B',
+    supabaseReady:!!v7Sb,
+    catalogReady:v7CatalogReady,
+    currentBookingCode:access?.bookingCode||null,
+    hasCustomerAccessToken:!!access?.accessToken
+  };
+  console.table(result);
+  return result;
+};
+
+document.addEventListener('DOMContentLoaded',()=>setTimeout(v7BInstallBooking,240));
+</script>
+
 </body>
 
 </html>
