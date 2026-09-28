@@ -1155,6 +1155,10 @@
       /* Warna latar gelap sesuai gambar */
       color: #ffffff;
       padding: 50px 20px 20px;
+      position: relative;
+      z-index: 1;
+      margin-bottom: 68px;
+      /* ruang untuk bottom navigation fixed */
     }
 
     .footer-container {
@@ -1207,14 +1211,6 @@
         grid-template-columns: 1fr;
         /* 1 Kolom tumpuk di HP */
       }
-    }
-
-
-    .site-footer {
-      position: relative;
-      z-index: 1;
-      margin-bottom: 68px;
-      /* ruang untuk bottom navigation fixed */
     }
 
     .site-footer p {
@@ -1601,7 +1597,7 @@
     <section id="usedVespa" class="page">
       <div class="head">
         <div>
-          <div class="k">Vespa Second</div>
+          <div class="k">Our Vespa</div>
           <h2>Unit Vespa Pilihan</h2>
         </div>
         <span class="pill">SHOWROOM</span>
@@ -2886,7 +2882,7 @@
             <div class="head">
               <div>
                 <div class="k">Used Vespa Inventory</div>
-                <h2>Unit Vespa Second</h2>
+                <h2>Our Unit's</h2>
               </div>
               <button class="btn" onclick="toggleUnitForm()">+ TAMBAH UNIT</button>
             </div>
@@ -3032,7 +3028,7 @@
       <button onclick="go('booking',this)"><b>🔧</b>Booking</button>
       <button onclick="go('tracking',this)"><b>⚡</b>Lacak</button>
       <button onclick="go('parts',this)"><b>⚙️</b>Sparepart</button>
-      <button onclick="go('usedVespa',this);renderUsedVespa()"><b>🛵</b>Vespa Second</button>
+      <button onclick="go('usedVespa',this);renderUsedVespa()"><b>🛵</b>Our Vespa</button>
     </div>
   </div>
   <div class="modal" id="modal">
@@ -3086,9 +3082,20 @@
 
       <div class="footer-column">
         <h3>Layanan</h3>
-        <p style="margin:6px 0">Booking Servis</p>
-        <p style="margin:6px 0">Sparepart Vespa</p>
-        <p style="margin:6px 0">Vespa Second</p>
+        <a href="https://mustafasoge07.github.io/Project_Vespa_wahyu/booking" class="footer-social-link" target="_blank"
+          rel="noopener" title="Project Vespa Wahyu">
+          <p style="margin:6px 0">Booking Servis</p>
+        </a>
+
+        <a href="https://mustafasoge07.github.io/Project_Vespa_wahyu/sparepart" class="footer-social-link"
+          target="_blank" rel="noopener" title="Project Vespa Wahyu">
+          <p style="margin:6px 0">Sparepart Vespa</p>
+        </a>
+
+        <a href="https://mustafasoge07.github.io/Project_Vespa_wahyu/vespa+second" class="footer-social-link"
+          target="_blank" rel="noopener" title="Project Vespa Wahyu">
+          <p style="margin:6px 0">Our Vespa</p>
+        </a>
       </div>
     </div>
 
@@ -4022,7 +4029,7 @@
       const o = document.getElementById('wfWarrantyOwnerList'); if (o) o.innerHTML = workflowState.warranties.length ? `<div class="card tablewrap"><table class="wf-table-mini"><tr><th>Case</th><th>Type</th><th>Keluhan</th><th>Status</th><th>Decision</th></tr>${workflowState.warranties.map((c, i) => `<tr><td>${c.id}<br><small>${safeText(c.ref)}</small></td><td>${safeText(c.type)}</td><td>${safeText(c.complaint)}</td><td>${wfPill(c.status)}</td><td><button class="btn alt" onclick="warrantyDecision(${i},'APPROVED')">APPROVE</button> <button class="btn bad" onclick="warrantyDecision(${i},'REJECTED')">REJECT</button></td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada case untuk direview.</div>';
     }
     function renderOpnameHistory() { const b = document.getElementById('wfOpnameHistory'); if (!b) return; b.innerHTML = workflowState.stockAdjustments.length ? `<div class="card tablewrap"><table class="wf-table-mini"><tr><th>Waktu</th><th>SKU</th><th>Before</th><th>Physical</th><th>Diff</th><th>Reason</th></tr>${workflowState.stockAdjustments.slice(0, 10).map(x => `<tr><td>${new Date(x.ts).toLocaleString('id-ID')}</td><td>${x.sku}</td><td>${x.before}</td><td>${x.physical}</td><td>${x.diff >= 0 ? '+' : ''}${x.diff}</td><td>${safeText(x.reason)}</td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada stock adjustment.</div>'; }
-    function renderUsedLeads() { workflowState.vespaLeads.forEach(l => { if (['BOOKING', 'DP'].includes(l.type)) { const u = usedVespaUnits.find(x => x.id === l.unitId); if (u) u.status = 'BOOKED'; } }); const b = document.getElementById('wfUsedLeadList'); if (!b) return; b.innerHTML = `<h3>Vespa Second — Sales Leads</h3>` + (workflowState.vespaLeads.length ? `<div class="tablewrap"><table class="wf-table-mini"><tr><th>Lead</th><th>Unit</th><th>Customer</th><th>Type</th><th>DP</th><th>Status</th></tr>${workflowState.vespaLeads.map(x => `<tr><td>${x.id}</td><td>${safeText(x.unit)}</td><td>${safeText(x.name)}<br><small>${safeText(x.phone)}</small></td><td>${x.type}</td><td>${rup(x.dp)}</td><td>${wfPill(x.status)}</td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada inquiry / booking unit.</div>'); }
+    function renderUsedLeads() { workflowState.vespaLeads.forEach(l => { if (['BOOKING', 'DP'].includes(l.type)) { const u = usedVespaUnits.find(x => x.id === l.unitId); if (u) u.status = 'BOOKED'; } }); const b = document.getElementById('wfUsedLeadList'); if (!b) return; b.innerHTML = `<h3>Our Vespa — Sales Leads</h3>` + (workflowState.vespaLeads.length ? `<div class="tablewrap"><table class="wf-table-mini"><tr><th>Lead</th><th>Unit</th><th>Customer</th><th>Type</th><th>DP</th><th>Status</th></tr>${workflowState.vespaLeads.map(x => `<tr><td>${x.id}</td><td>${safeText(x.unit)}</td><td>${safeText(x.name)}<br><small>${safeText(x.phone)}</small></td><td>${x.type}</td><td>${rup(x.dp)}</td><td>${wfPill(x.status)}</td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada inquiry / booking unit.</div>'); }
     function renderLocalReports() {
       const b = document.getElementById('wfLocalReports'); if (!b) return; const paid = workflowState.invoice.status === 'PAID' ? workflowState.invoice.paid : 0;
       b.innerHTML = `<div class="k">Local Frontend Simulation</div><h3>Live Workflow Metrics</h3><div class="wf-grid"><div class="wf-card"><span class="muted">Confirmed Revenue</span><strong>${rup(paid)}</strong></div><div class="wf-card"><span class="muted">WO Status</span><strong>${wfPill(workflowState.wo.status)}</strong></div><div class="wf-card"><span class="muted">Audit Events</span><strong>${workflowState.audit.length}</strong></div><div class="wf-card"><span class="muted">Warranty Cases</span><strong>${workflowState.warranties.length}</strong></div><div class="wf-card"><span class="muted">Stock Adjustments</span><strong>${workflowState.stockAdjustments.length}</strong></div><div class="wf-card"><span class="muted">Parts Inquiries</span><strong>${workflowState.partInquiries.length}</strong></div><div class="wf-card"><span class="muted">Used Vespa Leads</span><strong>${workflowState.vespaLeads.length}</strong></div></div><div class="wf-help">Angka ini hanya berasal dari state frontend/localStorage. Setelah Supabase, sumbernya diganti ke invoice, payment, stock ledger, dan audit event database.</div>`;
@@ -5397,7 +5404,7 @@
     /* [STAGE2] Wrapper renderUsedVespa V6 dihapus; renderer production didefinisikan pada blok Supabase. */
     addUsedUnit = function () { const name = document.getElementById('ouName')?.value.trim(), year = +document.getElementById('ouYear')?.value, price = +document.getElementById('ouPrice')?.value; if (!name || !year || !price) { toast('Nama, tahun dan harga wajib diisi'); return; } usedVespaUnits.unshift({ id: 'UV-' + String(Math.max(0, ...usedVespaUnits.map(x => +(String(x.id).match(/(\d+)$/)?.[1] || 0))) + 1).padStart(3, '0'), name, year, price, km: +document.getElementById('ouKm').value || 0, color: document.getElementById('ouColor').value || '-', plate: document.getElementById('ouPlate').value || '-', tax: document.getElementById('ouTax').value || '-', status: document.getElementById('ouStatus').value, condition: 'Data unit baru', desc: document.getElementById('ouDesc').value || '-', image: pendingUnitPhotos[0] || '', gallery: pendingUnitPhotos.slice() }); pendingUnitPhotos = []; const input = document.getElementById('ouPhotos'); if (input) input.value = ''; const prev = document.getElementById('ouPhotoPreview'); if (prev) prev.innerHTML = ''; v6PersistUsedUnits(); renderOwnerUnits(); renderUsedVespa(); toggleUnitForm(); commitWorkflow('USED_UNIT_CREATED', usedVespaUnits[0].id, name, 'OWNER'); toast('Unit tersimpan lokal dan tetap ada setelah refresh'); };
     cycleUnitStatus = function (id) { const u = usedVespaUnits.find(x => x.id === id); if (!u) return; u.status = u.status === 'TERSEDIA' ? 'BOOKED' : u.status === 'BOOKED' ? 'TERJUAL' : 'TERSEDIA'; v6PersistUsedUnits(); renderOwnerUnits(); renderUsedVespa(); commitWorkflow('USED_UNIT_STATUS', id, u.status, 'OWNER'); toast('Status unit: ' + u.status); };
-    renderUsedLeads = function () { const b = document.getElementById('wfUsedLeadList'); if (!b) return; b.innerHTML = `<h3>Vespa Second — Sales Leads</h3>` + (workflowState.vespaLeads.length ? `<div class="tablewrap"><table class="wf-table-mini"><tr><th>Lead</th><th>Unit</th><th>Customer</th><th>Type</th><th>DP</th><th>Status</th><th>Aksi</th></tr>${workflowState.vespaLeads.map(x => `<tr><td>${x.id}</td><td>${safeText(x.unit)}</td><td>${safeText(x.name)}<br><small>${safeText(x.phone)}</small></td><td>${x.type}</td><td>${v6Money(x.dp)}</td><td>${wfPill(x.status)}</td><td>${['RESERVATION_PENDING', 'DP_PENDING'].includes(x.status) ? `<button class="btn" onclick="v6LeadDecision('${x.id}','CONFIRM')">CONFIRM</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>` : x.status === 'BOOKED' ? `<button class="btn" onclick="v6LeadDecision('${x.id}','SOLD')">SOLD</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>` : '-'}</td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada inquiry / booking unit.</div>'); };
+    renderUsedLeads = function () { const b = document.getElementById('wfUsedLeadList'); if (!b) return; b.innerHTML = `<h3>Our Vespa — Sales Leads</h3>` + (workflowState.vespaLeads.length ? `<div class="tablewrap"><table class="wf-table-mini"><tr><th>Lead</th><th>Unit</th><th>Customer</th><th>Type</th><th>DP</th><th>Status</th><th>Aksi</th></tr>${workflowState.vespaLeads.map(x => `<tr><td>${x.id}</td><td>${safeText(x.unit)}</td><td>${safeText(x.name)}<br><small>${safeText(x.phone)}</small></td><td>${x.type}</td><td>${v6Money(x.dp)}</td><td>${wfPill(x.status)}</td><td>${['RESERVATION_PENDING', 'DP_PENDING'].includes(x.status) ? `<button class="btn" onclick="v6LeadDecision('${x.id}','CONFIRM')">CONFIRM</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>` : x.status === 'BOOKED' ? `<button class="btn" onclick="v6LeadDecision('${x.id}','SOLD')">SOLD</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>` : '-'}</td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada inquiry / booking unit.</div>'); };
     function v6LeadDecision(id, action) { const l = workflowState.vespaLeads.find(x => x.id === id); if (!l) return; const u = usedVespaUnits.find(x => x.id === l.unitId); if (action === 'CONFIRM') { if (u && u.status !== 'TERSEDIA') { toast('Unit sudah tidak tersedia'); return; } l.status = 'BOOKED'; if (u) u.status = 'BOOKED'; (workflowState.vespaLeads || []).forEach(o => { if (o.id !== l.id && o.unitId === l.unitId && ['RESERVATION_PENDING', 'DP_PENDING'].includes(o.status)) o.status = 'CANCELLED'; }); } else if (action === 'SOLD') { l.status = 'SOLD'; if (u) u.status = 'TERJUAL'; } else { l.status = 'CANCELLED'; if (u && u.status === 'BOOKED') u.status = 'TERSEDIA'; } v6PersistUsedUnits(); commitWorkflow('USED_LEAD_' + action, l.id, l.unit, 'OWNER'); renderUsedLeads(); renderOwnerUnits(); renderUsedVespa(); }
 
 
@@ -11321,7 +11328,7 @@
     /* ---------------- Vespa Second owner ---------------- */
     function v7HRenderUsedVespaOwner() {
       const p = document.getElementById('o-units'); if (!p || !v7HMaster) return;
-      p.innerHTML = `<div class="head"><div><div class="k">Used Vespa · Supabase</div><h2>Unit Vespa Second</h2></div><button class="btn" type="button" onclick="v7HOpenUnitForm()">+ UNIT</button></div>
+      p.innerHTML = `<div class="head"><div><div class="k">Used Vespa · Supabase</div><h2>Our Unit's</h2></div><button class="btn" type="button" onclick="v7HOpenUnitForm()">+ UNIT</button></div>
     <div id="v7HUnitForm"></div>
     <div class="card tablewrap"><table class="tbl"><tr><th>Unit</th><th>Tahun</th><th>KM</th><th>Harga</th><th>Status</th><th>Foto</th><th>Aksi</th></tr>
       ${(v7HMaster.usedVespa || []).map(u => { const photo = v7PublicMediaUrl(u.photos?.[0]?.url || ''); return `<tr><td><b>${safeText(u.name)}</b><br><small>${safeText(u.code)}</small></td><td>${u.year}</td><td>${v7HNum(u.odometer).toLocaleString('id-ID')}</td><td>${rup(v7HNum(u.price))}</td><td>${wfPill(v7HUpper(u.status))}</td><td>${photo ? `<img class="v7h-photo" src="${photo}">` : '—'}</td><td><button class="btn alt" type="button" onclick="v7HOpenUnitForm('${safeText(u.id)}')">EDIT</button></td></tr>` }).join('')}
@@ -11405,7 +11412,7 @@
         if (error) throw error; v7HLastPublicLead = { ...data, name, unit: u.name, type, dp };
         const r = document.getElementById('wfUsedLeadResult'); if (r) { r.style.display = 'block'; r.innerHTML = `<b>Data tercatat di Supabase.</b><br>Lead ID: <b>${safeText(data.leadCode)}</b><br>Status: ${safeText(data.status)}`; }
         const a = document.getElementById('wfUsedLeadActions'); if (a) a.style.display = 'flex'; toast('Lead tersimpan di Supabase'); await v7LoadPublicCatalog(); v7HRenderPublicUsedVespa();
-      } catch (err) { v7FError(err, 'Lead Vespa Second gagal'); }
+      } catch (err) { v7FError(err, 'Lead Our Vespa gagal'); }
     };
     continueUsedVespaWhatsApp = function () {
       const l = v7HLastPublicLead; if (!l) { toast('Simpan inquiry / booking terlebih dahulu'); return; }
@@ -13597,7 +13604,7 @@
       const pg = document.getElementById('pg');
       if (pg) pg.innerHTML = '<div class="v8-offline"><b>Database sedang tidak terhubung.</b><br>Data sparepart tidak ditampilkan agar tidak menampilkan stok lama. Coba refresh setelah koneksi kembali.</div>';
       const uv = document.getElementById('usedVespaGrid');
-      if (uv) uv.innerHTML = '<div class="v8-offline"><b>Database sedang tidak terhubung.</b><br>Data unit Vespa Second sementara tidak tersedia.</div>';
+      if (uv) uv.innerHTML = '<div class="v8-offline"><b>Database sedang tidak terhubung.</b><br>Data unit Our Vespa sementara tidak tersedia.</div>';
     }
     const v8BackendStatusBase = v7BackendStatus;
     v7BackendStatus = function (state, text) {
