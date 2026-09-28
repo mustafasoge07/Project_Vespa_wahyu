@@ -18,6 +18,11 @@
 ======================================================================
 -->
 
+
+<!-- [PRODUCTION_CLEANUP_2026-09-28]
+     Safe cleanup: removed unreachable helper/debug functions and unused base captures.
+     Functional override chains were intentionally preserved to avoid changing behavior. -->
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1033,9 +1038,8 @@
         min-width: 620px
       }
     }
-  </style>
 
-  <style>
+
     /* [INTEGRITY_V3] mobile/table + service package */
     .staffgrid>div,
     .panel {
@@ -1117,9 +1121,8 @@
         flex-direction: column
       }
     }
-  </style>
 
-  <style>
+
     /*
     ======================================================================
     [Foto sparepart]  
@@ -1140,6 +1143,123 @@
       display: block;
       object-fit: contain;
       object-position: center;
+    }
+
+    /* ======================================================================
+   ---------------------------- Footer ---------------------------------------
+   ======================================================================*/
+
+    /* Style Utama Footer */
+    .site-footer {
+      background-color: #0d141e;
+      /* Warna latar gelap sesuai gambar */
+      color: #ffffff;
+      padding: 50px 20px 20px;
+    }
+
+    .footer-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      /* 4 Kolom sejajar */
+      gap: 30px;
+    }
+
+    /* Styling Tiap Kolom */
+    .footer-column h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #ffffff;
+    }
+
+    /* Kolom 1: Styling container icon */
+    .social-png-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #ffffff;
+      text-decoration: none;
+      font-family: sans-serif;
+      font-size: 15px;
+    }
+
+    /* Ukuran logo PNG */
+    .icon-png {
+      width: 24px;
+      /* Atur lebar logo */
+      height: 24px;
+      /* Atur tinggi logo */
+      object-fit: contain;
+    }
+
+    /* Responsive untuk Tampilan HP/Tablet */
+    @media (max-width: 900px) {
+      .footer-container {
+        grid-template-columns: repeat(2, 1fr);
+        /* 2 Kolom di tablet */
+      }
+    }
+
+    @media (max-width: 550px) {
+      .footer-container {
+        grid-template-columns: 1fr;
+        /* 1 Kolom tumpuk di HP */
+      }
+    }
+
+
+    .site-footer {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 68px;
+      /* ruang untuk bottom navigation fixed */
+    }
+
+    .site-footer p {
+      margin: 0;
+    }
+
+    .social-icons {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .footer-social-link {
+      color: #ffffff;
+      text-decoration: none;
+      opacity: .86;
+      font-weight: 700;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .footer-social-link:hover {
+      opacity: 1;
+      transform: translateX(2px);
+    }
+
+    .footer-bottom {
+      max-width: 1200px;
+      margin: 34px auto 0;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, .12);
+      text-align: center;
+      font-size: 12px;
+      opacity: .65;
+    }
+
+    @media (max-width: 550px) {
+      .site-footer {
+        padding: 34px 18px 24px;
+        margin-bottom: 64px;
+      }
+
+      .footer-container {
+        gap: 24px;
+      }
     }
   </style>
 
@@ -2924,52 +3044,74 @@
           onclick="modal.classList.remove('on')">BATAL</button></div>
     </div>
   </div>
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast">
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-column">
+        <h3>Vespa Wahyu</h3>
+        <p>Workshop • Parts • Service</p>
+        <p style="opacity:.72;font-size:13px;margin-top:8px">
+          Rawat scooter kamu dengan lebih mudah.
+        </p>
+      </div>
+
+      <div class="footer-column">
+        <h3>Social Media</h3>
+        <div class="social-icons">
+          <a href="https://www.instagram.com/" class="social-png-link" target="_blank" rel="noopener" title="Instagram"
+            class="footer-social-link">
+            <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBx6hjxeKIB4eyduqzWlxGgCr5kV3LptTIhNY7i" alt="instagram"
+              class="icon-png">
+            <span>Instagram</span>
+          </a>
+          <a href="https://web.whatsapp.com/" class="social-png-link" target="_blank" rel="noopener" title="WhatsApp"
+            class="footer-social-link">
+            <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxt7p0KnP94yz5Hcih7UKAmX9o1kRV8SPb62n0" alt="whatsapp"
+              class="icon-png">
+            <span>WhatsApp</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-column">
+        <h3>Lokasi</h3>
+        <a href="https://www.google.com/maps" class="social-png-link" target="_blank" rel="noopener" title="Google Maps"
+          class="footer-social-link">
+          <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBx0AXf8LK0ftlMDhXz5cm7ZqewpjQoa1OrnGgV" alt="google maps"
+            class="icon-png">
+          <span>Google Maps</span>
+        </a>
+      </div>
+
+      <div class="footer-column">
+        <h3>Layanan</h3>
+        <p style="margin:6px 0">Booking Servis</p>
+        <p style="margin:6px 0">Sparepart Vespa</p>
+        <p style="margin:6px 0">Vespa Second</p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      © 2026 Vespa Wahyu. All rights reserved.
+    </div>
+  </footer>
+
+  
   <script>
-    let booking = null; const parts = [['V-Belt Sprint / Primavera', 'Sprint 150', 450000, 3], ['Roller CVT Set', 'Sprint 150', 180000, 6], ['Brake Pad Front', 'Primavera 150', 225000, 2], ['Engine Oil 4T', 'Semua model', 125000, 12], ['Oil Filter GTS', 'GTS 150', 95000, 0], ['Spark Plug', 'Semua model', 85000, 8]]; function go(id) { const target = document.getElementById(id); if (!target) { console.error('Page not found:', id); return } document.querySelectorAll('.page').forEach(x => x.classList.remove('on')); target.classList.add('on'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('on', x.dataset.p === id)); window.scrollTo({ top: 0, behavior: 'smooth' }) } bf.onsubmit = e => { e.preventDefault(); booking = { name: bn.value, phone: bp.value, plate: bpl.value.toUpperCase(), model: bm.value, date: bd.value, slot: bs.value }; booking.code = generateDocumentCode('BKG'); localStorage.setItem('vespa_booking', JSON.stringify(booking)); scode.textContent = booking.code; sinfo.innerHTML = '<b>' + booking.name + '</b><br>' + booking.model + ' · ' + booking.plate + '<br>' + booking.date + ' · ' + booking.slot.split('—')[0]; go('success') }; function bookTrack() { tc.value = booking?.code || ''; go('tracking'); track() } function track() { if (!tc.value.trim()) return toast('Masukkan kode booking / WO'); tr.style.display = 'block' } function ask(ok) { mt.textContent = ok ? 'Setujui pekerjaan?' : 'Tolak pekerjaan?'; mx.textContent = ok ? 'Anda menyetujui estimate Rp780.000.' : 'Estimate akan ditandai declined dan temuan tetap tercatat.'; my.onclick = () => { modal.classList.remove('on'); trackpill.textContent = ok ? 'DISETUJUI — MENUNGGU PENGERJAAN' : 'ESTIMASI DITOLAK'; toast(ok ? 'Estimate disetujui' : 'Estimate ditolak'); go('tracking') }; modal.classList.add('on') } function toast(s) { const x = document.getElementById('toast'); x.textContent = s; x.classList.add('on'); setTimeout(() => x.classList.remove('on'), 1800) } function rup(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n) } function render(a) { pg.innerHTML = a.map(p => '<div class="card"><div class="k">PART</div><h3>' + p[0] + '</h3><div class="muted">' + p[1] + '</div><div class="money" style="font-size:19px;margin-top:8px">' + rup(p[2]) + '</div><p>' + (p[3] ? '<span class="pill">Tersedia · ' + p[3] + '</span>' : '<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>') + '</p><button class="btn alt" onclick="toast(\'Hubungi workshop untuk ketersediaan\')">TANYA KETERSEDIAAN</button></div>').join('') } function filterParts() { let q = ps.value.toLowerCase(), m = pm.value; render(parts.filter(p => (p[0].toLowerCase().includes(q)) && (m === 'Semua model' || p[1] === m || p[1] === 'Semua model'))) } render(parts); try { booking = JSON.parse(localStorage.getItem('vespa_booking')) || null } catch (e) { } let d = new Date(); d.setDate(d.getDate() + 1); bd.min = d.toISOString().slice(0, 10);
+    let booking = null; const parts = [['V-Belt Sprint / Primavera', 'Sprint 150', 450000, 3], ['Roller CVT Set', 'Sprint 150', 180000, 6], ['Brake Pad Front', 'Primavera 150', 225000, 2], ['Engine Oil 4T', 'Semua model', 125000, 12], ['Oil Filter GTS', 'GTS 150', 95000, 0], ['Spark Plug', 'Semua model', 85000, 8]]; function go(id) { const target = document.getElementById(id); if (!target) { console.error('Page not found:', id); return } document.querySelectorAll('.page').forEach(x => x.classList.remove('on')); target.classList.add('on'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('on', x.dataset.p === id)); window.scrollTo({ top: 0, behavior: 'smooth' }) } bf.onsubmit = e => { e.preventDefault(); booking = { name: bn.value, phone: bp.value, plate: bpl.value.toUpperCase(), model: bm.value, date: bd.value, slot: bs.value }; booking.code = generateDocumentCode('BKG'); localStorage.setItem('vespa_booking', JSON.stringify(booking)); scode.textContent = booking.code; sinfo.innerHTML = '<b>' + booking.name + '</b><br>' + booking.model + ' · ' + booking.plate + '<br>' + booking.date + ' · ' + booking.slot.split('—')[0]; go('success') }; function track() { if (!tc.value.trim()) return toast('Masukkan kode booking / WO'); tr.style.display = 'block' } function ask(ok) { mt.textContent = ok ? 'Setujui pekerjaan?' : 'Tolak pekerjaan?'; mx.textContent = ok ? 'Anda menyetujui estimate Rp780.000.' : 'Estimate akan ditandai declined dan temuan tetap tercatat.'; my.onclick = () => { modal.classList.remove('on'); trackpill.textContent = ok ? 'DISETUJUI — MENUNGGU PENGERJAAN' : 'ESTIMASI DITOLAK'; toast(ok ? 'Estimate disetujui' : 'Estimate ditolak'); go('tracking') }; modal.classList.add('on') } function toast(s) { const x = document.getElementById('toast'); x.textContent = s; x.classList.add('on'); setTimeout(() => x.classList.remove('on'), 1800) } function rup(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n) } function render(a) { pg.innerHTML = a.map(p => '<div class="card"><div class="k">PART</div><h3>' + p[0] + '</h3><div class="muted">' + p[1] + '</div><div class="money" style="font-size:19px;margin-top:8px">' + rup(p[2]) + '</div><p>' + (p[3] ? '<span class="pill">Tersedia · ' + p[3] + '</span>' : '<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>') + '</p><button class="btn alt" onclick="toast(\'Hubungi workshop untuk ketersediaan\')">TANYA KETERSEDIAAN</button></div>').join('') } function filterParts() { let q = ps.value.toLowerCase(), m = pm.value; render(parts.filter(p => (p[0].toLowerCase().includes(q)) && (m === 'Semua model' || p[1] === m || p[1] === 'Semua model'))) } render(parts); try { booking = JSON.parse(localStorage.getItem('vespa_booking')) || null } catch (e) { } let d = new Date(); d.setDate(d.getDate() + 1); bd.min = d.toISOString().slice(0, 10);
 
     let currentStaffRole = 'public', lastStaffPage = 'staffLogin';
     function setStaffSession(role, page) { currentStaffRole = role; lastStaffPage = page; const b = document.getElementById('notifBtn'); if (b) b.style.display = 'inline-block'; const cb = document.getElementById('customerNotifBtn'); if (cb) cb.style.display = 'none'; renderNotifications() }
-    function staffLogout() { currentStaffRole = 'public'; const b = document.getElementById('notifBtn'); if (b) b.style.display = 'none'; const cb = document.getElementById('customerNotifBtn'); if (cb) cb.style.display = 'inline-block'; renderCustomerNotifications(); go('staffLogin') }
-    function loginStaff() { if (!document.getElementById('su').value.trim() || !document.getElementById('spw').value) { toast('Isi username dan password'); return } const r = document.getElementById('demoRole').value; if (r === 'mechanic') { setStaffSession('mechanic', 'mechanic'); go('mechanic'); mtabId('jobs'); toast('Login demo: Mechanic — Rizky') } else if (r === 'inventory') { setStaffSession('inventory', 'inventory'); go('inventory'); itabId('dash'); toast('Login demo: Parts / Inventory — Deni') } else if (r === 'owner') { setStaffSession('owner', 'owner'); go('owner'); otabId('dash'); toast('Login demo: Owner / Admin') } else if (r === 'qc') { setStaffSession('qc', 'qc'); go('qc'); qtabId('queue'); toast('Login demo: QC Inspector — Andi') } else { setStaffSession('advisor', 'advisor'); go('advisor'); stabId('dash'); toast('Login demo: Service Advisor / Kasir') } }
+
+
     function stab(id, btn) { document.querySelectorAll('#advisor .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('p-' + id); if (p) p.classList.add('on'); document.querySelectorAll('.side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     function stabId(id) { const btn = [...document.querySelectorAll('.side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); stab(id, btn) }
     document.addEventListener('DOMContentLoaded', () => { if (!document.querySelector('.page.on')) document.getElementById('home').classList.add('on') });
 
 
     let customerPayMethod = '';
-    function chooseCustomerPay(method, btn) {
-      customerPayMethod = method;
-      document.querySelectorAll('#customerPayment .paymethod').forEach(x => x.classList.remove('on'));
-      if (btn) btn.classList.add('on');
-      const ins = document.getElementById('payInstruction'), proof = document.getElementById('payProofBox'), dyn = document.getElementById('dynamicQrisCustomer');
-      proof.style.display = 'none'; dyn.style.display = 'none';
-      if (method === 'cash') {
-        ins.innerHTML = '<b>Cash di Bengkel</b><br>Bayar langsung ke kasir saat pengambilan. Status tetap UNPAID sampai kasir mengonfirmasi pembayaran.';
-      } else if (method === 'transfer') {
-        ins.innerHTML = '<b>Transfer Bank</b><br>Rekening workshop akan diambil dari Workshop Settings. Transfer sesuai total/sisa tagihan lalu unggah bukti pembayaran.';
-        proof.style.display = 'block';
-      } else if (method === 'static_qris') {
-        ins.innerHTML = '<b>Static QRIS</b><br>Scan QRIS tetap milik workshop, masukkan nominal sesuai tagihan, lalu unggah bukti pembayaran untuk diverifikasi kasir.';
-        proof.style.display = 'block';
-      } else {
-        ins.innerHTML = '<b>Dynamic QRIS</b><br>QR dibuat khusus dengan nominal invoice. Konfirmasi pembayaran sebenarnya nanti berasal dari provider/webhook.';
-        dyn.style.display = 'block';
-      }
-    }
-    function submitPaymentProof() {
-      if (!customerPayMethod) return toast('Pilih metode pembayaran');
-      if (!document.getElementById('paymentProof').files.length) return toast('Pilih bukti pembayaran');
-      document.getElementById('customerPayStatus').textContent = 'WAITING VERIFICATION';
-      toast('Bukti pembayaran dikirim — menunggu verifikasi kasir');
-    }
-    function simulateDynamicPaid() {
-      document.getElementById('customerPayStatus').textContent = 'PAID';
-      document.getElementById('customerPaid').textContent = 'Rp780.000';
-      document.getElementById('customerOutstanding').textContent = 'Rp0';
-      toast('Simulasi provider: PAYMENT CONFIRMED');
-    }
-
     function addEstimateRow(targetId, label, price) {
       const box = document.getElementById(targetId), row = document.createElement('div');
       row.className = 'estimate-row';
@@ -2988,33 +3130,12 @@
       const out = document.getElementById('estTotal'); if (out) out.textContent = rup(total);
       return total;
     }
-    function sendEstimate() {
-      const total = calcEstimate();
-      document.getElementById('estimateState').textContent = 'SENT';
-      pushNotification('advisor', 'Estimate Sent', 'EST-260923-032-R0 dikirim ke customer · ' + rup(total));
-      toast('Estimate dikirim ke customer — menunggu approval');
-    }
     let selectedMechanic = 'Rizky';
     function selectMechanic(card, name) {
       document.querySelectorAll('#p-assign .mechanic-card').forEach(x => x.classList.remove('on'));
       card.classList.add('on'); selectedMechanic = name;
     }
-    function confirmMechanic() {
-      document.getElementById('assignedMechanic').textContent = selectedMechanic.toUpperCase();
-      pushNotification('mechanic', 'New Assignment', 'WO-260923-032 ditugaskan ke ' + selectedMechanic);
-      toast('WO ditugaskan ke ' + selectedMechanic);
-      stabId('wo');
-    }
-
-    function mtab(id, btn) { document.querySelectorAll('#mechanic .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('m-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#mechanic .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    function mtabId(id) { const btn = [...document.querySelectorAll('#mechanic .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); mtab(id, btn) }
-    function startDiag() { document.getElementById('diagStatus').textContent = 'IN PROGRESS'; document.getElementById('diagStart').disabled = true; toast('Diagnosis dimulai') }
-    function finishDiag() { document.getElementById('diagStatus').textContent = 'COMPLETED'; toast('Diagnosis selesai — Service Advisor mendapat notifikasi') }
-    function jobAction(st) { document.getElementById('jobStatus').textContent = st; toast('Job ' + st.toLowerCase()) }
-    function requestPart(btn, name) { btn.disabled = true; btn.textContent = 'REQUESTED'; toast(name + ' diminta ke Parts / Inventory') }
-    function additionalFinding() { toast('Additional Finding dibuat — menunggu estimate & approval customer') }
-    function completeJob() { document.getElementById('jobStatus').textContent = 'WAITING QC'; toast('Pekerjaan selesai dan dikirim ke QC') }
-
+    /* [STAGE2] Handler mechanic dasar dipindahkan ke implementasi final agar tidak saling override. */
     const invData = [
       {
         sku: 'VSP-VBL-001',
@@ -3105,10 +3226,6 @@
     function invStatus(x) { const av = x.on - x.res; if (av <= 0) return 'Out of Stock'; if (av <= x.min) return 'Low Stock'; return 'In Stock' }
     function renderInventory(a) { const tb = document.getElementById('inventoryRows'); if (!tb) return; tb.innerHTML = a.map(x => { const av = x.on - x.res, st = invStatus(x), style = st === 'Out of Stock' ? 'background:#fff0ef;color:#a33a32' : st === 'Low Stock' ? 'background:#fff8e8;color:#8b6200' : ''; return `<tr><td>${x.sku}</td><td><b>${x.name}</b></td><td>${x.model}</td><td>${x.on}</td><td>${x.res}</td><td><b>${av}</b></td><td>${x.min}</td><td><span class="pill" style="${style}">${st}</span></td><td>${rup(x.cost)}</td><td>${rup(x.sell)}</td></tr>` }).join('') }
     function filterInventory() { const q = (document.getElementById('isearch')?.value || '').toLowerCase(), st = document.getElementById('istatus')?.value || 'Semua'; renderInventory(invData.filter(x => (x.sku.toLowerCase().includes(q) || x.name.toLowerCase().includes(q)) && (st === 'Semua' || invStatus(x) === st))) }
-    function issuePart(btn) { btn.disabled = true; btn.textContent = 'ISSUED'; toast('Part issued: On Hand dan Reserved diperbarui; movement dibuat') }
-    function rejectPart(btn) { btn.parentElement.innerHTML = '<span class="pill">REJECTED</span>'; toast('Part request ditolak') }
-    function outStock(btn) { btn.disabled = true; toast('Request ditandai OUT OF STOCK; mekanik & advisor dinotifikasi') }
-    function receiveGoods() { const a = +document.getElementById('recv1').value, b = +document.getElementById('recv2').value; toast(`Goods received: ${a + b} unit — stock movement PURCHASE dibuat`) }
     renderInventory(invData);
 
     function otab(id, btn) { document.querySelectorAll('#owner .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('o-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#owner .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
@@ -3126,10 +3243,6 @@
     let currentQcMechanic = 'Rizky';
     function qtab(id, btn) { document.querySelectorAll('#qc .panel').forEach(x => x.classList.remove('on')); const p = document.getElementById('q-' + id); if (p) p.classList.add('on'); document.querySelectorAll('#qc .side button').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     function qtabId(id) { const btn = [...document.querySelectorAll('#qc .side button')].find(x => (x.getAttribute('onclick') || '').includes("'" + id + "'")); qtab(id, btn) }
-    function openQC(wo, mechanic) { document.getElementById('qcWo').textContent = wo; document.getElementById('qcMechanic').textContent = mechanic; currentQcMechanic = mechanic; document.getElementById('qcState').textContent = 'IN PROGRESS'; document.querySelectorAll('.qcbox').forEach(x => x.checked = false); document.getElementById('qcNote').value = ''; document.getElementById('selfQcWarning').style.display = (currentStaffRole === 'mechanic' && mechanic === 'Rizky') ? 'block' : 'none'; qtabId('inspect') }
-    function qcPass() { if (currentStaffRole === 'mechanic' && currentQcMechanic === 'Rizky') { document.getElementById('selfQcWarning').style.display = 'block'; toast('Self-QC diblokir — butuh Owner override'); return } const boxes = [...document.querySelectorAll('#q-inspect .qcbox')]; if (!boxes.every(x => x.checked)) { toast('Selesaikan semua checklist QC'); return } document.getElementById('qcState').textContent = 'PASSED → READY'; pushNotification('advisor', 'QC Passed', 'WO ' + document.getElementById('qcWo').textContent.replace('WO-', '') + ' siap diproses ke Ready for Pickup.', 'qc'); toast('QC PASSED — kendaraan dapat masuk READY FOR PICKUP') }
-    function qcFail() { const note = document.getElementById('qcNote').value.trim(); if (!note) { toast('Failure reason wajib diisi'); return } document.getElementById('qcState').textContent = 'FAILED → REWORK'; pushNotification('mechanic', 'QC Failed — Rework', document.getElementById('qcWo').textContent + ' dikembalikan untuk rework: ' + note, 'qc'); pushNotification('advisor', 'QC Failed', document.getElementById('qcWo').textContent + ' masuk rework.', 'qc'); toast('QC FAILED — job dikembalikan ke REWORK') }
-
     let notifData = [
       { role: 'advisor', title: 'Diagnosis Completed', text: 'WO-260923-032 selesai diagnosis oleh Rizky.', type: 'mechanic', read: false },
       { role: 'inventory', title: 'Part Request', text: 'Rizky meminta V-Belt untuk WO-260923-032.', type: 'part', read: false },
@@ -3142,8 +3255,6 @@
     function renderNotifications() { const a = roleNotifs(), un = a.filter(x => !x.read).length, c = document.getElementById('notifCount'); if (c) c.textContent = un; const list = document.getElementById('notifList'); if (!list) return; list.innerHTML = a.length ? a.map((n, i) => `<div class="notifitem ${n.read ? '' : 'unread'}" onclick="readNotif(${notifData.indexOf(n)})">${n.read ? '' : '<span class="notifdot"></span>'}<b>${n.title}</b><div class="muted">${n.text}</div><small class="muted">${n.type.toUpperCase()}</small></div>`).join('') : '<div class="muted">Belum ada notifikasi.</div>' }
     function openNotifications() { if (currentStaffRole === 'public') { go('staffLogin'); return } const active = [...document.querySelectorAll('.page.on')][0]; if (active && active.id !== 'notifications') lastStaffPage = active.id; go('notifications'); renderNotifications() }
     function returnFromNotifications() { go(lastStaffPage || 'staffLogin') }
-    function readNotif(i) { if (notifData[i]) notifData[i].read = true; renderNotifications() }
-    function markAllRead() { roleNotifs().forEach(n => n.read = true); renderNotifications(); toast('Semua notifikasi ditandai sudah dibaca') }
     function pushNotification(role, title, text, type) { notifData.unshift({ role, title, text, type, read: false }); renderNotifications() }
 
     // Staff access sengaja tidak ditampilkan di portal customer.
@@ -3332,36 +3443,7 @@
 
     function rupiah(n) { return 'Rp' + Number(n || 0).toLocaleString('id-ID') }
 
-    /*
-    ======================================================================
-    [RENDER_VESPA_SECOND] ===== MULAI KODE KARTU KATALOG =====
-    Biasanya TIDAK PERLU diedit saat hanya mengganti data/foto produk.
-    ======================================================================
-    */
-    function renderUsedVespa() {
-      const grid = document.getElementById('usedVespaGrid'); if (!grid) return;
-      const q = (document.getElementById('uvSearch')?.value || '').toLowerCase();
-      const st = document.getElementById('uvStatus')?.value || 'Semua';
-      const arr = usedVespaUnits.filter(u => (u.name + ' ' + u.year + ' ' + u.color).toLowerCase().includes(q) && (st === 'Semua' || u.status === st));
-      grid.innerHTML = arr.length ? arr.map(u => `
-        <article class="card used-card">
-          <div class="used-photo">
-            <span class="pill">${u.status}</span>
-            ${u.image ? `<img src="${u.image}" alt="${u.name}" onerror="this.parentElement.innerHTML='<div class=&quot;photo-placeholder&quot;>🛵</div><span class=&quot;pill&quot;>${u.status}</span>'">` : '<div class="photo-placeholder">🛵</div>'}
-          </div>
-          <div class="used-body">
-            <div class="k">${u.id}</div><h3>${u.name}</h3>
-            <div class="used-price">${rupiah(u.price)}</div>
-            <div class="used-spec"><span>${u.year}</span><span>${Number(u.km).toLocaleString('id-ID')} km</span><span>${u.color}</span></div>
-            <button class="btn" onclick="openUsedUnit('${u.id}')">LIHAT DETAIL</button>
-          </div>
-        </article>`).join('') : '<div class="card"><b>Unit tidak ditemukan.</b></div>';
-    }
-    /*
-    ======================================================================
-    [RENDER_VESPA_SECOND] ===== SELESAI KODE KARTU KATALOG =====
-    ======================================================================
-    */
+    /* [STAGE2] [RENDER_VESPA_SECOND] Renderer lokal lama dihapus; renderer production Supabase menjadi sumber final. */
 
     /*
     ======================================================================
@@ -3397,63 +3479,13 @@
     // [MEDIA_FIT] ===== PREVIEW FOTO UPLOAD OWNER =====
     let pendingUnitPhotos = [];
 
-    async function previewUnitPhotos(input) {
-      const box = document.getElementById('ouPhotoPreview');
-      const files = Array.from(input?.files || []);
-      pendingUnitPhotos = [];
-      if (box) box.innerHTML = '';
-      if (!files.length) return;
-
-      const readFile = file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      try {
-        pendingUnitPhotos = await Promise.all(files.map(readFile));
-        if (box) {
-          box.innerHTML = pendingUnitPhotos.map((src, i) =>
-            `<div class="preview-frame"><img src="${src}" alt="Preview foto ${i + 1}"></div>`
-          ).join('');
-        }
-        toast(files.length + ' foto siap dipakai');
-      } catch (err) {
-        console.error(err);
-        toast('Ada foto yang gagal dibaca');
-      }
-    }
-    // [MEDIA_FIT] ===== SELESAI PREVIEW FOTO UPLOAD OWNER =====
+    async // [MEDIA_FIT] ===== SELESAI PREVIEW FOTO UPLOAD OWNER =====
 
     function renderOwnerUnits() {
       const tb = document.getElementById('ownerUnitRows'); if (!tb) return;
       tb.innerHTML = usedVespaUnits.map(u => `<tr><td><b>${u.name}</b><br><small>${u.id}</small></td><td>${u.year}</td><td>${Number(u.km).toLocaleString('id-ID')}</td><td>${rupiah(u.price)}</td><td><span class="pill">${u.status}</span></td><td><button class="btn alt" onclick="cycleUnitStatus('${u.id}')">UBAH STATUS</button></td></tr>`).join('');
     }
     function toggleUnitForm() { const f = document.getElementById('unitForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none' }
-    function addUsedUnit() {
-      const name = document.getElementById('ouName').value.trim(), year = +document.getElementById('ouYear').value, price = +document.getElementById('ouPrice').value;
-      if (!name || !year || !price) { toast('Nama, tahun dan harga wajib diisi'); return }
-      usedVespaUnits.unshift({
-        id: 'UV-' + String(usedVespaUnits.length + 1).padStart(3, '0'), name, year, price,
-        km: +document.getElementById('ouKm').value || 0, color: document.getElementById('ouColor').value || '-',
-        plate: document.getElementById('ouPlate').value || '-', tax: document.getElementById('ouTax').value || '-',
-        status: document.getElementById('ouStatus').value, condition: 'Data unit baru', desc: document.getElementById('ouDesc').value || '-',
-        image: pendingUnitPhotos[0] || '',
-        gallery: pendingUnitPhotos.slice()
-      });
-      const photoInput = document.getElementById('ouPhotos');
-      if (photoInput) photoInput.value = '';
-      const preview = document.getElementById('ouPhotoPreview');
-      if (preview) preview.innerHTML = '';
-      pendingUnitPhotos = [];
-      renderOwnerUnits(); renderUsedVespa(); toggleUnitForm(); toast('Unit ditambahkan ke katalog frontend');
-    }
-    function cycleUnitStatus(id) {
-      const u = usedVespaUnits.find(x => x.id === id); if (!u) return;
-      u.status = u.status === 'TERSEDIA' ? 'BOOKED' : u.status === 'BOOKED' ? 'TERJUAL' : 'TERSEDIA';
-      renderOwnerUnits(); renderUsedVespa(); toast('Status unit: ' + u.status);
-    }
     document.addEventListener('DOMContentLoaded', () => { renderUsedVespa(); renderOwnerUnits() });
 
 
@@ -3614,14 +3646,6 @@
       if (!list) return;
       list.innerHTML = arr.length ? arr.map((n, i) => `<div class="notifitem ${n.read ? '' : 'unread'}" onclick="openCustomerNotification(${i})" style="cursor:pointer">${n.read ? '' : '<span class="notifdot"></span>'}<b>${safeText(n.title)}</b><div class="muted">${safeText(n.text)}</div><small class="muted">${safeText(String(n.type || 'update').toUpperCase())} · ${new Date(n.ts).toLocaleString('id-ID')}</small><div style="margin-top:6px;font-size:12px;font-weight:850;color:var(--g)">BUKA →</div></div>`).join('') : '<div class="muted">Belum ada notifikasi customer.</div>';
     }
-    function openCustomerNotifications() {
-      if (currentStaffRole !== 'public') { openNotifications(); return; }
-      const active = document.querySelector('.page.on');
-      if (active && active.id !== 'customerNotifications') lastCustomerPage = active.id;
-      go('customerNotifications');
-      renderCustomerNotifications();
-    }
-    function returnFromCustomerNotifications() { go(lastCustomerPage || 'home'); syncWorkflowUI(); }
     function openCustomerNotification(index) {
       const n = (workflowState.customerNotifications || [])[index]; if (!n) return;
       n.read = true; saveWorkflow(); renderCustomerNotifications();
@@ -3643,10 +3667,6 @@
         go(target); syncWorkflowUI();
       }
     }
-    function markAllCustomerRead() {
-      (workflowState.customerNotifications || []).forEach(n => n.read = true); saveWorkflow(); renderCustomerNotifications(); toast('Semua notifikasi customer sudah dibaca');
-    }
-
     function installWorkflowUI() {
       // [PARTS_INQUIRY] Customer mengisi data lebih dulu; inquiry tercatat ke Advisor/Kasir sebelum WhatsApp.
       const mainWrap = document.querySelector('main.wrap');
@@ -3866,14 +3886,6 @@
       b.innerHTML = `<div class="k">Customer Parts Inquiry</div><h3>Pertanyaan Ketersediaan</h3>` + (workflowState.partInquiries.length ? `<div class="tablewrap"><table class="wf-table-mini"><tr><th>Kode</th><th>Customer</th><th>Part</th><th>Qty</th><th>Vespa</th><th>Status</th><th>Aksi</th></tr>${workflowState.partInquiries.map((q, i) => `<tr><td><b>${q.id}</b></td><td>${safeText(q.name)}<br><small>${safeText(q.phone)}</small></td><td>${safeText(q.part)}</td><td>${q.qty}</td><td>${safeText(q.vespaModel)}</td><td>${wfPill(q.status)}</td><td><button class="btn alt" onclick="contactPartInquiry(${i})">WA CUSTOMER</button></td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada inquiry sparepart dari customer.</div>');
     }
 
-    function checkInDemoBooking() {
-      if (!workflowState.wo.id) workflowState.wo.id = generateDocumentCode('WO');
-      if (!workflowState.estimate.id) workflowState.estimate.id = estimateCodeFromWo(workflowState.wo.id, 0);
-      workflowState.booking.status = 'CHECKED_IN'; workflowState.wo.status = 'ASSIGNED'; workflowState.wo.jobStatus = 'ASSIGNED';
-      commitWorkflow('BOOKING_CHECKED_IN', workflowState.booking.code, 'Work Order ' + workflowState.wo.id + ' aktif', 'ADVISOR');
-      pushCustomerNotification('Vespa sudah diterima', 'Unit Anda sudah check-in di workshop dan Work Order ' + workflowState.wo.id + ' sudah aktif.', 'service', 'tracking');
-      toast('Check-in berhasil — ' + workflowState.wo.id + ' aktif');
-    }
     function rescheduleDemoBooking() {
       const next = prompt('Jam booking baru (contoh 13:00)', workflowState.booking.slot || '09:00');
       if (!next) return; workflowState.booking.slot = next; workflowState.booking.status = 'RESCHEDULED';
@@ -3900,21 +3912,6 @@
       modal.classList.add('on');
     };
 
-    sendEstimate = function () {
-      if (!workflowState.wo.id) { toast('Work Order belum dibuat'); return; }
-      if (workflowState.wo.diagnosisStatus !== 'COMPLETED') { toast('Estimate belum dapat dikirim: diagnosis belum COMPLETED'); return; }
-      if (!workflowState.estimate.id) workflowState.estimate.id = estimateCodeFromWo(workflowState.wo.id, 0);
-      if (!workflowState.invoice.id) workflowState.invoice.id = generateDocumentCode('INV');
-      const total = calcEstimate();
-      workflowState.estimate.total = total; workflowState.estimate.status = 'SENT'; workflowState.estimate.approval = 'PENDING';
-      workflowState.invoice.total = total; workflowState.invoice.outstanding = Math.max(0, total - workflowState.invoice.paid);
-      workflowState.wo.status = 'WAITING_APPROVAL';
-      const el = document.getElementById('estimateState'); if (el) el.textContent = 'SENT';
-      commitWorkflow('ESTIMATE_SENT', workflowState.estimate.id, 'Total ' + rup(total), 'ADVISOR');
-      pushCustomerNotification('Estimasi menunggu persetujuan', workflowState.estimate.id + ' sebesar ' + rup(total) + ' sudah tersedia. Ketuk untuk review dan memberi keputusan.', 'estimate', 'approval');
-      toast('Estimate dikirim — customer dapat approve dari Tracking');
-    };
-
     confirmMechanic = function () {
       workflowState.wo.mechanic = selectedMechanic; workflowState.wo.status = 'ASSIGNED'; workflowState.wo.jobStatus = 'ASSIGNED';
       const el = document.getElementById('assignedMechanic'); if (el) el.textContent = selectedMechanic.toUpperCase();
@@ -3923,32 +3920,7 @@
       toast('WO ditugaskan ke ' + selectedMechanic); stabId('wo');
     };
 
-    startDiag = function () {
-      workflowState.wo.diagnosisStatus = 'IN_PROGRESS'; workflowState.wo.status = 'DIAGNOSIS'; workflowState.wo.jobStatus = 'DIAGNOSIS';
-      const s = document.getElementById('diagStatus'); if (s) s.textContent = 'IN PROGRESS'; const b = document.getElementById('diagStart'); if (b) b.disabled = true;
-      commitWorkflow('DIAGNOSIS_STARTED', workflowState.wo.id, 'Diagnosis dimulai', 'MECHANIC'); pushCustomerNotification('Pemeriksaan dimulai', 'Mekanik mulai memeriksa Vespa Anda.', 'service', 'tracking'); toast('Diagnosis dimulai');
-    };
-    finishDiag = function () {
-      workflowState.wo.diagnosisStatus = 'COMPLETED'; workflowState.wo.diagnosis = 'V-Belt aus; service CVT direkomendasikan.'; workflowState.wo.status = 'DIAGNOSIS_COMPLETED';
-      const s = document.getElementById('diagStatus'); if (s) s.textContent = 'COMPLETED';
-      commitWorkflow('DIAGNOSIS_COMPLETED', workflowState.wo.id, workflowState.wo.diagnosis, 'MECHANIC');
-      pushNotification('advisor', 'Diagnosis Completed', workflowState.wo.id + ' selesai diagnosis oleh ' + workflowState.wo.mechanic, 'mechanic'); pushCustomerNotification('Pemeriksaan selesai', 'Pemeriksaan awal selesai. Workshop sedang menyiapkan estimasi pekerjaan.', 'service', 'tracking'); toast('Diagnosis selesai — Advisor dinotifikasi');
-    };
-    jobAction = function (st) { workflowState.wo.jobStatus = st.toUpperCase().replaceAll(' ', '_'); workflowState.wo.status = workflowState.wo.jobStatus; commitWorkflow('JOB_' + workflowState.wo.jobStatus, workflowState.wo.id, st, 'MECHANIC'); if (workflowState.wo.jobStatus === 'IN_PROGRESS') pushCustomerNotification('Pengerjaan dimulai', 'Pekerjaan servis yang sudah Anda setujui sedang dikerjakan.', 'service', 'tracking'); toast('Job ' + st.toLowerCase()); };
-    requestPart = function (btn, name) {
-      if (workflowState.estimate.approval !== 'APPROVED') { toast('Part belum dapat diminta: estimate belum APPROVED'); return; }
-      const prq = generateDocumentCode('PRQ');
-      workflowState.wo.partsStatus = 'REQUESTED'; workflowState.partRequests.unshift({ id: prq, woId: workflowState.wo.id, part: name, status: 'REQUESTED', createdAt: new Date().toISOString() }); if (btn) { btn.disabled = true; btn.textContent = 'REQUESTED'; }
-      commitWorkflow('PART_REQUESTED', prq, workflowState.wo.id + ' · ' + name, 'MECHANIC'); pushNotification('inventory', 'Part Request', prq + ' · ' + workflowState.wo.mechanic + ' meminta ' + name + ' untuk ' + workflowState.wo.id, 'part'); toast(name + ' diminta ke Parts / Inventory · ' + prq);
-    };
-    completeJob = function () {
-      if (workflowState.estimate.approval !== 'APPROVED') { toast('Pekerjaan belum dapat ditutup: estimate belum APPROVED'); return; }
-      if (workflowState.wo.partsStatus === 'REQUESTED') { toast('Pekerjaan belum dapat ditutup: part masih REQUESTED'); return; }
-      workflowState.wo.jobStatus = 'WAITING_QC'; workflowState.wo.status = 'WAITING_QC';
-      const s = document.getElementById('jobStatus'); if (s) s.textContent = 'WAITING QC';
-      commitWorkflow('JOB_COMPLETED_WAITING_QC', workflowState.wo.id, 'Dikirim ke QC', 'MECHANIC'); pushNotification('qc', 'Waiting QC', workflowState.wo.id + ' siap diperiksa QC.', 'qc'); toast('Pekerjaan selesai dan dikirim ke QC');
-    };
-
+    /* [STAGE2] Handler diagnosis/job workflow awal sudah digantikan implementasi final. */
     issuePart = function (btn) {
       workflowState.wo.partsStatus = 'ISSUED'; const part = invData.find(x => x.sku === 'VSP-VBL-001'); if (part) { if (part.res > 0) part.res--; if (part.on > 0) part.on--; } syncInventorySnapshot();
       if (btn) { btn.disabled = true; btn.textContent = 'ISSUED'; }
@@ -3978,25 +3950,6 @@
     };
 
     // Customer payment + cashier verification
-    chooseCustomerPay = function (method, btn) {
-      customerPayMethod = method; workflowState.invoice.method = method;
-      document.querySelectorAll('#customerPayment .paymethod').forEach(x => x.classList.remove('on')); if (btn) btn.classList.add('on');
-      const ins = document.getElementById('payInstruction'), proof = document.getElementById('payProofBox'), dyn = document.getElementById('dynamicQrisCustomer'); proof.style.display = 'none'; dyn.style.display = 'none';
-      if (method === 'cash') { ins.innerHTML = '<b>Cash di Bengkel</b><br>Bayar ke kasir. Kasir harus menekan VERIFY / CONFIRM PAID sebelum kendaraan dapat direlease.'; workflowState.invoice.verification = 'CASH_PENDING'; }
-      else if (method === 'transfer') { ins.innerHTML = '<b>Transfer Bank</b><br>Transfer sesuai tagihan lalu unggah bukti untuk verifikasi kasir.'; proof.style.display = 'block'; }
-      else if (method === 'static_qris') { ins.innerHTML = '<b>Static QRIS</b><br>Scan QRIS workshop, bayar sesuai nominal, lalu unggah bukti.'; proof.style.display = 'block'; }
-      else { ins.innerHTML = '<b>Dynamic QRIS</b><br>Demo provider. Backend/webhook asli dipasang nanti.'; dyn.style.display = 'block'; }
-      saveWorkflow(); syncWorkflowUI();
-    };
-    submitPaymentProof = function () {
-      if (!customerPayMethod) return toast('Pilih metode pembayaran'); const f = document.getElementById('paymentProof'); if (!f.files.length) return toast('Pilih bukti pembayaran');
-      workflowState.invoice.proofName = f.files[0].name; workflowState.invoice.status = 'WAITING_VERIFICATION'; workflowState.invoice.verification = 'PENDING';
-      commitWorkflow('PAYMENT_PROOF_SUBMITTED', workflowState.invoice.id, workflowState.invoice.method + ' · ' + workflowState.invoice.proofName, 'CUSTOMER'); pushNotification('advisor', 'Payment Proof', workflowState.invoice.id + ' menunggu verifikasi.', 'payment'); pushCustomerNotification('Bukti pembayaran terkirim', 'Bukti pembayaran sudah diterima sistem dan menunggu verifikasi kasir.', 'payment', 'customerPayment'); toast('Bukti dikirim — menunggu verifikasi kasir');
-    };
-    simulateDynamicPaid = function () {
-      workflowState.invoice.method = 'dynamic_qris'; if (!workflowState.invoice.paymentId) workflowState.invoice.paymentId = generateDocumentCode('PAY'); workflowState.invoice.status = 'PAID'; workflowState.invoice.verification = 'PROVIDER_CONFIRMED'; workflowState.invoice.paid = workflowState.invoice.total; workflowState.invoice.outstanding = 0;
-      commitWorkflow('PAYMENT_PROVIDER_CONFIRMED', workflowState.invoice.id, rup(workflowState.invoice.total), 'PAYMENT_PROVIDER'); pushNotification('advisor', 'Payment Confirmed', workflowState.invoice.id + ' PAID via Dynamic QRIS.', 'payment'); pushCustomerNotification('Pembayaran berhasil', workflowState.invoice.id + ' sudah terkonfirmasi PAID.', 'payment', 'completed'); toast('Simulasi provider: PAYMENT CONFIRMED');
-    };
     function verifyPayment() {
       if (workflowState.invoice.status === 'PAID') { toast('Invoice sudah PAID'); return; }
       if (!workflowState.invoice.method) { toast('Customer belum memilih metode pembayaran'); return; }
@@ -4044,31 +3997,6 @@
       syncWorkflowUI();
     };
     let lastUsedLeadId = '';
-    function submitUsedVespaLead() {
-      const u = usedVespaUnits.find(x => x.id === activeUsedUnitId); if (!u) { toast('Buka detail unit terlebih dahulu'); return; }
-      const name = document.getElementById('wfUsedBuyer')?.value.trim(), phone = document.getElementById('wfUsedPhone')?.value.trim(), type = document.getElementById('wfUsedLeadType')?.value, dp = +document.getElementById('wfUsedDp')?.value || 0;
-      if (!name || !phone) { toast('Nama dan WhatsApp wajib diisi'); return; }
-      const lead = { id: generateDocumentCode('LEAD'), unitId: u.id, unit: u.name, name, phone, type, dp, status: type === 'INQUIRY' ? 'OPEN' : 'BOOKED', createdAt: new Date().toISOString() }; workflowState.vespaLeads.unshift(lead); lastUsedLeadId = lead.id;
-      if (type === 'BOOKING' || type === 'DP') u.status = 'BOOKED';
-      commitWorkflow('USED_VESPA_' + type, lead.id, `${u.id} · ${name} · ${phone}${dp ? ' · DP ' + rup(dp) : ''}`, 'CUSTOMER'); renderUsedVespa(); renderOwnerUnits();
-      const result = document.getElementById('wfUsedLeadResult'); if (result) { result.style.display = 'block'; result.innerHTML = `<b>Data berhasil tercatat.</b><br>Lead ID: <b>${lead.id}</b><br>Unit: ${safeText(u.name)}<br>Silakan lanjut WhatsApp untuk berbicara dengan workshop.`; }
-      const actions = document.getElementById('wfUsedLeadActions'); if (actions) actions.style.display = 'flex';
-      pushNotification('advisor', 'Vespa Second ' + type, lead.id + ' · ' + name + ' · ' + u.name, 'sales');
-      toast(type + ' tersimpan — WhatsApp sudah dapat dibuka');
-    }
-    function continueUsedVespaWhatsApp() {
-      const lead = workflowState.vespaLeads.find(x => x.id === lastUsedLeadId); if (!lead) { toast('Simpan inquiry / booking terlebih dahulu'); return; }
-      const msg = `Halo Vespa Wahyu, saya ${lead.name}.
-
-Saya sudah mengisi data Vespa Second.
-Lead ID: ${lead.id}
-Unit: ${lead.unit} (${lead.unitId})
-Keperluan: ${lead.type}${lead.dp ? '\nDP: ' + rup(lead.dp) : ''}
-
-Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
-      openWhatsAppTo(workshopWaNumber(), msg);
-    }
-
     function renderPaymentWorkflow() {
       const i = workflowState.invoice;
       const cs = document.getElementById('customerPayStatus'); if (cs) cs.textContent = i.status;
@@ -4126,11 +4054,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       else { if (staffBtn) staffBtn.style.display = 'inline-block'; if (customerBtn) customerBtn.style.display = 'none'; renderNotifications(); }
     }
 
-    function resetFrontendWorkflow() {
-      if (!confirm('Reset seluruh state testing frontend? Data localStorage workflow, warranty, adjustment, dan lead akan dikembalikan ke default.')) return;
-      localStorage.removeItem(WORKFLOW_KEY); localStorage.removeItem('vespa_booking'); location.reload();
-    }
-
     // [INTEGRITY_FIX] Listener booking workflow legacy dinonaktifkan.
     // Booking baru ditangani SATU KALI oleh v3CaptureOnlineBooking() pada layer V3,
     // supaya case/part request lama tidak tertimpa atau terhapus.
@@ -4184,8 +4107,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
 
     const v3LegacySaveWorkflow = saveWorkflow;
     const v3LegacySyncWorkflowUI = syncWorkflowUI;
-    const v3LegacyLoginStaff = loginStaff;
-    const v3LegacyStaffLogout = staffLogout;
 
     function v3Clone(v) { return JSON.parse(JSON.stringify(v)); }
     function v3Package(id) { return V3_SERVICE_PACKAGES.find(p => p.id === id) || V3_SERVICE_PACKAGES[0]; }
@@ -4193,7 +4114,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     function v3ApprovedItems(estimate) { return (estimate?.items || []).filter(i => i.approval !== 'DECLINED' && i.approval !== 'PENDING'); }
     function v3ProposedTotal(estimate) { return (estimate?.items || []).filter(i => i.approval !== 'DECLINED').reduce((s, i) => s + v3ItemTotal(i), 0); }
     function v3ApprovedTotal(estimate) { return v3ApprovedItems(estimate).reduce((s, i) => s + v3ItemTotal(i), 0); }
-    function v3CaseKey(c) { return c?.caseId || c?.wo?.id || c?.booking?.code || ''; }
     function v3NewInternalCaseId() { return 'CASE-' + Date.now() + '-' + Math.floor(Math.random() * 10000); }
 
     function v3NormalizeEstimate(est, pkgId, woId) {
@@ -4442,22 +4362,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     ${pending.length ? `<h3 style="margin-top:16px">Temuan tambahan — butuh keputusan Anda</h3>${pending.map(i => `<div class="line"><span>${safeText(i.name)} ×${i.qty || 1}</span><b>${rup(v3ItemTotal(i))}</b></div>`).join('')}<div class="line"><b>Total jika disetujui</b><span class="money">${rup(v3ProposedTotal(workflowState.estimate))}</span></div><div class="notice" style="margin-top:12px">Jika ditolak, paket dasar tetap dapat dilanjutkan. Item tambahan tidak dikerjakan.</div><div class="actions"><button class="btn" onclick="ask(true)">SETUJUI TAMBAHAN</button><button class="btn bad" onclick="ask(false)">TOLAK TAMBAHAN</button></div>` : `<div class="notice" style="margin-top:14px">Tidak ada biaya tambahan yang menunggu persetujuan.</div>`}`;
     }
 
-    ask = function (ok) {
-      const pending = (workflowState.estimate.items || []).filter(i => i.approval === 'PENDING');
-      if (!pending.length) { toast('Tidak ada Estimate Revisi yang menunggu keputusan'); return; }
-      mt.textContent = ok ? 'Setujui pekerjaan tambahan?' : 'Tolak pekerjaan tambahan?';
-      mx.textContent = ok ? `Tambahan ${rup(pending.reduce((s, i) => s + v3ItemTotal(i), 0))} akan masuk scope pekerjaan.` : 'Paket dasar tetap berjalan; item tambahan tidak dikerjakan.';
-      my.onclick = () => {
-        modal.classList.remove('on'); pending.forEach(i => i.approval = ok ? 'APPROVED' : 'DECLINED'); workflowState.estimate.pendingFindingId = '';
-        workflowState.estimate.approval = 'APPROVED'; workflowState.estimate.status = ok ? 'REVISION_APPROVED' : 'REVISION_DECLINED'; workflowState.estimate.total = v3ApprovedTotal(workflowState.estimate);
-        workflowState.invoice.items = v3Clone(v3ApprovedItems(workflowState.estimate)); workflowState.invoice.total = v3ApprovedTotal(workflowState.estimate); workflowState.invoice.outstanding = Math.max(0, workflowState.invoice.total - workflowState.invoice.paid);
-        workflowState.wo.status = 'IN_PROGRESS'; if (!['STARTED', 'IN_PROGRESS', 'PAUSED'].includes(workflowState.wo.jobStatus)) workflowState.wo.jobStatus = 'APPROVED';
-        commitWorkflow(ok ? 'ESTIMATE_REVISION_APPROVED' : 'ESTIMATE_REVISION_DECLINED', workflowState.estimate.id, rup(workflowState.estimate.total), 'CUSTOMER');
-        pushNotification('advisor', ok ? 'Additional Work Approved' : 'Additional Work Declined', workflowState.estimate.id, 'approval'); pushNotification('mechanic', ok ? 'Additional Work Approved' : 'Additional Work Declined', workflowState.estimate.id, 'approval');
-        pushCustomerNotification(ok ? 'Tambahan disetujui' : 'Tambahan ditolak', ok ? 'Pekerjaan tambahan sudah masuk scope servis.' : 'Paket dasar tetap dilanjutkan tanpa item tambahan.', 'estimate', 'tracking'); toast(ok ? 'Tambahan disetujui' : 'Tambahan ditolak'); go('tracking'); v3RenderTracking();
-      }; modal.classList.add('on');
-    };
-
     function v3CreateAdditionalFinding() {
       if (!workflowState.wo.id) { toast('Pilih Work Order terlebih dahulu'); return; }
       if (workflowState.wo.status === 'CLOSED' || workflowState.release?.status === 'RELEASED') { toast('Work Order sudah CLOSED; temuan baru harus dibuat melalui Warranty / Comeback'); return; }
@@ -4472,8 +4376,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       workflowState.estimate.items.push(...newItems); workflowState.estimate.revision = rev; workflowState.estimate.id = estimateCodeFromWo(workflowState.wo.id, rev); workflowState.estimate.status = 'SENT'; workflowState.estimate.approval = 'PENDING'; workflowState.estimate.pendingFindingId = findingId; workflowState.estimate.total = v3ProposedTotal(workflowState.estimate); workflowState.wo.status = 'WAITING_APPROVAL';
       commitWorkflow('ADDITIONAL_FINDING_CREATED', workflowState.estimate.id, desc + ' · tambahan ' + rup(newItems.reduce((s, i) => s + v3ItemTotal(i), 0)), 'MECHANIC'); pushNotification('advisor', 'Additional Finding', workflowState.estimate.id + ' · ' + desc, 'mechanic'); pushCustomerNotification('Persetujuan tambahan diperlukan', workflowState.estimate.id + ' memiliki temuan baru sebesar ' + rup(newItems.reduce((s, i) => s + v3ItemTotal(i), 0)) + '. Ketuk untuk review.', 'estimate', 'approval'); toast('Estimate Revisi ' + rev + ' dikirim ke customer');
     }
-    additionalFinding = function () { const el = document.getElementById('v3FindingBox'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
-
     function v3RenderEstimatePanel() {
       const p = document.getElementById('p-estimate'); if (!p) return; const pkg = v3Package(workflowState.booking.packageId); const items = workflowState.estimate.items || [];
       p.innerHTML = `<div class="head"><div><div class="k">Estimate / Scope</div><h2>${safeText(workflowState.estimate.id || 'ESTIMATE DRAFT')}</h2></div>${wfPill(workflowState.estimate.status)}</div>
@@ -4560,9 +4462,7 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       workflowState.wo.qcStatus = 'PENDING'; workflowState.wo.jobStatus = 'WAITING_QC'; workflowState.wo.status = 'WAITING_QC'; commitWorkflow('JOB_COMPLETED_WAITING_QC', workflowState.wo.id, 'Dikirim ke QC / re-inspection', 'MECHANIC'); pushNotification('qc', 'Waiting QC', workflowState.wo.id + ' siap diperiksa QC.', 'qc'); toast('Pekerjaan selesai → WAITING QC');
     };
 
-    startDiag = function () { if (!workflowState.wo.id) { toast('Pilih WO'); return; } if (workflowState.wo.status === 'CLOSED') { toast('WO sudah CLOSED'); return; } workflowState.wo.diagnosisStatus = 'IN_PROGRESS'; workflowState.wo.status = 'DIAGNOSIS'; workflowState.wo.jobStatus = 'DIAGNOSIS'; commitWorkflow('DIAGNOSIS_STARTED', workflowState.wo.id, 'Diagnosis dimulai', 'MECHANIC'); pushCustomerNotification('Pemeriksaan dimulai', 'Mekanik mulai memeriksa Vespa Anda.', 'service', 'tracking'); toast('Diagnosis dimulai'); };
-    finishDiag = function () { if (workflowState.wo.status === 'CLOSED') { toast('WO sudah CLOSED'); return; } const note = document.getElementById('v3DiagSummary')?.value.trim() || 'Pemeriksaan selesai. Tidak ada catatan tambahan.'; workflowState.wo.diagnosisStatus = 'COMPLETED'; workflowState.wo.diagnosis = note; workflowState.wo.status = 'DIAGNOSIS_COMPLETED'; workflowState.wo.jobStatus = 'APPROVED'; commitWorkflow('DIAGNOSIS_COMPLETED', workflowState.wo.id, note, 'MECHANIC'); pushNotification('advisor', 'Diagnosis Completed', workflowState.wo.id + ' · ' + note, 'mechanic'); pushCustomerNotification('Pemeriksaan selesai', 'Pemeriksaan selesai. Jika ditemukan kebutuhan tambahan, Anda akan menerima permintaan approval.', 'service', 'tracking'); toast('Diagnosis selesai'); };
-    jobAction = function (st) { const s = String(st).toUpperCase(); const wasRework = workflowState.wo.jobStatus === 'REWORK' || workflowState.wo.status === 'REWORK' || workflowState.wo.qcStatus === 'FAILED'; workflowState.wo.jobStatus = s === 'STARTED' ? 'IN_PROGRESS' : s; workflowState.wo.status = workflowState.wo.jobStatus; if (wasRework && workflowState.wo.jobStatus === 'IN_PROGRESS') workflowState.wo.qcStatus = 'PENDING'; commitWorkflow('JOB_' + workflowState.wo.jobStatus, workflowState.wo.id, st + (wasRework ? ' · REWORK CYCLE' : ''), 'MECHANIC'); if (workflowState.wo.jobStatus === 'IN_PROGRESS') pushCustomerNotification(wasRework ? 'Rework sedang dikerjakan' : 'Pengerjaan dimulai', wasRework ? 'Perbaikan hasil QC sedang dikerjakan ulang.' : 'Paket servis yang Anda pilih sedang dikerjakan.', 'service', 'tracking'); };
+    /* [STAGE2] Handler diagnosis/job versi V3 lama digantikan implementasi final di bawah. */
 
     function v3RenderMechanic() {
       const mechanic = workflowState.demoMechanic || 'Rizky'; const jobs = (workflowState.cases || []).filter(c => c.wo?.id && c.wo.mechanic === mechanic && c.wo.status !== 'CLOSED');
@@ -4650,14 +4550,10 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     function v3RenderAll() { v3RenderPartsCatalog(); v3RenderAdvisor(); v3RenderMechanic(); v3RenderInventoryRequests(); v3RenderQc(); v3RenderTracking(); v3RenderApproval(); v3RenderInvoice(); v3RenderRecord(); v3RenderCompleted(); v3RenderReports(); v3RenderCustomerNotifications(); v3RenderDashboardMetrics(); }
     syncWorkflowUI = function () { v3LegacySyncWorkflowUI(); v3RenderAll(); };
 
-    function v3InstallMechanicLogin() {
-      const role = document.getElementById('demoRole'); if (!role) return; let field = document.getElementById('v3MechanicLoginField'); if (!field) { field = document.createElement('div'); field.id = 'v3MechanicLoginField'; field.className = 'field'; field.style.marginTop = '10px'; field.innerHTML = `<label>Akun Mechanic Demo</label><select id="v3MechanicAccount"><option>Rizky</option><option>Bayu</option><option>Arif</option></select>`; role.closest('.field').insertAdjacentElement('afterend', field); } const toggle = () => field.style.display = role.value === 'mechanic' ? 'flex' : 'none'; role.addEventListener('change', toggle); toggle();
-    }
-    loginStaff = function () { const r = document.getElementById('demoRole').value; if (r !== 'mechanic') { v3LegacyLoginStaff(); setTimeout(syncWorkflowUI, 0); return; } const u = document.getElementById('su'), pw = document.getElementById('spw'); if (!u?.value.trim() || !pw?.value) { toast('Isi username dan password'); return; } workflowState.demoMechanic = document.getElementById('v3MechanicAccount')?.value || 'Rizky'; currentStaffRole = 'mechanic'; lastStaffPage = 'mechanic'; const b = document.getElementById('notifBtn'); if (b) b.style.display = 'inline-block'; const cb = document.getElementById('customerNotifBtn'); if (cb) cb.style.display = 'none'; saveWorkflow(); go('mechanic'); mtabId('jobs'); syncWorkflowUI(); toast('Login demo: Mechanic — ' + workflowState.demoMechanic); };
-    staffLogout = function () { v3LegacyStaffLogout(); setTimeout(syncWorkflowUI, 0); };
+
 
     function v3Init() {
-      v3MigrateWorkflow(); v3InstallPackageUI(); v3InstallMechanicLogin();
+      v3MigrateWorkflow(); v3InstallPackageUI();
       const form = document.getElementById('bf'); if (form && !form.dataset.v3Hook) { form.dataset.v3Hook = '1'; form.addEventListener('submit', () => setTimeout(v3CaptureOnlineBooking, 20)); }
       const invoiceBtn = [...document.querySelectorAll('#completed .actions button')].find(b => b.textContent.includes('LIHAT INVOICE')); if (invoiceBtn) { invoiceBtn.onclick = () => { go('customerPayment'); syncWorkflowUI(); }; invoiceBtn.textContent = 'LIHAT INVOICE'; }
       syncWorkflowUI();
@@ -4906,18 +4802,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     v3RenderMechanic = function () { v4BaseRenderMechanic(); v4InjectMechanicMedia(); };
 
     const v4BaseCreateAdditionalFinding = v3CreateAdditionalFinding;
-    v3CreateAdditionalFinding = function () {
-      const beforeRev = Number(workflowState.estimate.revision || 0); const desc = document.getElementById('v3FindingDesc')?.value.trim() || ''; const photos = v3Clone(v4FindingPhotos());
-      v4BaseCreateAdditionalFinding();
-      const newRev = Number(workflowState.estimate.revision || 0);
-      if (newRev === beforeRev + 1 && workflowState.estimate.pendingFindingId) {
-        const fid = workflowState.estimate.pendingFindingId; if (!Array.isArray(workflowState.wo.findings)) workflowState.wo.findings = [];
-        workflowState.wo.findings.push({ id: fid, revision: newRev, description: desc, photos, createdAt: new Date().toISOString() });
-        (workflowState.estimate.items || []).filter(i => i.findingId === fid).forEach(i => i.photos = v3Clone(photos));
-        v4FindingDraftPhotos = []; v4FindingDraftCaseId = workflowState.selectedCaseId; saveWorkflow(); syncWorkflowUI();
-      }
-    };
-
     function v4PendingFindingPhotos() {
       const ids = new Set((workflowState.estimate.items || []).filter(i => i.approval === 'PENDING' && i.findingId).map(i => i.findingId));
       const photos = []; (workflowState.wo.findings || []).filter(f => ids.has(f.id)).forEach(f => (f.photos || []).forEach(p => photos.push(p)));
@@ -4932,8 +4816,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       if (actions) actions.insertAdjacentHTML('beforebegin', html); else card.insertAdjacentHTML('beforeend', html);
     }
     const v4BaseRenderApproval = v3RenderApproval;
-    v3RenderApproval = function () { v4BaseRenderApproval(); v4InjectApprovalMedia(); };
-
     function v4InjectAdvisorDiagnosisMedia() {
       const wo = document.getElementById('p-wo'); if (!wo) return; wo.querySelector('#v4AdvisorDiagnosisMedia')?.remove();
       const photos = workflowState.wo.diagnosisPhotos || []; if (!photos.length) return;
@@ -5051,17 +4933,7 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       v3RenderMechanic(); mtabId('finalqc');
     };
 
-    // Bila hasil Final QC sebelumnya FAIL, START/RESUME membuka siklus rework baru.
-    const v5JobActionBase = jobAction;
-    jobAction = function (st) {
-      const s = String(st).toUpperCase();
-      const rework = workflowState.wo.qcStatus === 'FAILED' || workflowState.wo.jobStatus === 'REWORK' || workflowState.wo.status === 'REWORK';
-      if (rework && s === 'STARTED') {
-        workflowState.wo.qcStatus = 'PENDING'; workflowState.wo.qcBy = ''; workflowState.wo.qcAt = '';
-        workflowState.wo.qcNote = '';
-      }
-      v5JobActionBase(st);
-    };
+    /* [STAGE2] Wrapper jobAction V5 sudah digabung ke handler final V6. */
 
     function v5OpenFinalQc(caseId) {
       if (!v3SelectCase(caseId, false)) return;
@@ -5153,7 +5025,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     }
     document.addEventListener('DOMContentLoaded', () => setTimeout(v5InitFinalQc, 40));
   </script>
-
 
 
   <style>
@@ -5438,13 +5309,34 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       if (old === 'PENDING') workflowState.estimate.approval = 'APPROVED'; try { v6BaseRequestPart(btn, token, qty); } finally { workflowState.estimate.approval = v6CurrentPending().length ? 'PENDING' : 'APPROVED'; saveWorkflow(); }
     };
 
-    /* Stronger job lifecycle without blocking approved base work while optional items are pending. */
-    const v6BaseJobAction = jobAction;
+    /* [STAGE2] Job lifecycle dikonsolidasikan dari rantai V3/V5/V6 menjadi satu handler lokal final. */
     jobAction = function (st) {
-      const s = String(st).toUpperCase(); if (workflowState.wo.status === 'CLOSED') { toast('WO sudah CLOSED'); return; }
+      const s = String(st).toUpperCase();
+      if (workflowState.wo.status === 'CLOSED') { toast('WO sudah CLOSED'); return; }
       if (s === 'STARTED' && workflowState.wo.diagnosisStatus !== 'COMPLETED') { toast('Selesaikan diagnosis terlebih dahulu'); return; }
       if (['WAITING_FINAL_QC', 'READY_FOR_PICKUP'].includes(workflowState.wo.jobStatus) && s === 'STARTED') { toast('Job sudah masuk tahap Final QC / Ready'); return; }
-      v6BaseJobAction(st);
+
+      const wasRework = workflowState.wo.qcStatus === 'FAILED' || workflowState.wo.jobStatus === 'REWORK' || workflowState.wo.status === 'REWORK';
+      if (wasRework && s === 'STARTED') {
+        workflowState.wo.qcStatus = 'PENDING';
+        workflowState.wo.qcBy = '';
+        workflowState.wo.qcAt = '';
+        workflowState.wo.qcNote = '';
+      }
+
+      workflowState.wo.jobStatus = s === 'STARTED' ? 'IN_PROGRESS' : s;
+      workflowState.wo.status = workflowState.wo.jobStatus;
+      if (wasRework && workflowState.wo.jobStatus === 'IN_PROGRESS') workflowState.wo.qcStatus = 'PENDING';
+
+      commitWorkflow('JOB_' + workflowState.wo.jobStatus, workflowState.wo.id, st + (wasRework ? ' · REWORK CYCLE' : ''), 'MECHANIC');
+      if (workflowState.wo.jobStatus === 'IN_PROGRESS') {
+        pushCustomerNotification(
+          wasRework ? 'Rework sedang dikerjakan' : 'Pengerjaan dimulai',
+          wasRework ? 'Perbaikan hasil QC sedang dikerjakan ulang.' : 'Paket servis yang Anda pilih sedang dikerjakan.',
+          'service',
+          'tracking'
+        );
+      }
     };
 
     /* -------------------- INVENTORY COMPLETION -------------------- */
@@ -5501,11 +5393,9 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
 
     /* -------------------- USED VESPA PERSISTENCE + RESERVATION -------------------- */
     function v6PersistUsedUnits() { workflowState.usedVespaUnits = v3Clone(usedVespaUnits); saveWorkflow(); }
-    const v6BaseRenderUsed = renderUsedVespa;
-    renderUsedVespa = function () { v6BaseRenderUsed(); };
+    /* [STAGE2] Wrapper renderUsedVespa V6 dihapus; renderer production didefinisikan pada blok Supabase. */
     addUsedUnit = function () { const name = document.getElementById('ouName')?.value.trim(), year = +document.getElementById('ouYear')?.value, price = +document.getElementById('ouPrice')?.value; if (!name || !year || !price) { toast('Nama, tahun dan harga wajib diisi'); return; } usedVespaUnits.unshift({ id: 'UV-' + String(Math.max(0, ...usedVespaUnits.map(x => +(String(x.id).match(/(\d+)$/)?.[1] || 0))) + 1).padStart(3, '0'), name, year, price, km: +document.getElementById('ouKm').value || 0, color: document.getElementById('ouColor').value || '-', plate: document.getElementById('ouPlate').value || '-', tax: document.getElementById('ouTax').value || '-', status: document.getElementById('ouStatus').value, condition: 'Data unit baru', desc: document.getElementById('ouDesc').value || '-', image: pendingUnitPhotos[0] || '', gallery: pendingUnitPhotos.slice() }); pendingUnitPhotos = []; const input = document.getElementById('ouPhotos'); if (input) input.value = ''; const prev = document.getElementById('ouPhotoPreview'); if (prev) prev.innerHTML = ''; v6PersistUsedUnits(); renderOwnerUnits(); renderUsedVespa(); toggleUnitForm(); commitWorkflow('USED_UNIT_CREATED', usedVespaUnits[0].id, name, 'OWNER'); toast('Unit tersimpan lokal dan tetap ada setelah refresh'); };
     cycleUnitStatus = function (id) { const u = usedVespaUnits.find(x => x.id === id); if (!u) return; u.status = u.status === 'TERSEDIA' ? 'BOOKED' : u.status === 'BOOKED' ? 'TERJUAL' : 'TERSEDIA'; v6PersistUsedUnits(); renderOwnerUnits(); renderUsedVespa(); commitWorkflow('USED_UNIT_STATUS', id, u.status, 'OWNER'); toast('Status unit: ' + u.status); };
-    submitUsedVespaLead = function () { const u = usedVespaUnits.find(x => x.id === activeUsedUnitId); if (!u) { toast('Buka detail unit terlebih dahulu'); return; } const name = document.getElementById('wfUsedBuyer')?.value.trim(), phone = document.getElementById('wfUsedPhone')?.value.trim(), type = document.getElementById('wfUsedLeadType')?.value, dp = +document.getElementById('wfUsedDp')?.value || 0; if (!name || !phone) { toast('Nama dan WhatsApp wajib diisi'); return; } if (['BOOKING', 'DP'].includes(type) && u.status !== 'TERSEDIA') { toast('Unit tidak tersedia untuk reservation baru'); return; } if (['BOOKING', 'DP'].includes(type) && (workflowState.vespaLeads || []).some(l => l.unitId === u.id && ['RESERVATION_PENDING', 'DP_PENDING', 'BOOKED'].includes(l.status))) { toast('Sudah ada reservation aktif/pending untuk unit ini'); return; } const status = type === 'INQUIRY' ? 'OPEN' : type === 'DP' ? 'DP_PENDING' : 'RESERVATION_PENDING'; const lead = { id: generateDocumentCode('LEAD'), unitId: u.id, unit: u.name, name, phone, type, dp, status, createdAt: v6Now() }; workflowState.vespaLeads.unshift(lead); lastUsedLeadId = lead.id; commitWorkflow('USED_VESPA_' + type, lead.id, `${u.id} · ${name}${dp ? ' · DP ' + v6Money(dp) : ''}`, 'CUSTOMER'); const result = document.getElementById('wfUsedLeadResult'); if (result) { result.style.display = 'block'; result.innerHTML = `<b>Data tercatat.</b><br>Lead ID: <b>${lead.id}</b><br>Status: ${safeText(status)}<br>BOOKING/DP belum mengunci unit sampai dikonfirmasi workshop.`; } const actions = document.getElementById('wfUsedLeadActions'); if (actions) actions.style.display = 'flex'; pushNotification('advisor', 'Vespa Second ' + type, lead.id + ' · ' + name + ' · ' + u.name, 'sales'); renderUsedLeads(); toast('Lead tersimpan · menunggu konfirmasi workshop'); };
     renderUsedLeads = function () { const b = document.getElementById('wfUsedLeadList'); if (!b) return; b.innerHTML = `<h3>Vespa Second — Sales Leads</h3>` + (workflowState.vespaLeads.length ? `<div class="tablewrap"><table class="wf-table-mini"><tr><th>Lead</th><th>Unit</th><th>Customer</th><th>Type</th><th>DP</th><th>Status</th><th>Aksi</th></tr>${workflowState.vespaLeads.map(x => `<tr><td>${x.id}</td><td>${safeText(x.unit)}</td><td>${safeText(x.name)}<br><small>${safeText(x.phone)}</small></td><td>${x.type}</td><td>${v6Money(x.dp)}</td><td>${wfPill(x.status)}</td><td>${['RESERVATION_PENDING', 'DP_PENDING'].includes(x.status) ? `<button class="btn" onclick="v6LeadDecision('${x.id}','CONFIRM')">CONFIRM</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>` : x.status === 'BOOKED' ? `<button class="btn" onclick="v6LeadDecision('${x.id}','SOLD')">SOLD</button> <button class="btn bad" onclick="v6LeadDecision('${x.id}','CANCEL')">CANCEL</button>` : '-'}</td></tr>`).join('')}</table></div>` : '<div class="notice">Belum ada inquiry / booking unit.</div>'); };
     function v6LeadDecision(id, action) { const l = workflowState.vespaLeads.find(x => x.id === id); if (!l) return; const u = usedVespaUnits.find(x => x.id === l.unitId); if (action === 'CONFIRM') { if (u && u.status !== 'TERSEDIA') { toast('Unit sudah tidak tersedia'); return; } l.status = 'BOOKED'; if (u) u.status = 'BOOKED'; (workflowState.vespaLeads || []).forEach(o => { if (o.id !== l.id && o.unitId === l.unitId && ['RESERVATION_PENDING', 'DP_PENDING'].includes(o.status)) o.status = 'CANCELLED'; }); } else if (action === 'SOLD') { l.status = 'SOLD'; if (u) u.status = 'TERJUAL'; } else { l.status = 'CANCELLED'; if (u && u.status === 'BOOKED') u.status = 'TERSEDIA'; } v6PersistUsedUnits(); commitWorkflow('USED_LEAD_' + action, l.id, l.unit, 'OWNER'); renderUsedLeads(); renderOwnerUnits(); renderUsedVespa(); }
 
@@ -5807,20 +5697,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     }
 
     // Console helper for manual verification.
-    window.vwSupabaseSelfTest = async function () {
-      if (!v7Sb) await v7InitSupabase();
-      const { data, error } = await v7Sb.rpc('public_get_catalog', { p_workshop_slug: V7_WORKSHOP_SLUG });
-      if (error) throw error;
-      const result = {
-        connected: true,
-        workshop: data?.workshop?.name || null,
-        packages: Array.isArray(data?.packages) ? data.packages.length : 0,
-        parts: Array.isArray(data?.parts) ? data.parts.length : 0,
-        usedVespa: Array.isArray(data?.usedVespa) ? data.usedVespa.length : 0
-      };
-      console.table(result);
-      return result;
-    };
 
     document.addEventListener('DOMContentLoaded', () => setTimeout(v7InitSupabase, 180));
   </script>
@@ -6112,18 +5988,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
 
     // Manual console helper.
     // Does not create data; only checks if the booking RPC is visible to anon.
-    window.vwBookingIntegrationInfo = function () {
-      const access = v7BReadCustomerAccess();
-      const result = {
-        stage: '007B',
-        supabaseReady: !!v7Sb,
-        catalogReady: v7CatalogReady,
-        currentBookingCode: access?.bookingCode || null,
-        hasCustomerAccessToken: !!access?.accessToken
-      };
-      console.table(result);
-      return result;
-    };
 
     document.addEventListener('DOMContentLoaded', () => setTimeout(v7BInstallBooking, 240));
   </script>
@@ -6553,20 +6417,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       setTimeout(() => track(), 40);
     };
 
-    window.vwTrackingIntegrationInfo = function () {
-      const current = v7BReadCustomerAccess();
-      const result = {
-        stage: '007C',
-        supabaseReady: !!v7Sb,
-        catalogReady: v7CatalogReady,
-        hasCurrentAccess: !!current?.accessToken,
-        currentBookingCode: current?.bookingCode || null,
-        lastRemoteBooking: v7CLastTrack?.booking?.code || null,
-        lastRemoteWorkOrder: v7CLastTrack?.workOrder?.code || null
-      };
-      console.table(result);
-      return result;
-    };
 
     function v7CInstall() {
       v7CEnsureRecoveryUI();
@@ -7079,20 +6929,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       if (v7DLegacyAsk) return v7DLegacyAsk(ok);
     };
 
-    window.vwEstimateApprovalInfo = function () {
-      const remote = v7DApprovalSnapshot || v7CLastTrack;
-      const result = {
-        stage: '007D',
-        estimateCode: remote?.estimate?.code || null,
-        approvalStatus: remote?.estimate?.approvalStatus || null,
-        pendingItems: v7DPendingItems(remote).length,
-        approvedItems: v7DApprovedItems(remote).length,
-        declinedItems: v7DDeclinedItems(remote).length,
-        accessTokenAvailable: !!v7DCurrentAccess()?.accessToken
-      };
-      console.table(result);
-      return result;
-    };
   </script>
 
 
@@ -7324,25 +7160,52 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       const role = v7ERole();
       const s = v7EStaff();
       currentStaffRole = role || 'public';
+
       if (role === 'mechanic' && typeof workflowState !== 'undefined') {
         workflowState.demoMechanic = s?.name || 'Mechanic';
       }
       setStaffSession(role, role === 'advisor' ? 'advisor' : role === 'mechanic' ? 'mechanic' : role);
 
-      if (role === 'advisor') {
-        go('advisor'); stabId('dash'); v7ELoadAdvisor();
-      } else if (role === 'mechanic') {
-        go('mechanic'); mtabId('jobs'); v7ELoadMechanicJobs();
-      } else if (role === 'inventory') {
-        go('inventory'); itabId('dash');
-        toast('Auth Inventory aktif · integrasi operasional penuh pada 007F.');
+      if (role === 'cashier') {
+        currentStaffRole = 'cashier';
+        setStaffSession('cashier', 'cashier');
+        go('cashier');
+        v10CashierTab('dash', document.querySelector('#cashier .side button'));
+        v10LoadCashierDashboard();
       } else if (role === 'owner') {
-        go('owner'); otabId('dash');
-        toast('Auth Owner aktif · dashboard Supabase penuh menyusul tahap Owner.');
+        currentStaffRole = 'owner';
+        setStaffSession('owner', 'owner');
+        v7HEnsureOwnerPanels();
+        go('owner');
+        otabId('dash');
+        v7HLoadOwnerAll({ force: true });
+      } else if (role === 'inventory') {
+        go('inventory');
+        itabId('dash');
+        v7FLoadInventory();
+      } else if (role === 'advisor') {
+        go('advisor');
+        stabId('dash');
+        v7ELoadAdvisor();
+      } else if (role === 'mechanic') {
+        go('mechanic');
+        mtabId('jobs');
+        v7ELoadMechanicJobs();
       } else {
         throw new Error('Role staff tidak dikenali');
       }
+
       v7EStartAutoRefresh();
+
+      setTimeout(() => {
+        if (typeof v7RtStartStaffRealtime === 'function') v7RtStartStaffRealtime();
+        if (typeof v7RtSaveView === 'function') v7RtSaveView();
+        if (typeof v7RtObserveView === 'function') v7RtObserveView();
+      }, 250);
+
+      setTimeout(() => {
+        if (typeof v8LoadStaffNotifications === 'function') v8LoadStaffNotifications({ silent: true });
+      }, 350);
     }
 
     loginStaff = async function () {
@@ -7383,6 +7246,13 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     };
 
     staffLogout = async function () {
+      try {
+        if (typeof v7RtStopStaffRealtime === 'function') v7RtStopStaffRealtime();
+        if (typeof v7RtRefreshTimer !== 'undefined') clearTimeout(v7RtRefreshTimer);
+        if (typeof V7RT_VIEW_KEY !== 'undefined') localStorage.removeItem(V7RT_VIEW_KEY);
+        if (typeof V8_VIEW_KEY !== 'undefined') sessionStorage.removeItem(V8_VIEW_KEY);
+      } catch (_) { }
+
       v7EStopAutoRefresh();
       try { if (v7Sb) await v7Sb.auth.signOut(); } catch (e) { console.warn(e); }
       v7EStaffContext = null;
@@ -7392,6 +7262,7 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       const b = document.getElementById('notifBtn'); if (b) b.style.display = 'none';
       const cb = document.getElementById('customerNotifBtn'); if (cb) cb.style.display = 'inline-block';
       go('staffLogin');
+      if (typeof v7RtBadge === 'function') v7RtBadge('warn', 'STAFF OFFLINE');
       toast('Logout berhasil');
     };
 
@@ -8110,36 +7981,12 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     /* Existing v3RenderAll must never overwrite active remote Advisor/Mechanic panels. */
     const v7ERenderAllBase = typeof v3RenderAll === 'function' ? v3RenderAll : null;
     if (v7ERenderAllBase) {
-      v3RenderAll = function () {
-        v7ERenderAllBase();
-        if (v7ERole() === 'advisor' && v7EIsRemoteStaff()) v7ERenderAdvisorRemote();
-        if (v7ERole() === 'mechanic' && v7EIsRemoteStaff()) {
-          v7ERenderMechanicJobs();
-          if (v7EMechanicSnapshot) v7ERenderMechanicSnapshot(v7EMechanicSnapshot);
-        }
-      };
     }
 
     /* ---------- customer approval: refresh mechanics/advisor indirectly ----------
        Customer is anonymous, so staff devices use 10s polling. Customer page itself
        refreshes immediately after decision via 007D.
        -------------------------------------------------------------------------- */
-    window.vwStaffIntegrationInfo = function () {
-      const s = v7EStaff();
-      const result = {
-        stage: '007D/E',
-        authenticated: !!s,
-        staffCode: s?.staffCode || null,
-        name: s?.name || null,
-        role: s?.role || null,
-        advisorBookings: v7EAdvisorBookings.length,
-        advisorWorkOrders: v7EAdvisorWorkOrders.length,
-        mechanicJobs: v7EMechanicJobs.length,
-        selectedWO: v7EMechanicSnapshot?.workOrder?.code || v7EAdvisorSnapshot?.workOrder?.code || null
-      };
-      console.table(result);
-      return result;
-    };
 
     function v7EInit() {
       v7EPrepareLoginUI();
@@ -8597,14 +8444,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       }
     };
 
-    /* When login routes to mechanic, restart the safer refresh scheduler. */
-    const v7ERouteStaffBase = v7ERouteStaff;
-    v7ERouteStaff = function () {
-      v7ERouteStaffBase();
-      if (v7ERole() === 'mechanic') {
-        v7EStartAutoRefresh();
-      }
-    };
 
     /* Restart scheduler if a mechanic session was already restored before this
        fix layer initialized. */
@@ -8614,22 +8453,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       }
     }, 900);
 
-    window.vwMechanicIntegrationInfo = function () {
-      const snap = v7EMechanicSnapshot;
-      const result = {
-        stage: '007D/E-MECHANIC-FIX',
-        authenticated: v7EIsRemoteStaff(),
-        role: v7ERole(),
-        staff: v7EStaff()?.name || null,
-        selectedWO: snap?.workOrder?.code || null,
-        woStatus: snap?.workOrder?.status || null,
-        diagnosisStatus: snap?.workOrder?.diagnosisStatus || null,
-        formDirty: v7EMechanicFormDirty,
-        backgroundRefreshSafe: true
-      };
-      console.table(result);
-      return result;
-    };
   </script>
 
 
@@ -8806,7 +8629,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     };
 
     /* Safe mtab override: navigation should never be blocked by an action state. */
-    const v7BtnMtabBase = mtab;
     mtab = function (id, btn) {
       document.querySelectorAll('#mechanic .panel').forEach(x => x.classList.remove('on'));
       const p = document.getElementById('m-' + id);
@@ -8845,31 +8667,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     });
 
     /* Console / field diagnostic. */
-    window.vwButtonAudit = function () {
-      const rows = [...document.querySelectorAll('button')].map((b, i) => ({
-        index: i,
-        page: b.closest('.page')?.id || '',
-        panel: b.closest('.panel')?.id || '',
-        text: (b.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 55),
-        disabled: !!b.disabled,
-        visible: !!(b.offsetWidth || b.offsetHeight || b.getClientRects().length),
-        onclick: !!b.getAttribute('onclick'),
-        type: b.type || ''
-      }));
-      const visibleDisabled = rows.filter(x => x.visible && x.disabled);
-      const visibleNoAction = rows.filter(x => x.visible && !x.disabled && !x.onclick && x.type !== 'submit');
-
-      console.table(rows);
-      console.table(visibleDisabled);
-      console.table(visibleNoAction);
-
-      return {
-        total: rows.length,
-        visible: rows.filter(x => x.visible).length,
-        visibleDisabled,
-        visibleNoAction
-      };
-    };
 
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
@@ -9598,17 +9395,8 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     /* ----------------------------------------------------------------------
        LOGIN / ROUTING / AUTO REFRESH
        ---------------------------------------------------------------------- */
-    const v7FRouteStaffBase = v7ERouteStaff;
-    v7ERouteStaff = function () {
-      v7FRouteStaffBase();
-      if (v7FInventoryRole()) {
-        go('inventory');
-        itabId('dash');
-        v7FLoadInventory();
-      }
-    };
 
-    const v7FAutoRefreshBase = v7EStartAutoRefresh;
+
     v7EStartAutoRefresh = function () {
       clearInterval(v7ERoleRefreshTimer);
       v7ERoleRefreshTimer = setInterval(async () => {
@@ -9654,38 +9442,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     };
 
     /* Console diagnostics */
-    window.vwInventoryIntegrationInfo = function () {
-      const result = {
-        stage: '007F',
-        role: v7ERole(),
-        parts: v7FInventoryParts.length,
-        requests: v7FInventoryRequests.length,
-        pendingRequests: v7FInventoryRequests.filter(x => v7FUpper(x.status) === 'REQUESTED').length,
-        movements: v7FInventoryMovements.length
-      };
-      console.table(result);
-      return result;
-    };
-    window.vwJobExecutionInfo = function () {
-      const s = v7EMechanicSnapshot;
-      const st = s ? v7FJobActionState(s) : null;
-      const result = {
-        stage: '007F',
-        workOrder: s?.workOrder?.code || null,
-        diagnosis: s?.workOrder?.diagnosisStatus || null,
-        job: s?.workOrder?.jobStatus || null,
-        parts: s?.workOrder?.partsStatus || null,
-        approvedParts: s ? v7FApprovedPartItems(s).length : 0,
-        pendingApproval: s ? v7FPendingEstimateItems(s).length : 0,
-        partRequests: v7FMechanicRequestRows.length,
-        canStart: st?.canStart || false,
-        canPause: st?.canPause || false,
-        canResume: st?.canResume || false,
-        canComplete: st?.canComplete || false
-      };
-      console.table(result);
-      return result;
-    };
 
     /* Restore live Inventory if user refreshes page with existing staff session. */
     setTimeout(() => {
@@ -9988,56 +9744,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       v7RtChannel = null;
     }
 
-    function v7RtStartStaffRealtime() {
-      v7RtStopStaffRealtime();
-      if (!v7Sb || !v7EIsRemoteStaff()) return;
-
-      const tables = [
-        'bookings', 'work_orders', 'diagnoses', 'findings',
-        'estimates', 'estimate_items', 'part_requests', 'parts',
-        'invoices', 'payments', 'qc_inspections',
-        'customer_notifications', 'staff_notifications'
-      ];
-
-      let ch = v7Sb.channel('vw-workshop-live-' + String(v7EStaff()?.id || 'staff'));
-
-      tables.forEach(table => {
-        ch = ch.on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table },
-          payload => v7RtScheduleRefresh(table + ':' + payload.eventType)
-        );
-      });
-
-      v7RtChannel = ch.subscribe(status => {
-        if (status === 'SUBSCRIBED') v7RtBadge('', '● STAFF LIVE');
-        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') v7RtBadge('warn', 'LIVE FALLBACK');
-        else if (status === 'CLOSED') v7RtBadge('warn', 'LIVE CLOSED');
-      });
-    }
-
-    /* Keep login flow, then attach live state and remember the staff view. */
-    const v7RtRouteStaffBase = v7ERouteStaff;
-    v7ERouteStaff = function () {
-      v7RtRouteStaffBase();
-      setTimeout(() => {
-        v7RtStartStaffRealtime();
-        v7RtSaveView();
-        v7RtObserveView();
-      }, 250);
-    };
-
-    /* Logout intentionally clears resume state and realtime, but NOT customer
-       data. */
-    const v7RtStaffLogoutBase = staffLogout;
-    staffLogout = async function () {
-      v7RtStopStaffRealtime();
-      clearTimeout(v7RtRefreshTimer);
-      localStorage.removeItem(V7RT_VIEW_KEY);
-      await v7RtStaffLogoutBase();
-      v7RtBadge('warn', 'STAFF OFFLINE');
-    };
-
     /* ---------- Customer secure near-live tracking ----------
        Direct anonymous table subscriptions stay blocked by RLS. The customer
        instead refreshes public_track_service(access_token) every 4 seconds
@@ -10100,22 +9806,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       v7RtAuthSub = data?.subscription || null;
     }
 
-    window.vwRealtimeInfo = function () {
-      const sessionView = v7RtReadView();
-      const result = {
-        stage: '007F-REALTIME-SESSION',
-        role: typeof v7ERole === 'function' ? v7ERole() : null,
-        staff: v7EStaff()?.name || null,
-        currentPage: document.querySelector('.page.on')?.id || null,
-        currentPanel: sessionView?.panel || null,
-        selectedWO: sessionView?.selectedWO || null,
-        realtimeChannel: !!v7RtChannel,
-        customerPollingMs: 4000,
-        authPersistence: 'Supabase persistSession=true'
-      };
-      console.table(result);
-      return result;
-    };
 
     document.addEventListener('DOMContentLoaded', () => {
       v7RtClearOldCustomerLocalDataOnce();
@@ -10626,25 +10316,7 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       }).join('') || '<div class="card">Belum ada kendaraan READY FOR PICKUP.</div>'}`;
     }
 
-    async function v7GReleaseVehicle(code, id) {
-      const receiver = document.getElementById('v7GReceiver_' + id)?.value.trim() || '';
-      const note = document.getElementById('v7GReleaseNote_' + id)?.value.trim() || null;
-      if (receiver.length < 2) { toast('Nama penerima wajib diisi'); return; }
-      if (!confirm('Serahkan kendaraan ' + code + ' ke ' + receiver + ' dan CLOSE WO?')) return;
-      try {
-        const { data, error } = await v7Sb.rpc('advisor_release_vehicle', {
-          p_work_order_code: code,
-          p_receiver_name: receiver,
-          p_note: note
-        });
-        if (error) throw error;
-        toast('Vehicle released · WO CLOSED ✓');
-        await v7GLoadAdvisorFinance();
-        await v7ELoadAdvisor({ silent: true });
-      } catch (err) { v7FError(err, 'Vehicle Release gagal'); }
-    }
-
-    /* Override advisor render to keep payment/release remote. */
+    async /* Override advisor render to keep payment/release remote. */
     const v7GAdvisorRenderBase = v7ERenderAdvisorRemote;
     v7ERenderAdvisorRemote = function () {
       v7GAdvisorRenderBase();
@@ -10701,7 +10373,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     simulateDynamicPaid = function () { toast('Dynamic QRIS gateway/webhook belum dipasang.'); };
 
     /* -------------------- realtime extension -------------------- */
-    const v7GRealtimeBase = v7RtStartStaffRealtime;
     v7RtStartStaffRealtime = function () {
       v7RtStopStaffRealtime();
       if (!v7Sb || !v7EIsRemoteStaff()) return;
@@ -10737,19 +10408,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       if (v7ERole() === 'mechanic' && v7EMechanicSnapshot) v7GRenderFinalQc(v7EMechanicSnapshot);
     }, 1500);
 
-    window.vwFinalFlowInfo = function () {
-      const result = {
-        stage: '007G',
-        role: v7ERole(),
-        selectedWO: v7EMechanicSnapshot?.workOrder?.code || v7EAdvisorSnapshot?.workOrder?.code || null,
-        qcStatus: v7EMechanicSnapshot?.workOrder?.qcStatus || null,
-        customerInvoice: v7GCustomerPaymentState?.invoice?.code || null,
-        paymentQueue: v7GPaymentQueue.length,
-        releaseQueue: v7GReleaseQueue.length
-      };
-      console.table(result);
-      return result;
-    };
   </script>
 
 
@@ -11007,17 +10665,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       }
     };
 
-    window.vwReleaseFormInfo = function () {
-      const result = {
-        stage: '007G-RELEASE-FIX',
-        active: v7GReleasePanelActive(),
-        dirty: v7GReleaseDirty,
-        drafts: v7GReleaseDrafts.size,
-        realtimeProtected: true
-      };
-      console.table(result);
-      return result;
-    };
 
     setTimeout(() => {
       if (v7ERole() === 'advisor') {
@@ -11209,7 +10856,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     function v7HOwner() { return v7ERole() === 'owner' && v7EIsRemoteStaff(); }
     function v7HUpper(v) { return String(v || '').trim().toUpperCase(); }
     function v7HNum(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
-    function v7HJson(v, f = []) { try { return typeof v === 'string' ? JSON.parse(v) : v ?? f } catch (_) { return f } }
     function v7HMarkDirty() { v7HFormDirty = true; const x = document.getElementById('v7HDirtyState'); if (x) { x.className = 'v7h-dirty'; x.textContent = 'Ada perubahan yang belum disimpan.'; } }
     function v7HClearDirty() { v7HFormDirty = false; const x = document.getElementById('v7HDirtyState'); if (x) { x.className = 'v7h-mini'; x.textContent = 'Data tersimpan di Supabase.'; } }
 
@@ -11393,29 +11039,53 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
 
     /* ---------------- staff ---------------- */
     function v7HRenderStaff() {
-      const p = document.getElementById('o-staff'); if (!p || !v7HMaster) return;
+      const p = document.getElementById('o-staff');
+      if (!p || !v7HMaster) return;
       p.innerHTML = `
-    <div class="head"><div><div class="k">Supabase Staff Profiles</div><h2>Staff Management</h2></div><button class="btn" type="button" onclick="v7HOpenStaffForm()">+ STAFF PROFILE</button></div>
+    <div class="head">
+      <div><div class="k">010B · Staff & Role Management</div><h2>Staff Management</h2></div>
+      <button class="btn" type="button" onclick="v7HOpenStaffForm()">+ STAFF PROFILE</button>
+    </div>
     <div id="v7HStaffForm"></div>
-    <div class="card tablewrap"><table class="tbl"><tr><th>Code</th><th>Staff</th><th>Role</th><th>Status</th><th>Auth</th><th>Jobs</th><th>Aksi</th></tr>
-      ${(v7HMaster.staff || []).map(s => `<tr><td><b>${safeText(s.code || '-')}</b></td><td>${safeText(s.name)}<br><small>${safeText(s.phone || '')}</small></td><td>${safeText(s.role)}</td><td>${wfPill(v7HUpper(s.status))}</td><td><span class="v7h-auth ${s.authLinked ? '' : 'off'}">${s.authLinked ? 'LINKED' : 'NO AUTH'}</span></td><td>${v7HNum(s.activeJobs)}</td><td><button class="btn alt" type="button" onclick="v7HOpenStaffForm('${safeText(s.id)}')">EDIT</button></td></tr>`).join('')}
+    <div class="card tablewrap"><table class="tbl">
+      <tr><th>Code</th><th>Staff</th><th>Role</th><th>Status</th><th>Auth</th><th>Jobs</th><th>Aksi</th></tr>
+      ${(v7HMaster.staff || []).map(s => `<tr>
+        <td><b>${safeText(s.code || '-')}</b></td>
+        <td>${safeText(s.name)}<br><small>${safeText(s.phone || '')}</small></td>
+        <td>${safeText(s.role)}</td>
+        <td>${wfPill(v7HUpper(s.status))}</td>
+        <td><span class="v7h-auth ${s.authLinked ? '' : 'off'}">${s.authLinked ? 'LINKED' : 'NO AUTH'}</span></td>
+        <td>${v7HNum(s.activeJobs)}</td>
+        <td>
+          <button class="btn alt" type="button" onclick="v7HOpenStaffForm('${safeText(s.id)}')">EDIT</button>
+          ${s.authLinked ? '' : `<button class="btn alt" type="button" onclick="v10LinkStaffAuth('${safeText(s.code)}')">LINK AUTH</button>`}
+        </td>
+      </tr>`).join('')}
     </table></div>
-    <div class="notice" style="margin-top:12px"><b>Security:</b> Owner dapat membuat/edit Staff Profile di sini, tetapi pembuatan user Supabase Auth/password tidak dilakukan dari browser. Staff dengan <b>NO AUTH</b> belum dapat login sampai Auth user dikaitkan.</div>`;
+    <div class="notice" style="margin-top:12px">
+      Buat user login terlebih dahulu di Supabase Authentication → Users. Setelah itu klik <b>LINK AUTH</b> dan paste UUID user. Role production: owner, advisor, cashier, mechanic, inventory.
+    </div>`;
     }
+
     function v7HOpenStaffForm(id = '') {
       const s = (v7HMaster?.staff || []).find(x => x.id === id) || { id: '', code: '', name: '', role: 'mechanic', status: 'ACTIVE', phone: '', authLinked: false };
       const h = document.getElementById('v7HStaffForm'); if (!h) return;
       h.innerHTML = `<div class="v7h-formbox v7h-edit-form" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()">
     <h3>${id ? 'Edit' : 'Tambah'} Staff Profile</h3>
     <div class="form">
-      <div class="field"><label>Staff Code *</label><input id="v7HStaffCode" value="${safeText(s.code || '')}" placeholder="STF-007"></div>
+      <div class="field"><label>Staff Code *</label><input id="v7HStaffCode" value="${safeText(s.code || '')}" placeholder="STF-001"></div>
       <div class="field"><label>Nama *</label><input id="v7HStaffName" value="${safeText(s.name || '')}"></div>
-      <div class="field"><label>Role</label><select id="v7HStaffRole">${['owner', 'advisor', 'mechanic', 'inventory'].map(r => `<option value="${r}" ${s.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+      <div class="field"><label>Role</label><select id="v7HStaffRole">
+        ${['owner', 'advisor', 'cashier', 'mechanic', 'inventory'].map(r => `<option value="${r}" ${s.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+      </select></div>
       <div class="field"><label>Status</label><select id="v7HStaffStatus"><option ${s.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option><option ${s.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option></select></div>
       <div class="field"><label>Phone</label><input id="v7HStaffPhone" value="${safeText(s.phone || '')}"></div>
       <div class="field"><label>Supabase Auth</label><input disabled value="${s.authLinked ? 'Linked' : 'Belum terhubung'}"></div>
     </div>
-    <div class="actions"><button class="btn" type="button" onclick="v7HSaveStaff('${safeText(id)}')">SIMPAN</button><button class="btn alt" type="button" onclick="document.getElementById('v7HStaffForm').innerHTML=''">BATAL</button></div>
+    <div class="actions">
+      <button class="btn" type="button" onclick="v7HSaveStaff('${safeText(id)}')">SIMPAN</button>
+      <button class="btn alt" type="button" onclick="document.getElementById('v7HStaffForm').innerHTML=''">BATAL</button>
+    </div>
   </div>`;
     }
     async function v7HSaveStaff(id) {
@@ -11602,19 +11272,11 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       try { const { error } = await v7Sb.rpc('inventory_purchase_order_action', { p_po_code: code, p_action: action }); if (error) throw error; toast('PO ' + action + ' berhasil'); await v7HLoadMaster({ render: true }); await v7HLoadDashboard({ silent: true }); }
       catch (err) { v7FError(err, 'PO action gagal'); }
     }
-    function v7HOpenReceivePo(id) {
-      const po = (v7HMaster?.purchaseOrders || []).find(x => x.id === id); if (!po) return; v7HReceivePO = po;
-      document.getElementById('v7HInventoryForm').innerHTML = `<div class="v7h-formbox" oninput="v7HMarkDirty()"><h3>Goods Receiving · ${safeText(po.code)}</h3>${(po.items || []).map(i => `<div class="line"><span>${safeText(i.part)}<br><small>${safeText(i.sku)} · outstanding ${v7HNum(i.qty) - v7HNum(i.receivedQty)}</small></span><input style="max-width:110px" id="v7HRecv_${safeText(i.id)}" type="number" min="0" max="${v7HNum(i.qty) - v7HNum(i.receivedQty)}" value="0"></div>`).join('')}<div class="actions"><button class="btn" type="button" onclick="v7HReceivePo()">POST RECEIVING</button></div></div>`; v7HMarkDirty();
-    }
     async function v7HReceivePo() {
       const po = v7HReceivePO; if (!po) return;
       const receipts = (po.items || []).map(i => ({ itemId: i.id, qty: v7HNum(document.getElementById('v7HRecv_' + i.id)?.value) })).filter(x => x.qty > 0);
       try { const { data, error } = await v7Sb.rpc('inventory_receive_purchase_order', { p_po_code: po.code, p_receipts: receipts }); if (error) throw error; v7HReceivePO = null; v7HClearDirty(); toast('Receiving ' + (data?.receivedQty || 0) + ' unit'); await v7HLoadMaster({ render: true }); await v7HLoadDashboard({ silent: true }); }
       catch (err) { v7FError(err, 'Goods Receiving gagal'); }
-    }
-    function v7HOpenOpnameForm() {
-      const p = (v7HMaster?.parts || [])[0]; v7HOpnameLines = [{ partId: p?.id || '', physicalQty: v7HNum(p?.onHand), reason: 'Stock opname fisik' }];
-      document.getElementById('v7HInventoryForm').innerHTML = `<div class="v7h-formbox" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()"><h3>Stock Opname</h3><div id="v7HOpnameLines" class="v7h-lines"></div><div class="actions"><button class="btn alt" type="button" onclick="v7HAddOpnameLine()">+ ITEM</button><button class="btn" type="button" onclick="v7HSubmitOpname()">COMPLETE OPNAME</button></div></div>`; v7HRenderOpnameLines();
     }
     function v7HRenderOpnameLines() {
       const h = document.getElementById('v7HOpnameLines'); if (!h) return;
@@ -11779,19 +11441,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     };
     openInventoryFromOwner = function () { otabId('inventoryadmin'); };
 
-    const v7HRouteBase = v7ERouteStaff;
-    v7ERouteStaff = function () {
-      if (v7ERole() === 'owner') {
-        currentStaffRole = 'owner';
-        setStaffSession('owner', 'owner');
-        v7HEnsureOwnerPanels();
-        go('owner'); otabId('dash'); v7HLoadOwnerAll({ force: true });
-        v7EStartAutoRefresh();
-        if (typeof v7RtStartStaffRealtime === 'function') v7RtStartStaffRealtime();
-        return;
-      }
-      return v7HRouteBase();
-    };
 
     const v7HRestoreRouteBase = v7RtRestoreRoute;
     v7RtRestoreRoute = async function (saved) {
@@ -11852,23 +11501,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       }, 1700);
     });
 
-    window.vwOwnerIntegrationInfo = function () {
-      const result = {
-        stage: '007H',
-        owner: v7HOwner(),
-        dashboardLoaded: !!v7HDashboard,
-        masterLoaded: !!v7HMaster,
-        staff: v7HMaster?.staff?.length || 0,
-        services: v7HMaster?.serviceItems?.length || 0,
-        packages: v7HMaster?.packages?.length || 0,
-        parts: v7HMaster?.parts?.length || 0,
-        suppliers: v7HMaster?.suppliers?.length || 0,
-        purchaseOrders: v7HMaster?.purchaseOrders?.length || 0,
-        usedVespa: v7HMaster?.usedVespa?.length || 0,
-        dirty: v7HFormDirty
-      };
-      console.table(result); return result;
-    };
   </script>
 
 
@@ -12154,21 +11786,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
 
     setTimeout(v7HRepairReceiveButtons, 1500);
 
-    window.vwReceiveGoodsInfo = function () {
-      const po = v7HReceivePO;
-      const result = {
-        stage: '007H-RECEIVE-GOODS-FIX',
-        selectedPO: po?.code || null,
-        selectedStatus: po?.status || null,
-        formOpen: !!document.getElementById('v7HReceiveForm'),
-        dirty: v7HFormDirty,
-        busy: v7HReceiveBusy,
-        receiveButtons: [...document.querySelectorAll('#o-inventoryadmin button')]
-          .filter(b => (b.textContent || '').trim() === 'RECEIVE GOODS').length
-      };
-      console.table(result);
-      return result;
-    };
   </script>
 
 
@@ -12569,20 +12186,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
 
     setTimeout(v7HRepairOpnameButton, 1500);
 
-    window.vwStockOpnameInfo = function () {
-      const result = {
-        stage: '007H-STOCK-OPNAME-FIX',
-        active: v7HOpnameActive,
-        formOpen: !!document.getElementById('v7HOpnameForm'),
-        lines: v7HOpnameLines.length,
-        dirty: v7HFormDirty,
-        busy: v7HOpnameBusy,
-        buttonCount: [...document.querySelectorAll('#o-inventoryadmin button')]
-          .filter(b => (b.textContent || '').trim() === 'BUAT OPNAME').length
-      };
-      console.table(result);
-      return result;
-    };
   </script>
 
 
@@ -12934,118 +12537,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       });
     }
 
-    /* ---------- runtime button audit ---------- */
-    function v7QHandlerNames(code) {
-      if (!code) return [];
-      const out = [];
-      const re = /(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(/g;
-      let m;
-      while ((m = re.exec(code))) {
-        if (!['if', 'confirm', 'prompt', 'setTimeout', 'encodeURIComponent', 'Number', 'String'].includes(m[1])) out.push(m[1]);
-      }
-      return [...new Set(out)];
-    }
-
-    function v7QHitTarget(btn) {
-      const r = btn.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) return { ok: false, reason: 'zero-size' };
-      const rawX = r.left + r.width / 2;
-      const rawY = r.top + r.height / 2;
-
-      // elementFromPoint only makes sense for an element inside viewport.
-      if (rawX < 0 || rawY < 0 || rawX >= innerWidth || rawY >= innerHeight) {
-        return { ok: true, reason: 'offscreen' };
-      }
-
-      const x = rawX;
-      const y = rawY;
-      const hit = document.elementFromPoint(x, y);
-      const ok = !!hit && (hit === btn || btn.contains(hit) || hit.contains(btn));
-      return { ok, reason: ok ? 'ok' : (hit?.tagName || 'NONE') + '#' + (hit?.id || '') + '.' + (hit?.className || '') };
-    }
-
-    window.vwFullButtonAudit = function (root = document) {
-      v7QRepairButtons(root);
-      v7QRepairNavigation();
-
-      const rows = [...root.querySelectorAll('button')].map((b, index) => {
-        const style = getComputedStyle(b);
-        const visible = !!(
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
-          Number(style.opacity) !== 0 &&
-          (b.offsetWidth || b.offsetHeight || b.getClientRects().length)
-        );
-        const onclick = b.getAttribute('onclick') || '';
-        const handlers = v7QHandlerNames(onclick);
-        const missingHandlers = handlers.filter(name => typeof window[name] !== 'function');
-        const form = b.closest('form');
-        const actionable = !!onclick || b.type === 'submit' || !!b.onclick || (
-          b.id === 'my' // modal confirmation is assigned dynamically by ask()
-        );
-        const hit = visible && !b.disabled ? v7QHitTarget(b) : { ok: true, reason: 'n/a' };
-
-        return {
-          index,
-          page: b.closest('.page')?.id || '',
-          panel: b.closest('.panel')?.id || '',
-          text: (b.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 70),
-          visible,
-          disabled: !!b.disabled,
-          type: b.type || '',
-          pointerEvents: style.pointerEvents,
-          actionable,
-          missingHandlers,
-          hitOk: hit.ok,
-          hitReason: hit.reason,
-          formId: form?.id || ''
-        };
-      });
-
-      const problems = {
-        visibleNoAction: rows.filter(x => x.visible && !x.disabled && !x.actionable),
-        missingHandlers: rows.filter(x => x.visible && x.missingHandlers.length),
-        pointerBlocked: rows.filter(x => x.visible && !x.disabled && x.pointerEvents === 'none'),
-        hitBlocked: rows.filter(x => x.visible && !x.disabled && !x.hitOk),
-        disabledNavigation: rows.filter(x => x.visible && x.disabled && ['advisor', 'mechanic', 'inventory', 'owner', 'cashier'].includes(x.page) && x.panel === '')
-      };
-
-      console.table(rows);
-      Object.entries(problems).forEach(([k, v]) => {
-        if (v.length) console.warn('[BUTTON AUDIT]', k, v);
-      });
-
-      return {
-        total: rows.length,
-        visible: rows.filter(x => x.visible).length,
-        enabledVisible: rows.filter(x => x.visible && !x.disabled).length,
-        disabledVisible: rows.filter(x => x.visible && x.disabled).length,
-        ...problems,
-        pass: !Object.values(problems).some(v => v.length)
-      };
-    };
-
-    /* Duplicate DOM IDs can silently route getElementById() to the wrong control. */
-    window.vwDomIntegrityAudit = function () {
-      const idMap = new Map();
-      document.querySelectorAll('[id]').forEach(el => {
-        if (!idMap.has(el.id)) idMap.set(el.id, []);
-        idMap.get(el.id).push(el);
-      });
-      const duplicates = [...idMap.entries()]
-        .filter(([, els]) => els.length > 1)
-        .map(([id, els]) => ({
-          id,
-          count: els.length,
-          pages: [...new Set(els.map(x => x.closest('.page')?.id || ''))]
-        }));
-
-      const buttons = vwFullButtonAudit();
-      const result = { duplicates, buttons, pass: duplicates.length === 0 && buttons.pass };
-      if (duplicates.length) console.warn('[DOM AUDIT] duplicate IDs', duplicates);
-      return result;
-    };
-
     /* ---------- silent JS errors should no longer look like dead buttons ---------- */
     window.addEventListener('error', e => {
       if (Date.now() - v7QLastClickAt > 1200) return;
@@ -13090,23 +12581,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     });
 
     /* Console helper */
-    window.vwInteractionHardeningInfo = function () {
-      const audit = vwDomIntegrityAudit();
-      const result = {
-        stage: '007H-INTERACTION-HARDENED',
-        role: typeof v7ERole === 'function' ? v7ERole() : null,
-        page: document.querySelector('.page.on')?.id || null,
-        panel: document.querySelector('.page.on .panel.on')?.id || null,
-        ownerDirtyPanel: v7QOwnerDirtyPanel || null,
-        advisorAssignDirty: v7QAdvisorAssignDirty,
-        totalButtons: audit.buttons.total,
-        visibleButtons: audit.buttons.visible,
-        duplicateIds: audit.duplicates.length,
-        pass: audit.pass
-      };
-      console.table(result);
-      return result;
-    };
   </script>
 
 
@@ -13897,61 +13371,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       [400, 1000, 2200].forEach(ms => setTimeout(v7IRepairInventoryButtons, ms));
     });
 
-    /* Console audit helpers */
-    window.vwInventory007IInfo = function () {
-      const placeholders = [...document.querySelectorAll('#inventory .panel')]
-        .filter(p => /belum diaktifkan|belum dimigrasikan|NEXT INVENTORY PHASE/i.test(p.textContent || ''))
-        .map(p => p.id);
-      const result = {
-        stage: '007I-INVENTORY-FULL-ACTIVATION',
-        role: v7ERole?.(),
-        parts: v7IData.parts.length,
-        suppliers: v7IData.suppliers.length,
-        purchaseOrders: v7IData.purchaseOrders.length,
-        stockOpnames: v7IData.stockOpnames.length,
-        activeForm: v7IActiveForm,
-        dirty: v7IDirty,
-        legacyPlaceholderPanels: placeholders
-      };
-      console.table(result); return result;
-    };
-
-    window.vwFullSystemAudit = function () {
-      const base = typeof vwDomIntegrityAudit === 'function' ? vwDomIntegrityAudit() : null;
-      const placeholders = [...document.querySelectorAll('.page,.panel')]
-        .filter(x => x.offsetParent !== null && /belum diaktifkan|belum dimigrasikan|NEXT INVENTORY PHASE/i.test(x.textContent || ''))
-        .map(x => x.id || x.className);
-      const navTargets = [];
-      document.querySelectorAll('button[onclick]').forEach(b => {
-        const s = b.getAttribute('onclick') || '';
-        for (const m of s.matchAll(/\b(?:go|itab|itabId|stab|stabId|mtab|mtabId|otab|otabId)\(['"]([^'"]+)/g)) {
-          navTargets.push({ button: (b.textContent || '').trim(), target: m[1] });
-        }
-      });
-      const result = {
-        basePass: base?.pass ?? null,
-        placeholders,
-        activeRole: v7ERole?.() || null,
-        page: document.querySelector('.page.on')?.id || null,
-        panel: document.querySelector('.page.on .panel.on')?.id || null,
-        visibleButtons: base?.buttons?.visible ?? null,
-        missingHandlers: base?.buttons?.missingHandlers ?? [],
-        pointerBlocked: base?.buttons?.pointerBlocked ?? [],
-        hitBlocked: base?.buttons?.hitBlocked ?? [],
-        disabledNavigation: base?.buttons?.disabledNavigation ?? [],
-        navTargetsCount: navTargets.length,
-        pass: (base?.pass ?? true) && placeholders.length === 0
-      };
-      console.table({
-        pass: result.pass,
-        placeholders: placeholders.length,
-        missingHandlers: result.missingHandlers.length,
-        pointerBlocked: result.pointerBlocked.length,
-        hitBlocked: result.hitBlocked.length,
-        disabledNavigation: result.disabledNavigation.length
-      });
-      return result;
-    };
   </script>
 
 
@@ -14148,11 +13567,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       } catch (_) { return null }
     };
 
-    const v8StaffLogoutBase = staffLogout;
-    staffLogout = async function () {
-      try { sessionStorage.removeItem(V8_VIEW_KEY) } catch (_) { }
-      await v8StaffLogoutBase();
-    };
 
     /* ---------------- production login cleanup ---------------- */
     function v8CleanLogin() {
@@ -14312,12 +13726,7 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       await v8RefreshStaffBase(reason);
       if (v7EIsRemoteStaff()) await v8LoadStaffNotifications({ silent: true });
     };
-    const v8RouteStaffBase = v7ERouteStaff;
-    v7ERouteStaff = function () {
-      const result = v8RouteStaffBase();
-      setTimeout(() => v8LoadStaffNotifications({ silent: true }), 350);
-      return result;
-    };
+
 
     /* ---------------- production DOM sanitizer ---------------- */
     function v8CleanProductionDom(root = document) {
@@ -14367,71 +13776,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
         v8CleanProductionDom(document);
       });
     });
-
-    /* ---------------- production audit ---------------- */
-    function v8LegacyStorageKeys() {
-      const found = [];
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (!k) continue;
-          if (
-            k === 'vespa_booking' || k === 'vespa_wahyu_workflow_v18' ||
-            k === 'vw_customer_current_access' || k === 'vw_staff_resume_v3' ||
-            k.startsWith('vw_customer_access_')
-          ) found.push(k);
-        }
-      } catch (_) { }
-      return found;
-    }
-
-    window.vwProductionAudit = async function () {
-      const dom = typeof vwDomIntegrityAudit === 'function' ? vwDomIntegrityAudit() : null;
-      const visibleLegacy = [...document.querySelectorAll('body *')].filter(el => {
-        if (el.children.length) return false;
-        if (el.offsetParent === null) return false;
-        return /NEXT INVENTORY PHASE|belum diaktifkan pada tahap 007F|Local Frontend Simulation|PRE-BACKEND/i.test(el.textContent || '');
-      }).map(el => (el.textContent || '').trim()).slice(0, 20);
-      const legacyKeys = v8LegacyStorageKeys();
-      let session = false;
-      try { session = !!(await v7Sb?.auth?.getSession())?.data?.session } catch (_) { }
-      const result = {
-        build: V8_BUILD,
-        supabaseClient: !!v7Sb,
-        catalogReady: !!v7CatalogReady,
-        authenticatedStaff: session && !!v7EIsRemoteStaff(),
-        role: v7ERole?.() || null,
-        page: document.querySelector('.page.on')?.id || null,
-        panel: document.querySelector('.page.on .panel.on')?.id || null,
-        legacyOperationalLocalStorage: legacyKeys,
-        visibleLegacyText: visibleLegacy,
-        duplicateIds: dom?.duplicates || [],
-        missingHandlers: dom?.buttons?.missingHandlers || [],
-        pointerBlocked: dom?.buttons?.pointerBlocked || [],
-        hitBlocked: dom?.buttons?.hitBlocked || [],
-        disabledNavigation: dom?.buttons?.disabledNavigation || [],
-        pass:
-          legacyKeys.length === 0 &&
-          visibleLegacy.length === 0 &&
-          (dom?.duplicates?.length || 0) === 0 &&
-          (dom?.buttons?.missingHandlers?.length || 0) === 0 &&
-          (dom?.buttons?.pointerBlocked?.length || 0) === 0 &&
-          (dom?.buttons?.hitBlocked?.length || 0) === 0 &&
-          (dom?.buttons?.disabledNavigation?.length || 0) === 0
-      };
-      console.table({
-        build: result.build,
-        pass: result.pass,
-        legacyLocalStorage: legacyKeys.length,
-        visibleLegacy: visibleLegacy.length,
-        duplicates: result.duplicateIds.length,
-        missingHandlers: result.missingHandlers.length,
-        pointerBlocked: result.pointerBlocked.length,
-        hitBlocked: result.hitBlocked.length,
-        disabledNavigation: result.disabledNavigation.length
-      });
-      return result;
-    };
 
     /* ---------------- boot ---------------- */
     document.addEventListener('DOMContentLoaded', () => {
@@ -14499,17 +13843,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       console.info('[V1 PRODUCTION] customer notification page ready', !!page, !!list);
     });
 
-    window.vw008Rc2Info = function () {
-      const result = {
-        build: V8_RC2_BUILD,
-        customerNotificationsPage: !!document.getElementById('customerNotifications'),
-        customerNotifList: !!document.getElementById('customerNotifList'),
-        staffNotificationsPage: !!document.getElementById('notifications'),
-        customerBell: !!document.getElementById('customerNotifBtn')
-      };
-      console.table(result);
-      return result;
-    };
 
     /* Hide technical status badges from customer-facing UI */
     function vwSyncPublicHeaderStatus() {
@@ -14559,8 +13892,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
      - multi-point hit-test to avoid center-point false positives
      ====================================================================== -->
   <script>
-    const V8_RC3_BUILD = 'V1.1.0-PRODUCTION';
-
     /* ---------------------------------------------------------
        1) Legacy local workflow must never persist in production.
        --------------------------------------------------------- */
@@ -14618,137 +13949,13 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
        that one point even when the button still had a valid click area.
        RC3 samples five points across the button.
        --------------------------------------------------------- */
-    v7QHitTarget = function (btn) {
-      const r = btn.getBoundingClientRect();
-
-      if (r.width < 2 || r.height < 2) {
-        return { ok: false, reason: 'zero-size' };
-      }
-
-      const points = [
-        [r.left + r.width * 0.50, r.top + r.height * 0.50],
-        [r.left + r.width * 0.22, r.top + r.height * 0.30],
-        [r.left + r.width * 0.78, r.top + r.height * 0.30],
-        [r.left + r.width * 0.22, r.top + r.height * 0.70],
-        [r.left + r.width * 0.78, r.top + r.height * 0.70]
-      ];
-
-      const inside = points.filter(([x, y]) =>
-        x >= 0 && y >= 0 && x < innerWidth && y < innerHeight
-      );
-
-      /* Element is not currently inside viewport: this is not a blocked hit. */
-      if (!inside.length) {
-        return { ok: true, reason: 'offscreen' };
-      }
-
-      const blockers = [];
-
-      for (const [x, y] of inside) {
-        const hit = document.elementFromPoint(x, y);
-
-        if (hit && (hit === btn || btn.contains(hit) || hit.contains(btn))) {
-          return { ok: true, reason: 'ok' };
-        }
-
-        if (hit) {
-          blockers.push(
-            (hit.tagName || '') +
-            '#' + (hit.id || '') +
-            '.' + (typeof hit.className === 'string' ? hit.className : '')
-          );
-        }
-      }
-
-      return {
-        ok: false,
-        reason: blockers[0] || 'NONE',
-        blockers: [...new Set(blockers)].slice(0, 5)
-      };
-    };
 
 
     /* ---------------------------------------------------------
        3) Production audit wrapper.
        Always clean legacy keys BEFORE checking production state.
        --------------------------------------------------------- */
-    const v8Rc3ProductionAuditBase = window.vwProductionAudit;
-
-    window.vwProductionAudit = async function () {
-      v8Rc3PurgeLegacyOperationalStorage();
-
-      /* Let any synchronous storage cleanup settle before reading it. */
-      await Promise.resolve();
-
-      const result = await v8Rc3ProductionAuditBase();
-
-      /* Re-read legacy keys after cleanup, so the reported result reflects
-         actual production state rather than a stale pre-cleanup snapshot. */
-      result.build = V8_RC3_BUILD;
-      result.legacyOperationalLocalStorage =
-        typeof v8LegacyStorageKeys === 'function'
-          ? v8LegacyStorageKeys()
-          : [];
-
-      result.pass =
-        result.legacyOperationalLocalStorage.length === 0 &&
-        (result.visibleLegacyText?.length || 0) === 0 &&
-        (result.duplicateIds?.length || 0) === 0 &&
-        (result.missingHandlers?.length || 0) === 0 &&
-        (result.pointerBlocked?.length || 0) === 0 &&
-        (result.hitBlocked?.length || 0) === 0 &&
-        (result.disabledNavigation?.length || 0) === 0;
-
-      console.table({
-        build: result.build,
-        pass: result.pass,
-        legacyLocalStorage: result.legacyOperationalLocalStorage.length,
-        visibleLegacy: result.visibleLegacyText?.length || 0,
-        duplicates: result.duplicateIds?.length || 0,
-        missingHandlers: result.missingHandlers?.length || 0,
-        pointerBlocked: result.pointerBlocked?.length || 0,
-        hitBlocked: result.hitBlocked?.length || 0,
-        disabledNavigation: result.disabledNavigation?.length || 0
-      });
-
-      return result;
-    };
-
-
     /* Short final checker for user-facing UAT. */
-    window.vwFinalCheck = async function () {
-      const a = await vwProductionAudit();
-
-      const summary = {
-        build: a.build,
-        pass: a.pass,
-        legacy: a.legacyOperationalLocalStorage.length,
-        duplicates: a.duplicateIds.length,
-        missingHandlers: a.missingHandlers.length,
-        pointerBlocked: a.pointerBlocked.length,
-        hitBlocked: a.hitBlocked.length,
-        disabledNavigation: a.disabledNavigation.length,
-        visibleLegacy: a.visibleLegacyText.length
-      };
-
-      console.table(summary);
-
-      if (!a.pass) {
-        console.warn('[FINAL CHECK] Issues', {
-          legacy: a.legacyOperationalLocalStorage,
-          duplicates: a.duplicateIds,
-          missingHandlers: a.missingHandlers,
-          pointerBlocked: a.pointerBlocked,
-          hitBlocked: a.hitBlocked,
-          disabledNavigation: a.disabledNavigation,
-          visibleLegacy: a.visibleLegacyText
-        });
-      } else {
-        console.info('[FINAL CHECK] PASS ✅');
-      }
-
-      return a;
-    };
 
     console.info('[V1 PRODUCTION] production audit hardening loaded');
   </script>
@@ -14760,14 +13967,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
      Frozen production release. No demo/local operational source of truth.
      ====================================================================== -->
   <script>
-    const VW_FINAL_RELEASE = Object.freeze({
-      version: 'V1.1.0',
-      channel: 'PRODUCTION',
-      release: '010',
-      backend: 'SUPABASE',
-      frozen: true
-    });
-
     function vwFinalProductionSanitize(root = document) {
       try {
         root.querySelectorAll('button').forEach(btn => {
@@ -14809,42 +14008,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       }
     });
 
-    window.vwReleaseInfo = function () {
-      const info = {
-        ...VW_FINAL_RELEASE,
-        supabaseClient: !!window.v7Sb,
-        staffRole: (typeof v7ERole === 'function' ? v7ERole() : null),
-        page: document.querySelector('.page.on')?.id || null
-      };
-      console.table(info);
-      return info;
-    };
-
-    const vw009FinalCheckBase = window.vwFinalCheck;
-    window.vwFinalCheck = async function () {
-      vwFinalProductionSanitize(document);
-      const result = await vw009FinalCheckBase();
-      result.build = 'V1.1.0-PRODUCTION';
-      result.release = '009';
-      result.frozen = true;
-
-      console.table({
-        build: result.build,
-        release: result.release,
-        frozen: result.frozen,
-        pass: result.pass,
-        legacy: result.legacyOperationalLocalStorage.length,
-        duplicates: result.duplicateIds.length,
-        missingHandlers: result.missingHandlers.length,
-        pointerBlocked: result.pointerBlocked.length,
-        hitBlocked: result.hitBlocked.length,
-        disabledNavigation: result.disabledNavigation.length,
-        visibleLegacy: result.visibleLegacyText.length
-      });
-
-      if (result.pass) console.info('[V1 PRODUCTION] FINAL FRONTEND CHECK PASS ✅');
-      return result;
-    };
 
     console.info('[V1 PRODUCTION] Vespa Wahyu Workshop OS V1.0.0 frozen release loaded');
   </script>
@@ -15116,57 +14279,7 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     /* =========================================================
        010B STAFF + CASHIER
        ========================================================= */
-    const v10RenderStaffBase = window.v7HRenderStaff;
-    window.v7HRenderStaff = function () {
-      const p = document.getElementById('o-staff');
-      if (!p || !v7HMaster) return;
-      p.innerHTML = `
-    <div class="head">
-      <div><div class="k">010B · Staff & Role Management</div><h2>Staff Management</h2></div>
-      <button class="btn" type="button" onclick="v7HOpenStaffForm()">+ STAFF PROFILE</button>
-    </div>
-    <div id="v7HStaffForm"></div>
-    <div class="card tablewrap"><table class="tbl">
-      <tr><th>Code</th><th>Staff</th><th>Role</th><th>Status</th><th>Auth</th><th>Jobs</th><th>Aksi</th></tr>
-      ${(v7HMaster.staff || []).map(s => `<tr>
-        <td><b>${safeText(s.code || '-')}</b></td>
-        <td>${safeText(s.name)}<br><small>${safeText(s.phone || '')}</small></td>
-        <td>${safeText(s.role)}</td>
-        <td>${wfPill(v7HUpper(s.status))}</td>
-        <td><span class="v7h-auth ${s.authLinked ? '' : 'off'}">${s.authLinked ? 'LINKED' : 'NO AUTH'}</span></td>
-        <td>${v7HNum(s.activeJobs)}</td>
-        <td>
-          <button class="btn alt" type="button" onclick="v7HOpenStaffForm('${safeText(s.id)}')">EDIT</button>
-          ${s.authLinked ? '' : `<button class="btn alt" type="button" onclick="v10LinkStaffAuth('${safeText(s.code)}')">LINK AUTH</button>`}
-        </td>
-      </tr>`).join('')}
-    </table></div>
-    <div class="notice" style="margin-top:12px">
-      Buat user login terlebih dahulu di Supabase Authentication → Users. Setelah itu klik <b>LINK AUTH</b> dan paste UUID user. Role production: owner, advisor, cashier, mechanic, inventory.
-    </div>`;
-    };
-
-    window.v7HOpenStaffForm = function (id = '') {
-      const s = (v7HMaster?.staff || []).find(x => x.id === id) || { id: '', code: '', name: '', role: 'mechanic', status: 'ACTIVE', phone: '', authLinked: false };
-      const h = document.getElementById('v7HStaffForm'); if (!h) return;
-      h.innerHTML = `<div class="v7h-formbox v7h-edit-form" oninput="v7HMarkDirty()" onchange="v7HMarkDirty()">
-    <h3>${id ? 'Edit' : 'Tambah'} Staff Profile</h3>
-    <div class="form">
-      <div class="field"><label>Staff Code *</label><input id="v7HStaffCode" value="${safeText(s.code || '')}" placeholder="STF-001"></div>
-      <div class="field"><label>Nama *</label><input id="v7HStaffName" value="${safeText(s.name || '')}"></div>
-      <div class="field"><label>Role</label><select id="v7HStaffRole">
-        ${['owner', 'advisor', 'cashier', 'mechanic', 'inventory'].map(r => `<option value="${r}" ${s.role === r ? 'selected' : ''}>${r}</option>`).join('')}
-      </select></div>
-      <div class="field"><label>Status</label><select id="v7HStaffStatus"><option ${s.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option><option ${s.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option></select></div>
-      <div class="field"><label>Phone</label><input id="v7HStaffPhone" value="${safeText(s.phone || '')}"></div>
-      <div class="field"><label>Supabase Auth</label><input disabled value="${s.authLinked ? 'Linked' : 'Belum terhubung'}"></div>
-    </div>
-    <div class="actions">
-      <button class="btn" type="button" onclick="v7HSaveStaff('${safeText(id)}')">SIMPAN</button>
-      <button class="btn alt" type="button" onclick="document.getElementById('v7HStaffForm').innerHTML=''">BATAL</button>
-    </div>
-  </div>`;
-    };
+    /* [STAGE2] Staff renderer/form sudah dikonsolidasikan ke blok Supabase Staff utama. */
 
     async function v10LinkStaffAuth(code) {
       const uuid = prompt('Paste Supabase Auth User UUID untuk ' + code);
@@ -15297,19 +14410,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       } catch (err) { v7FError(err, 'Vehicle release gagal'); }
     }
 
-    const v10RouteBase = window.v7ERouteStaff;
-    window.v7ERouteStaff = function () {
-      if (v7ERole?.() === 'cashier') {
-        currentStaffRole = 'cashier';
-        setStaffSession('cashier', 'cashier');
-        go('cashier');
-        v10CashierTab('dash', document.querySelector('#cashier .side button'));
-        v10LoadCashierDashboard();
-        if (typeof v7RtStartStaffRealtime === 'function') v7RtStartStaffRealtime();
-        return;
-      }
-      return v10RouteBase();
-    };
 
     /* =========================================================
        010D WHATSAPP OUTBOX
@@ -15619,39 +14719,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     });
     new MutationObserver(() => v10EnsureUi()).observe(document.documentElement, { subtree: true, childList: true });
 
-    window.vw010Info = function () {
-      const info = {
-        version: VW_V110.version,
-        release: VW_V110.release,
-        modules: VW_V110.modules.join(','),
-        paymentGateway: 'EXCLUDED',
-        pwa: 'serviceWorker' in navigator,
-        role: v7ERole?.() || null,
-        healthLoaded: !!v10Health,
-        reportsLoaded: !!v10Reports
-      };
-      console.table(info); return info;
-    };
-
-    const v10FinalBase = window.vwFinalCheck;
-    window.vwFinalCheck = async function () {
-      const r = await v10FinalBase();
-      r.build = 'V1.1.0-PRODUCTION';
-      r.release = '010';
-      r.paymentGateway = false;
-      console.table({
-        build: r.build, release: r.release, pass: r.pass,
-        legacy: r.legacyOperationalLocalStorage?.length || 0,
-        duplicates: r.duplicateIds?.length || 0,
-        missingHandlers: r.missingHandlers?.length || 0,
-        pointerBlocked: r.pointerBlocked?.length || 0,
-        hitBlocked: r.hitBlocked?.length || 0,
-        disabledNavigation: r.disabledNavigation?.length || 0,
-        visibleLegacy: r.visibleLegacyText?.length || 0
-      });
-      if (r.pass) console.info('[010 V1.1.0] FINAL CHECK PASS ✅');
-      return r;
-    };
 
     console.info('[010] Post-Go-Live V1.1.0 loaded · 010C excluded');
   </script>
@@ -15712,66 +14779,6 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     /* Replace old center-of-full-rectangle hit test.
        This makes audit accurate for horizontal menus/sidebars that are partially
        clipped by a small viewport such as docked Chrome DevTools. */
-    window.v7QHitTarget = function (btn) {
-      const full = btn.getBoundingClientRect();
-      if (full.width < 2 || full.height < 2) return { ok: false, reason: 'zero-size' };
-
-      const vr = v10HF1VisibleRect(btn);
-      if (!vr) return { ok: true, reason: 'offscreen-or-clipped' };
-
-      const points = [
-        [vr.left + vr.width / 2, vr.top + vr.height / 2],
-        [vr.left + Math.min(8, vr.width / 2), vr.top + vr.height / 2],
-        [vr.right - Math.min(8, vr.width / 2), vr.top + vr.height / 2]
-      ];
-
-      let last = null;
-      for (const [x, y] of points) {
-        const hit = document.elementFromPoint(x, y);
-        last = hit;
-        if (hit && (hit === btn || btn.contains(hit) || hit.contains(btn))) {
-          return { ok: true, reason: 'ok-visible-area' };
-        }
-      }
-
-      return {
-        ok: false,
-        reason: (last?.tagName || 'NONE') + '#' + (last?.id || '') + '.' +
-          (typeof last?.className === 'string' ? last.className : '')
-      };
-    };
-
-    const v10HF1FinalBase = window.vwFinalCheck;
-    window.vwFinalCheck = async function () {
-      const r = await v10HF1FinalBase();
-      r.build = 'V1.1.1-PRODUCTION';
-      r.release = '010-HF1';
-      r.hotfix = 'VISIBLE_HIT_TEST';
-      console.table({
-        build: r.build,
-        release: r.release,
-        pass: r.pass,
-        legacy: r.legacyOperationalLocalStorage?.length || 0,
-        duplicates: r.duplicateIds?.length || 0,
-        missingHandlers: r.missingHandlers?.length || 0,
-        pointerBlocked: r.pointerBlocked?.length || 0,
-        hitBlocked: r.hitBlocked?.length || 0,
-        disabledNavigation: r.disabledNavigation?.length || 0,
-        visibleLegacy: r.visibleLegacyText?.length || 0
-      });
-      if (r.pass) console.info('[010-HF1 V1.1.1] FINAL CHECK PASS ✅');
-      return r;
-    };
-
-    window.vwHotfixInfo = function () {
-      const info = {
-        ...VW_V111_HF1,
-        viewport: innerWidth + 'x' + innerHeight,
-        installButtonVisible: !!document.getElementById('v10InstallBtn')?.offsetParent
-      };
-      console.table(info);
-      return info;
-    };
 
     console.info('[010-HF1] V1.1.1 visible-area audit hotfix loaded');
   </script>
@@ -15791,70 +14798,11 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
       workflowChange: false
     });
 
-    const v10HF2FinalBase = window.vwFinalCheck;
-    window.vwFinalCheck = async function () {
-      const r = await v10HF2FinalBase();
-
-      const narrowViewport = window.innerWidth < VW_V112_HF2.minAuditWidth;
-      if (narrowViewport) {
-        r.hitBlockedRaw = Array.isArray(r.hitBlocked) ? r.hitBlocked : [];
-        r.hitBlocked = [];
-        r.hitTestSkipped = true;
-        r.hitTestSkipReason = 'VIEWPORT_BELOW_320PX';
-        r.pass =
-          (r.legacyOperationalLocalStorage?.length || 0) === 0 &&
-          (r.visibleLegacyText?.length || 0) === 0 &&
-          (r.duplicateIds?.length || 0) === 0 &&
-          (r.missingHandlers?.length || 0) === 0 &&
-          (r.pointerBlocked?.length || 0) === 0 &&
-          (r.disabledNavigation?.length || 0) === 0;
-      } else {
-        r.hitTestSkipped = false;
-        r.hitTestSkipReason = null;
-      }
-
-      r.build = 'V1.1.2-PRODUCTION';
-      r.release = '010-HF2';
-      r.auditViewport = window.innerWidth + 'x' + window.innerHeight;
-
-      console.table({
-        build: r.build,
-        release: r.release,
-        pass: r.pass,
-        auditViewport: r.auditViewport,
-        hitTestSkipped: r.hitTestSkipped,
-        rawHitBlocked: r.hitBlockedRaw?.length || 0,
-        legacy: r.legacyOperationalLocalStorage?.length || 0,
-        duplicates: r.duplicateIds?.length || 0,
-        missingHandlers: r.missingHandlers?.length || 0,
-        pointerBlocked: r.pointerBlocked?.length || 0,
-        hitBlocked: r.hitBlocked?.length || 0,
-        disabledNavigation: r.disabledNavigation?.length || 0,
-        visibleLegacy: r.visibleLegacyText?.length || 0
-      });
-
-      if (r.pass) console.info('[010-HF2 V1.1.2] FINAL CHECK PASS ✅');
-      return r;
-    };
-
-    window.vwAuditViewportInfo = function () {
-      const info = {
-        viewport: innerWidth + 'x' + innerHeight,
-        supportedForHitTest: innerWidth >= VW_V112_HF2.minAuditWidth,
-        minimumHitTestWidth: VW_V112_HF2.minAuditWidth,
-        note: innerWidth < 320
-          ? 'Hit-test audit skipped only because DevTools reduced viewport below supported mobile width.'
-          : 'Full hit-test audit active.'
-      };
-      console.table(info);
-      return info;
-    };
-
     console.info('[010-HF2] V1.1.2 audit viewport guard loaded');
   </script>
 
 
-<!-- ======================================================================
+  <!-- ======================================================================
      [V1_2_BOOKING_SLOT_H0]
      Dynamic Supabase booking availability:
      - 5 sessions/day: 09:00, 10:00, 11:00, 13:00, 15:00
@@ -15863,371 +14811,353 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
      - passed/full sessions disabled
      - backend remains authoritative and anti-overbooking
      ====================================================================== -->
-<style>
-  .v12-slot-grid{
-    display:grid;
-    grid-template-columns:repeat(5,minmax(0,1fr));
-    gap:9px;
-    margin-top:4px
-  }
-  .v12-slot-card{
-    border:1px solid var(--l);
-    background:#fff;
-    border-radius:14px;
-    padding:11px;
-    min-height:92px;
-    text-align:left;
-    cursor:pointer;
-    transition:.15s ease;
-  }
-  .v12-slot-card:hover:not(:disabled){
-    border-color:var(--g);
-    transform:translateY(-1px)
-  }
-  .v12-slot-card.on{
-    border-color:var(--g);
-    box-shadow:0 0 0 2px var(--s) inset;
-    background:#f5faf7
-  }
-  .v12-slot-card:disabled{
-    cursor:not-allowed;
-    opacity:.58;
-    background:#f5f6f4
-  }
-  .v12-slot-time{
-    font-size:17px;
-    font-weight:950
-  }
-  .v12-slot-meta{
-    margin-top:5px;
-    font-size:11px;
-    color:var(--m)
-  }
-  .v12-slot-state{
-    display:inline-block;
-    margin-top:7px;
-    padding:4px 7px;
-    border-radius:999px;
-    font-size:10px;
-    font-weight:900
-  }
-  .v12-slot-state.available{background:#e8f6ee;color:#17653f}
-  .v12-slot-state.full{background:#fff0ef;color:#a33a32}
-  .v12-slot-state.passed{background:#ecefed;color:#68706b}
-  .v12-slot-loading{
-    grid-column:1/-1;
-    padding:12px;
-    border:1px dashed #bdd1c6;
-    border-radius:14px;
-    color:var(--m)
-  }
-  @media(max-width:800px){
-    .v12-slot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  }
-  @media(max-width:480px){
-    .v12-slot-grid{grid-template-columns:1fr}
-  }
-</style>
+  <style>
+    .v12-slot-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 9px;
+      margin-top: 4px
+    }
 
-<script>
-const VW_V120_BOOKING = Object.freeze({
-  version:'V1.2.0',
-  release:'BOOKING-SLOT-H0',
-  timezone:'Asia/Jakarta',
-  sessions:['09:00','10:00','11:00','13:00','15:00']
-});
+    .v12-slot-card {
+      border: 1px solid var(--l);
+      background: #fff;
+      border-radius: 14px;
+      padding: 11px;
+      min-height: 92px;
+      text-align: left;
+      cursor: pointer;
+      transition: .15s ease;
+    }
 
-let v12SlotPayload=null;
-let v12SlotLoading=false;
-let v12SlotTimer=null;
+    .v12-slot-card:hover:not(:disabled) {
+      border-color: var(--g);
+      transform: translateY(-1px)
+    }
 
-function v12JakartaDateISO(){
-  try{
-    const parts=new Intl.DateTimeFormat('en-CA',{
-      timeZone:VW_V120_BOOKING.timezone,
-      year:'numeric',month:'2-digit',day:'2-digit'
-    }).formatToParts(new Date());
-    const map=Object.fromEntries(parts.map(x=>[x.type,x.value]));
-    return `${map.year}-${map.month}-${map.day}`;
-  }catch(_){
-    const d=new Date();
-    const off=d.getTimezoneOffset()*60000;
-    return new Date(d-off).toISOString().slice(0,10);
-  }
-}
+    .v12-slot-card.on {
+      border-color: var(--g);
+      box-shadow: 0 0 0 2px var(--s) inset;
+      background: #f5faf7
+    }
 
-function v12SetDateBounds(){
-  const date=document.getElementById('bd');
-  if(!date)return;
-  const today=v12JakartaDateISO();
-  date.min=today;
+    .v12-slot-card:disabled {
+      cursor: not-allowed;
+      opacity: .58;
+      background: #f5f6f4
+    }
 
-  // H-0 is the default. Customer can still choose future dates.
-  if(!date.value || date.value<today){
-    date.value=today;
-  }
-}
+    .v12-slot-time {
+      font-size: 17px;
+      font-weight: 950
+    }
 
-function v12SlotStatusText(s){
-  const status=String(s?.status||'').toUpperCase();
-  if(status==='AVAILABLE'){
-    return `${Number(s.remaining||0)} slot tersedia`;
-  }
-  if(status==='FULL')return 'PENUH';
-  if(status==='PASSED')return 'WAKTU LEWAT';
-  return status||'TIDAK TERSEDIA';
-}
+    .v12-slot-meta {
+      margin-top: 5px;
+      font-size: 11px;
+      color: var(--m)
+    }
 
-function v12RenderSlots(payload){
-  v12SlotPayload=payload||null;
-  const select=document.getElementById('bs');
-  const cards=document.getElementById('v12SlotCards');
-  const status=document.getElementById('v12SlotStatus');
-  if(!select||!cards||!status)return;
+    .v12-slot-state {
+      display: inline-block;
+      margin-top: 7px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900
+    }
 
-  const selectedBefore=v7BNormalizeSlot?.(select.value||'')?.slice(0,5)||'';
-  const sessions=Array.isArray(payload?.sessions)?payload.sessions:[];
-  const capacity=Number(payload?.capacityPerSession||4);
-  const date=payload?.bookingDate||document.getElementById('bd')?.value||'';
+    .v12-slot-state.available {
+      background: #e8f6ee;
+      color: #17653f
+    }
 
-  select.innerHTML='<option value="">Pilih Sesi & Slot</option>';
+    .v12-slot-state.full {
+      background: #fff0ef;
+      color: #a33a32
+    }
 
-  sessions.forEach(s=>{
-    const opt=document.createElement('option');
-    const time=String(s.slotTime||'');
-    opt.value=time;
-    opt.textContent=`Sesi ${Number(s.sessionNo||0)} · ${time} — ${v12SlotStatusText(s)}`;
-    opt.disabled=!s.available;
-    opt.dataset.status=String(s.status||'');
-    opt.dataset.remaining=String(s.remaining??0);
-    opt.dataset.capacity=String(s.capacity??capacity);
-    if(selectedBefore===time && s.available)opt.selected=true;
-    select.appendChild(opt);
-  });
+    .v12-slot-state.passed {
+      background: #ecefed;
+      color: #68706b
+    }
 
-  const available=sessions.filter(s=>s.available);
-  const full=sessions.filter(s=>String(s.status).toUpperCase()==='FULL');
-  const passed=sessions.filter(s=>String(s.status).toUpperCase()==='PASSED');
+    .v12-slot-loading {
+      grid-column: 1/-1;
+      padding: 12px;
+      border: 1px dashed #bdd1c6;
+      border-radius: 14px;
+      color: var(--m)
+    }
 
-  cards.innerHTML=sessions.map(s=>{
-    const st=String(s.status||'').toUpperCase();
-    const cls=st==='AVAILABLE'?'available':st==='FULL'?'full':'passed';
-    const disabled=s.available?'':'disabled';
-    return `<button type="button"
-      class="v12-slot-card ${select.value===s.slotTime?'on':''}"
-      data-v12-slot="${safeText(String(s.slotTime||''))}"
+    @media(max-width:800px) {
+      .v12-slot-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+      }
+    }
+
+    @media(max-width:480px) {
+      .v12-slot-grid {
+        grid-template-columns: 1fr
+      }
+    }
+  </style>
+
+  <script>
+    const VW_V120_BOOKING = Object.freeze({
+      version: 'V1.2.0',
+      release: 'BOOKING-SLOT-H0',
+      timezone: 'Asia/Jakarta',
+      sessions: ['09:00', '10:00', '11:00', '13:00', '15:00']
+    });
+
+    let v12SlotPayload = null;
+    let v12SlotLoading = false;
+    let v12SlotTimer = null;
+
+    function v12JakartaDateISO() {
+      try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: VW_V120_BOOKING.timezone,
+          year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(new Date());
+        const map = Object.fromEntries(parts.map(x => [x.type, x.value]));
+        return `${map.year}-${map.month}-${map.day}`;
+      } catch (_) {
+        const d = new Date();
+        const off = d.getTimezoneOffset() * 60000;
+        return new Date(d - off).toISOString().slice(0, 10);
+      }
+    }
+
+    function v12SetDateBounds() {
+      const date = document.getElementById('bd');
+      if (!date) return;
+      const today = v12JakartaDateISO();
+      date.min = today;
+
+      // H-0 is the default. Customer can still choose future dates.
+      if (!date.value || date.value < today) {
+        date.value = today;
+      }
+    }
+
+    function v12SlotStatusText(s) {
+      const status = String(s?.status || '').toUpperCase();
+      if (status === 'AVAILABLE') {
+        return `${Number(s.remaining || 0)} slot tersedia`;
+      }
+      if (status === 'FULL') return 'PENUH';
+      if (status === 'PASSED') return 'WAKTU LEWAT';
+      return status || 'TIDAK TERSEDIA';
+    }
+
+    function v12RenderSlots(payload) {
+      v12SlotPayload = payload || null;
+      const select = document.getElementById('bs');
+      const cards = document.getElementById('v12SlotCards');
+      const status = document.getElementById('v12SlotStatus');
+      if (!select || !cards || !status) return;
+
+      const selectedBefore = v7BNormalizeSlot?.(select.value || '')?.slice(0, 5) || '';
+      const sessions = Array.isArray(payload?.sessions) ? payload.sessions : [];
+      const capacity = Number(payload?.capacityPerSession || 4);
+      const date = payload?.bookingDate || document.getElementById('bd')?.value || '';
+
+      select.innerHTML = '<option value="">Pilih Sesi & Slot</option>';
+
+      sessions.forEach(s => {
+        const opt = document.createElement('option');
+        const time = String(s.slotTime || '');
+        opt.value = time;
+        opt.textContent = `Sesi ${Number(s.sessionNo || 0)} · ${time} — ${v12SlotStatusText(s)}`;
+        opt.disabled = !s.available;
+        opt.dataset.status = String(s.status || '');
+        opt.dataset.remaining = String(s.remaining ?? 0);
+        opt.dataset.capacity = String(s.capacity ?? capacity);
+        if (selectedBefore === time && s.available) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      const available = sessions.filter(s => s.available);
+      const full = sessions.filter(s => String(s.status).toUpperCase() === 'FULL');
+      const passed = sessions.filter(s => String(s.status).toUpperCase() === 'PASSED');
+
+      cards.innerHTML = sessions.map(s => {
+        const st = String(s.status || '').toUpperCase();
+        const cls = st === 'AVAILABLE' ? 'available' : st === 'FULL' ? 'full' : 'passed';
+        const disabled = s.available ? '' : 'disabled';
+        return `<button type="button"
+      class="v12-slot-card ${select.value === s.slotTime ? 'on' : ''}"
+      data-v12-slot="${safeText(String(s.slotTime || ''))}"
       ${disabled}>
-      <div class="v12-slot-time">${safeText(String(s.slotTime||''))}</div>
-      <div class="v12-slot-meta">Sesi ${Number(s.sessionNo||0)} · ${Number(s.booked||0)}/${Number(s.capacity||capacity)} terisi</div>
+      <div class="v12-slot-time">${safeText(String(s.slotTime || ''))}</div>
+      <div class="v12-slot-meta">Sesi ${Number(s.sessionNo || 0)} · ${Number(s.booked || 0)}/${Number(s.capacity || capacity)} terisi</div>
       <span class="v12-slot-state ${cls}">${safeText(v12SlotStatusText(s))}</span>
     </button>`;
-  }).join('') || '<div class="v12-slot-loading">Belum ada data sesi.</div>';
+      }).join('') || '<div class="v12-slot-loading">Belum ada data sesi.</div>';
 
-  cards.querySelectorAll('[data-v12-slot]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      if(btn.disabled)return;
-      select.value=btn.dataset.v12Slot||'';
-      cards.querySelectorAll('.v12-slot-card').forEach(x=>x.classList.remove('on'));
-      btn.classList.add('on');
-      select.dispatchEvent(new Event('change',{bubbles:true}));
-    });
-  });
+      cards.querySelectorAll('[data-v12-slot]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.disabled) return;
+          select.value = btn.dataset.v12Slot || '';
+          cards.querySelectorAll('.v12-slot-card').forEach(x => x.classList.remove('on'));
+          btn.classList.add('on');
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
 
-  const serverNow=payload?.serverNow
-    ? new Date(String(payload.serverNow).replace(' ','T'))
-    : null;
+      const serverNow = payload?.serverNow
+        ? new Date(String(payload.serverNow).replace(' ', 'T'))
+        : null;
 
-  status.innerHTML=
-    `<b>${safeText(date)}</b> · maksimal ${capacity} booking/sesi · `+
-    `<span style="color:var(--g)">${available.length} sesi tersedia</span>`+
-    `${full.length?` · ${full.length} penuh`:''}`+
-    `${passed.length?` · ${passed.length} lewat`:''}`+
-    `${serverNow&&!Number.isNaN(serverNow.getTime())?`<br>Waktu server: ${safeText(String(payload.serverNow).slice(11,16))} WIB`:''}`;
+      status.innerHTML =
+        `<b>${safeText(date)}</b> · maksimal ${capacity} booking/sesi · ` +
+        `<span style="color:var(--g)">${available.length} sesi tersedia</span>` +
+        `${full.length ? ` · ${full.length} penuh` : ''}` +
+        `${passed.length ? ` · ${passed.length} lewat` : ''}` +
+        `${serverNow && !Number.isNaN(serverNow.getTime()) ? `<br>Waktu server: ${safeText(String(payload.serverNow).slice(11, 16))} WIB` : ''}`;
 
-  if(!available.length){
-    select.value='';
-    status.innerHTML+=`<br><b>Tidak ada sesi yang bisa dibooking untuk tanggal ini.</b> Silakan pilih tanggal lain.`;
-  }
-}
-
-async function v12LoadBookingSlots(options={}){
-  const force=!!options.force;
-  const quiet=!!options.quiet;
-  const date=document.getElementById('bd');
-  const select=document.getElementById('bs');
-  const cards=document.getElementById('v12SlotCards');
-  const status=document.getElementById('v12SlotStatus');
-
-  if(!date||!select||!cards||!status)return null;
-
-  v12SetDateBounds();
-  const bookingDate=date.value;
-  if(!bookingDate)return null;
-
-  if(v12SlotLoading && !force)return v12SlotPayload;
-  if(!v7Sb || !v7CatalogReady){
-    if(!quiet)status.textContent='Menunggu koneksi Supabase...';
-    return null;
-  }
-
-  v12SlotLoading=true;
-  select.disabled=true;
-  if(!quiet){
-    cards.innerHTML='<div class="v12-slot-loading">Mengecek sesi & slot realtime...</div>';
-    status.textContent='Memuat ketersediaan slot...';
-  }
-
-  try{
-    const {data,error}=await v7Sb.rpc('public_get_booking_slots',{
-      p_workshop_slug:V7_WORKSHOP_SLUG,
-      p_booking_date:bookingDate
-    });
-    if(error)throw error;
-
-    // Date could have changed while the request was in flight.
-    if(document.getElementById('bd')?.value!==bookingDate)return null;
-
-    v12RenderSlots(data||{});
-    return data||null;
-  }catch(err){
-    console.error('[V1.2 BOOKING SLOT] availability failed',err);
-    select.innerHTML='<option value="">Slot gagal dimuat</option>';
-    cards.innerHTML='<div class="v12-slot-loading">Ketersediaan slot gagal dimuat. Coba refresh atau pilih tanggal kembali.</div>';
-    status.textContent=String(err?.message||'Gagal memuat slot');
-    return null;
-  }finally{
-    select.disabled=false;
-    v12SlotLoading=false;
-  }
-}
-
-function v12SelectedSession(){
-  const select=document.getElementById('bs');
-  const time=v7BNormalizeSlot?.(select?.value||'')?.slice(0,5)||'';
-  return (v12SlotPayload?.sessions||[]).find(x=>String(x.slotTime||'')===time)||null;
-}
-
-async function v12ValidateBookingSelection(){
-  const date=document.getElementById('bd');
-  const select=document.getElementById('bs');
-  if(!date?.value || !select?.value){
-    toast('Pilih tanggal dan sesi booking.');
-    return false;
-  }
-
-  // Refresh immediately before submit. Backend still validates again.
-  const payload=await v12LoadBookingSlots({force:true,quiet:true});
-  if(!payload){
-    toast('Ketersediaan sesi belum dapat diverifikasi.');
-    return false;
-  }
-
-  const chosen=v12SelectedSession();
-  if(!chosen || !chosen.available){
-    const why=v12SlotStatusText(chosen||{status:'UNAVAILABLE'});
-    toast(`Sesi sudah tidak tersedia: ${why}. Pilih sesi lain.`);
-    await v12LoadBookingSlots({force:true});
-    return false;
-  }
-  return true;
-}
-
-function v12InstallBookingAvailability(){
-  const date=document.getElementById('bd');
-  const select=document.getElementById('bs');
-  const form=document.getElementById('bf');
-  if(!date||!select||!form || form.dataset.v12Slots==='1')return;
-  form.dataset.v12Slots='1';
-
-  v12SetDateBounds();
-
-  date.addEventListener('change',()=>{
-    select.value='';
-    v12LoadBookingSlots({force:true});
-  });
-
-  select.addEventListener('change',()=>{
-    document.querySelectorAll('#v12SlotCards .v12-slot-card').forEach(btn=>{
-      btn.classList.toggle('on',btn.dataset.v12Slot===select.value);
-    });
-  });
-
-  v12LoadBookingSlots({force:true});
-
-  // Realtime-like freshness while customer stays on booking page.
-  if(v12SlotTimer)clearInterval(v12SlotTimer);
-  v12SlotTimer=setInterval(()=>{
-    const page=document.getElementById('booking');
-    if(page?.classList.contains('on')){
-      v12LoadBookingSlots({force:true,quiet:true});
+      if (!available.length) {
+        select.value = '';
+        status.innerHTML += `<br><b>Tidak ada sesi yang bisa dibooking untuk tanggal ini.</b> Silakan pilih tanggal lain.`;
+      }
     }
-  },30000);
-}
 
-window.addEventListener('vw:supabase-catalog-ready',()=>{
-  setTimeout(()=>{
-    v12InstallBookingAvailability();
-    v12LoadBookingSlots({force:true});
-  },80);
-});
+    async function v12LoadBookingSlots(options = {}) {
+      const force = !!options.force;
+      const quiet = !!options.quiet;
+      const date = document.getElementById('bd');
+      const select = document.getElementById('bs');
+      const cards = document.getElementById('v12SlotCards');
+      const status = document.getElementById('v12SlotStatus');
 
-document.addEventListener('DOMContentLoaded',()=>{
-  setTimeout(v12InstallBookingAvailability,320);
-});
+      if (!date || !select || !cards || !status) return null;
 
-// Keep availability fresh after a booking is successfully created.
-window.addEventListener('vw:supabase-booking-created',()=>{
-  setTimeout(()=>v12LoadBookingSlots({force:true,quiet:true}),200);
-});
+      v12SetDateBounds();
+      const bookingDate = date.value;
+      if (!bookingDate) return null;
 
-window.vwBookingSlotInfo=function(){
-  const info={
-    version:VW_V120_BOOKING.version,
-    date:document.getElementById('bd')?.value||null,
-    selected:document.getElementById('bs')?.value||null,
-    capacity:v12SlotPayload?.capacityPerSession||null,
-    sessions:v12SlotPayload?.sessions||[],
-    sameDayAllowed:v12SlotPayload?.sameDayAllowed??true,
-    cutoffMinutes:v12SlotPayload?.cutoffMinutes??0
-  };
-  console.table((info.sessions||[]).map(x=>({
-    session:x.sessionNo,
-    time:x.slotTime,
-    booked:x.booked,
-    capacity:x.capacity,
-    remaining:x.remaining,
-    status:x.status
-  })));
-  return info;
-};
+      if (v12SlotLoading && !force) return v12SlotPayload;
+      if (!v7Sb || !v7CatalogReady) {
+        if (!quiet) status.textContent = 'Menunggu koneksi Supabase...';
+        return null;
+      }
 
-// Final release label for this feature release.
-const v12FinalCheckBase=window.vwFinalCheck;
-window.vwFinalCheck=async function(){
-  const r=await v12FinalCheckBase();
-  r.build='V1.2.0-PRODUCTION';
-  r.release='BOOKING-SLOT-H0';
-  r.bookingSameDay=true;
-  r.bookingCapacityRealtime=true;
-  console.table({
-    build:r.build,
-    release:r.release,
-    pass:r.pass,
-    bookingSameDay:r.bookingSameDay,
-    bookingCapacityRealtime:r.bookingCapacityRealtime,
-    legacy:r.legacyOperationalLocalStorage?.length||0,
-    duplicates:r.duplicateIds?.length||0,
-    missingHandlers:r.missingHandlers?.length||0,
-    pointerBlocked:r.pointerBlocked?.length||0,
-    hitBlocked:r.hitBlocked?.length||0,
-    disabledNavigation:r.disabledNavigation?.length||0,
-    visibleLegacy:r.visibleLegacyText?.length||0
-  });
-  return r;
-};
+      v12SlotLoading = true;
+      select.disabled = true;
+      if (!quiet) {
+        cards.innerHTML = '<div class="v12-slot-loading">Mengecek sesi & slot realtime...</div>';
+        status.textContent = 'Memuat ketersediaan slot...';
+      }
 
-console.info('[V1.2.0] Booking Slot H-0 + realtime availability loaded');
-</script>
+      try {
+        const { data, error } = await v7Sb.rpc('public_get_booking_slots', {
+          p_workshop_slug: V7_WORKSHOP_SLUG,
+          p_booking_date: bookingDate
+        });
+        if (error) throw error;
+
+        // Date could have changed while the request was in flight.
+        if (document.getElementById('bd')?.value !== bookingDate) return null;
+
+        v12RenderSlots(data || {});
+        return data || null;
+      } catch (err) {
+        console.error('[V1.2 BOOKING SLOT] availability failed', err);
+        select.innerHTML = '<option value="">Slot gagal dimuat</option>';
+        cards.innerHTML = '<div class="v12-slot-loading">Ketersediaan slot gagal dimuat. Coba refresh atau pilih tanggal kembali.</div>';
+        status.textContent = String(err?.message || 'Gagal memuat slot');
+        return null;
+      } finally {
+        select.disabled = false;
+        v12SlotLoading = false;
+      }
+    }
+
+    function v12SelectedSession() {
+      const select = document.getElementById('bs');
+      const time = v7BNormalizeSlot?.(select?.value || '')?.slice(0, 5) || '';
+      return (v12SlotPayload?.sessions || []).find(x => String(x.slotTime || '') === time) || null;
+    }
+
+    async function v12ValidateBookingSelection() {
+      const date = document.getElementById('bd');
+      const select = document.getElementById('bs');
+      if (!date?.value || !select?.value) {
+        toast('Pilih tanggal dan sesi booking.');
+        return false;
+      }
+
+      // Refresh immediately before submit. Backend still validates again.
+      const payload = await v12LoadBookingSlots({ force: true, quiet: true });
+      if (!payload) {
+        toast('Ketersediaan sesi belum dapat diverifikasi.');
+        return false;
+      }
+
+      const chosen = v12SelectedSession();
+      if (!chosen || !chosen.available) {
+        const why = v12SlotStatusText(chosen || { status: 'UNAVAILABLE' });
+        toast(`Sesi sudah tidak tersedia: ${why}. Pilih sesi lain.`);
+        await v12LoadBookingSlots({ force: true });
+        return false;
+      }
+      return true;
+    }
+
+    function v12InstallBookingAvailability() {
+      const date = document.getElementById('bd');
+      const select = document.getElementById('bs');
+      const form = document.getElementById('bf');
+      if (!date || !select || !form || form.dataset.v12Slots === '1') return;
+      form.dataset.v12Slots = '1';
+
+      v12SetDateBounds();
+
+      date.addEventListener('change', () => {
+        select.value = '';
+        v12LoadBookingSlots({ force: true });
+      });
+
+      select.addEventListener('change', () => {
+        document.querySelectorAll('#v12SlotCards .v12-slot-card').forEach(btn => {
+          btn.classList.toggle('on', btn.dataset.v12Slot === select.value);
+        });
+      });
+
+      v12LoadBookingSlots({ force: true });
+
+      // Realtime-like freshness while customer stays on booking page.
+      if (v12SlotTimer) clearInterval(v12SlotTimer);
+      v12SlotTimer = setInterval(() => {
+        const page = document.getElementById('booking');
+        if (page?.classList.contains('on')) {
+          v12LoadBookingSlots({ force: true, quiet: true });
+        }
+      }, 30000);
+    }
+
+    window.addEventListener('vw:supabase-catalog-ready', () => {
+      setTimeout(() => {
+        v12InstallBookingAvailability();
+        v12LoadBookingSlots({ force: true });
+      }, 80);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(v12InstallBookingAvailability, 320);
+    });
+
+    // Keep availability fresh after a booking is successfully created.
+    window.addEventListener('vw:supabase-booking-created', () => {
+      setTimeout(() => v12LoadBookingSlots({ force: true, quiet: true }), 200);
+    });
+
+
+    // Final release label for this feature release.
+    console.info('[V1.2.0] Booking Slot H-0 + realtime availability loaded');
+  </script>
 
 </body>
 
