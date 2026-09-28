@@ -1141,120 +1141,124 @@
       object-fit: contain;
       object-position: center;
     }
-  </style>
-  <style>
-      /* ======================================================================
-   ---------------------------- Footer ---------------------------------------
-   ======================================================================*/
+  
 
-    /* Style Utama Footer */
+    /* [STABLE_FINAL_FOOTER] */
     .site-footer {
-      background-color: #0d141e;
-      /* Warna latar gelap sesuai gambar */
-      color: #ffffff;
-      padding: 50px 20px 20px;
-      position: relative;
-      z-index: 1;
-      margin-bottom: 68px;
-      /* ruang untuk bottom navigation fixed */
-    }
-
+          background-color: #0d141e;
+          /* Warna latar gelap sesuai gambar */
+          color: #ffffff;
+          padding: 50px 20px 20px;
+        }
+    
+    .site-footer {
+          position: relative;
+          z-index: 1;
+          margin-bottom: 68px;
+          /* ruang untuk bottom navigation fixed */
+        }
+    
+    .site-footer {
+            padding: 34px 18px 24px;
+            margin-bottom: 64px;
+          }
+    
     .footer-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      /* 4 Kolom sejajar */
-      gap: 30px;
-    }
-
-    /* Styling Tiap Kolom */
+          max-width: 1200px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          /* 4 Kolom sejajar */
+          gap: 30px;
+        }
+    
+    .footer-container {
+            grid-template-columns: repeat(2, 1fr);
+            /* 2 Kolom di tablet */
+          }
+    
+    .footer-container {
+            grid-template-columns: 1fr;
+            /* 1 Kolom tumpuk di HP */
+          }
+    
+    .footer-container {
+            gap: 24px;
+          }
+    
     .footer-column h3 {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 20px;
-      color: #ffffff;
-    }
-
-    /* Kolom 1: Styling container icon */
+          font-size: 18px;
+          font-weight: 700;
+          margin-bottom: 20px;
+          color: #ffffff;
+        }
+    
     .social-png-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      color: #ffffff;
-      text-decoration: none;
-      font-family: sans-serif;
-      font-size: 15px;
-    }
-
-    /* Ukuran logo PNG */
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #ffffff;
+          text-decoration: none;
+          font-family: sans-serif;
+          font-size: 15px;
+        }
+    
     .icon-png {
-      width: 24px;
-      /* Atur lebar logo */
-      height: 24px;
-      /* Atur tinggi logo */
-      object-fit: contain;
-    }
-
-    /* Responsive untuk Tampilan HP/Tablet */
-    @media (max-width: 900px) {
-      .footer-container {
-        grid-template-columns: repeat(2, 1fr);
-        /* 2 Kolom di tablet */
-      }
-    }
-
-    @media (max-width: 550px) {
-      .footer-container {
-        grid-template-columns: 1fr;
-        /* 1 Kolom tumpuk di HP */
-      }
-    }
-
-    .site-footer p {
-      margin: 0;
-    }
-
+          width: 24px;
+          /* Atur lebar logo */
+          height: 24px;
+          /* Atur tinggi logo */
+          object-fit: contain;
+        }
+    
     .social-icons {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+    
     .footer-social-link {
-      color: #ffffff;
-      text-decoration: none;
-      opacity: .86;
-      font-weight: 700;
-      transition: opacity .2s ease, transform .2s ease;
-    }
-
+          color: #ffffff;
+          text-decoration: none;
+          opacity: .86;
+          font-weight: 700;
+          transition: opacity .2s ease, transform .2s ease;
+        }
+    
     .footer-social-link:hover {
-      opacity: 1;
-      transform: translateX(2px);
-    }
-
+          opacity: 1;
+          transform: translateX(2px);
+        }
+    
     .footer-bottom {
-      max-width: 1200px;
-      margin: 34px auto 0;
-      padding-top: 18px;
-      border-top: 1px solid rgba(255, 255, 255, .12);
-      text-align: center;
-      font-size: 12px;
-      opacity: .65;
-    }
-
+          max-width: 1200px;
+          margin: 34px auto 0;
+          padding-top: 18px;
+          border-top: 1px solid rgba(255, 255, 255, .12);
+          text-align: center;
+          font-size: 12px;
+          opacity: .65;
+        }
+    
+    @media (max-width: 900px) {
+          .footer-container {
+            grid-template-columns: repeat(2, 1fr);
+            /* 2 Kolom di tablet */
+          }
+    
     @media (max-width: 550px) {
-      .site-footer {
-        padding: 34px 18px 24px;
-        margin-bottom: 64px;
-      }
+          .footer-container {
+            grid-template-columns: 1fr;
+            /* 1 Kolom tumpuk di HP */
+          }
+    
+    @media (max-width: 550px) {
+          .site-footer {
+            padding: 34px 18px 24px;
+            margin-bottom: 64px;
+          }
 
-      .footer-container {
-        gap: 24px;
-      }
-    }
   </style>
 
 
@@ -1457,8 +1461,7 @@
 
           <div class="notice"><b>Temuan mekanik:</b> V-Belt menunjukkan keausan dan direkomendasikan diganti bersama
             service CVT.</div>
-          <div class="actions"><button class="btn" onclick="go('approval')">LIHAT ESTIMASI</button><button
-              class="btn alt" onclick="go('completed')">SIMULASI SELESAI</button></div>
+          <div class="actions"><button class="btn" onclick="go('approval')">LIHAT ESTIMASI</button></div>
         </div>
       </div>
     </section>
@@ -1494,8 +1497,7 @@
         <div class="line"><span>Total</span><b>Rp780.000</b></div>
         <div class="notice" style="margin-top:12px">Payment: Cash · Transfer · Static QRIS · Dynamic QRIS (optional
           provider).</div>
-        <div class="actions"><button class="btn" onclick="go('record')">LIHAT SERVICE RECORD</button><button
-            class="btn alt" onclick="toast('Demo invoice')">LIHAT INVOICE</button></div>
+        <div class="actions"><button class="btn" onclick="go('record')">LIHAT SERVICE RECORD</button></div>
       </div>
     </section>
 
@@ -1534,7 +1536,7 @@
           <div style="font-size:72px">▦</div><b>Dynamic QRIS · Rp780.000</b>
           <p class="muted">Frontend preview. QR asli, expiry, callback/webhook dan konfirmasi otomatis dipasang saat
             integrasi payment provider.</p>
-          <button class="btn" onclick="simulateDynamicPaid()">SIMULASI PAYMENT CONFIRMED</button>
+          
         </div>
         <div class="actions">
           <button class="btn alt" onclick="go('completed')">← KEMBALI</button>
@@ -1660,22 +1662,14 @@
       <div class="card" style="max-width:520px;margin:28px auto">
         <div class="k">Staff System</div>
         <h2>Login Staff</h2>
-        <p class="muted">Semua staff menggunakan akun individual. Demo ini masuk sebagai Service Advisor / Kasir.</p>
+        <p class="muted">Masuk menggunakan akun staff. Hak akses mengikuti Staff Profile.</p>
         <div class="field"><label>Username / Email</label><input id="su" value=""></div>
         <div class="field" style="margin-top:10px"><label>Password</label><input id="spw" type="password" value="">
         </div>
 
-        <div class="field" style="margin-top:10px"><label>Demo Role</label><select id="demoRole">
-            <option value="advisor">Service Advisor / Kasir</option>
-            <option value="mechanic">Mechanic — Rizky</option>
-            <option value="inventory">Parts / Inventory — Deni</option>
-            <option value="owner">Owner / Admin — Wahyu</option>
-          </select></div>
-
         <div class="actions"><button class="btn" onclick="loginStaff()">LOGIN</button><button class="btn alt"
             onclick="go('home')">KEMBALI</button></div>
-        <div class="notice" style="margin-top:12px">Auth Supabase belum dipasang. Username/password apa pun dapat
-          digunakan untuk testing frontend.</div>
+        <div class="notice" style="margin-top:12px">Login staff menggunakan Supabase Auth.</div>
       </div>
     </section>
 
@@ -1855,7 +1849,7 @@
             </div>
 
             <div class="actions"><button class="btn" onclick="toast('Estimate R0 dikirim')">KIRIM
-                ESTIMATE</button><button class="btn alt" onclick="toast('Demo assign mekanik')">ASSIGN MEKANIK</button>
+                ESTIMATE</button>
             </div>
           </div>
 
@@ -1952,8 +1946,7 @@
             </div>
             <div class="card">
               <div class="line"><span>V-Belt Sprint ×1</span><b>Rp450.000</b></div>
-              <div class="actions"><button class="btn" onclick="toast('Demo POS sale dikonfirmasi')">BAYAR &
-                  KONFIRMASI</button></div>
+              <div class="actions"></div>
             </div>
           </div>
         </div>
@@ -2113,8 +2106,7 @@
               <div class="field" style="margin-top:12px"><label>Finding / rekomendasi</label><textarea id="finding"
                   placeholder="Tuliskan temuan mekanik..."></textarea></div>
 
-              <div class="actions"><button class="btn alt" onclick="toast('Demo foto finding ditambahkan')">+ FOTO
-                  FINDING</button><button class="btn alt" onclick="toast('Draft diagnosis tersimpan lokal')">SIMPAN
+              <div class="actions"><button class="btn alt" onclick="toast('Draft diagnosis tersimpan lokal')">SIMPAN
                   DRAFT</button><button class="btn" onclick="finishDiag()">SELESAIKAN DIAGNOSIS</button></div>
             </div>
           </div>
@@ -2273,7 +2265,7 @@
               <div>
                 <div class="k">Inventory</div>
                 <h2>Stock List</h2>
-              </div><button class="btn" onclick="toast('Demo form tambah part')">+ PART</button>
+              </div>
             </div>
             <div class="card">
               <div class="form">
@@ -2363,7 +2355,7 @@
 
           <div id="i-partsdb" class="panel">
             <div class="head">
-              <h2>Parts Database</h2><button class="btn" onclick="toast('Demo tambah SKU baru')">+ TAMBAH PART</button>
+              <h2>Parts Database</h2>
             </div>
             <div class="card tablewrap">
               <table class="tbl">
@@ -2385,7 +2377,7 @@
                   <td>Rak A-02</td>
                   <td>Rp310.000</td>
                   <td>Rp450.000</td>
-                  <td><button class="btn alt" onclick="toast('Demo edit part')">EDIT</button></td>
+                  <td></td>
                 </tr>
                 <tr>
                   <td>VSP-RLR-001</td>
@@ -2395,7 +2387,7 @@
                   <td>Rak A-03</td>
                   <td>Rp115.000</td>
                   <td>Rp180.000</td>
-                  <td><button class="btn alt" onclick="toast('Demo edit part')">EDIT</button></td>
+                  <td></td>
                 </tr>
                 <tr>
                   <td>VSP-OIL-001</td>
@@ -2405,7 +2397,7 @@
                   <td>Rak B-01</td>
                   <td>Rp82.000</td>
                   <td>Rp125.000</td>
-                  <td><button class="btn alt" onclick="toast('Demo edit part')">EDIT</button></td>
+                  <td></td>
                 </tr>
               </table>
             </div>
@@ -2439,7 +2431,7 @@
                   <td><span class="pill">Compatible</span></td>
                 </tr>
               </table>
-              <div class="actions"><button class="btn" onclick="toast('Demo compatibility mapping')">+ MAPPING</button>
+              <div class="actions">
               </div>
             </div>
           </div>
@@ -2490,7 +2482,7 @@
 
           <div id="i-supplier" class="panel">
             <div class="head">
-              <h2>Suppliers</h2><button class="btn" onclick="toast('Demo tambah supplier')">+ SUPPLIER</button>
+              <h2>Suppliers</h2>
             </div>
             <div class="grid">
               <div class="card">
@@ -2676,7 +2668,7 @@
 
           <div id="o-staff" class="panel">
             <div class="head">
-              <h2>Staff Management</h2><button class="btn" onclick="toast('Demo tambah staff')">+ STAFF</button>
+              <h2>Staff Management</h2>
             </div>
             <div class="card tablewrap">
               <table class="tbl">
@@ -2692,28 +2684,28 @@
                   <td>Service Advisor / Cashier</td>
                   <td><span class="pill">ACTIVE</span></td>
                   <td>Front Desk</td>
-                  <td><button class="btn alt" onclick="toast('Demo edit staff')">EDIT</button></td>
+                  <td></td>
                 </tr>
                 <tr>
                   <td>Rizky</td>
                   <td>Mechanic</td>
                   <td><span class="pill">ACTIVE</span></td>
                   <td>2 Active Jobs</td>
-                  <td><button class="btn alt" onclick="toast('Demo edit staff')">EDIT</button></td>
+                  <td></td>
                 </tr>
                 <tr>
                   <td>Deni</td>
                   <td>Parts / Inventory</td>
                   <td><span class="pill">ACTIVE</span></td>
                   <td>Inventory</td>
-                  <td><button class="btn alt" onclick="toast('Demo edit staff')">EDIT</button></td>
+                  <td></td>
                 </tr>
                 <tr>
                   <td>Arif</td>
                   <td>Mechanic</td>
                   <td><span class="pill">INACTIVE</span></td>
                   <td>—</td>
-                  <td><button class="btn alt" onclick="toast('Demo edit staff')">EDIT</button></td>
+                  <td></td>
                 </tr>
               </table>
             </div>
@@ -2802,8 +2794,7 @@
 
           <div id="o-catalog" class="panel">
             <div class="head">
-              <h2>Service & Labor Catalog</h2><button class="btn" onclick="toast('Demo tambah service/labor')">+
-                ITEM</button>
+              <h2>Service & Labor Catalog</h2>
             </div>
             <div class="card tablewrap">
               <table class="tbl">
@@ -2821,7 +2812,7 @@
                   <td>CVT</td>
                   <td>Rp150.000</td>
                   <td><span class="pill">ACTIVE</span></td>
-                  <td><button class="btn alt" onclick="toast('Demo edit labor')">EDIT</button></td>
+                  <td></td>
                 </tr>
                 <tr>
                   <td>SRV-PER-01</td>
@@ -2829,7 +2820,7 @@
                   <td>General</td>
                   <td>Rp200.000</td>
                   <td><span class="pill">ACTIVE</span></td>
-                  <td><button class="btn alt" onclick="toast('Demo edit labor')">EDIT</button></td>
+                  <td></td>
                 </tr>
                 <tr>
                   <td>LAB-DIA-01</td>
@@ -2837,7 +2828,7 @@
                   <td>Diagnosis</td>
                   <td>Rp100.000</td>
                   <td><span class="pill">ACTIVE</span></td>
-                  <td><button class="btn alt" onclick="toast('Demo edit labor')">EDIT</button></td>
+                  <td></td>
                 </tr>
               </table>
             </div>
@@ -3021,6 +3012,54 @@
       <div class="card" id="notifList"></div>
     </section>
   </main>
+
+<footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-column">
+        <h3>Vespa Wahyu</h3>
+        <p>Workshop • Parts • Service</p>
+        <p style="opacity:.72;font-size:13px;margin-top:8px">
+          Rawat scooter kamu dengan lebih mudah.
+        </p>
+      </div>
+
+      <div class="footer-column">
+        <h3>Social Media</h3>
+        <div class="social-icons">
+          <a href="https://www.instagram.com/" class="social-png-link footer-social-link" target="_blank" rel="noopener" title="Instagram">
+            <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBx6hjxeKIB4eyduqzWlxGgCr5kV3LptTIhNY7i" alt="instagram"
+              class="icon-png">
+            <span>Instagram</span>
+          </a>
+          <a href="https://web.whatsapp.com/" class="social-png-link footer-social-link" target="_blank" rel="noopener" title="WhatsApp">
+            <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxt7p0KnP94yz5Hcih7UKAmX9o1kRV8SPb62n0" alt="whatsapp"
+              class="icon-png">
+            <span>WhatsApp</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-column">
+        <h3>Lokasi</h3>
+        <a href="https://www.google.com/maps" class="social-png-link footer-social-link" target="_blank" rel="noopener" title="Google Maps">
+          <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBx0AXf8LK0ftlMDhXz5cm7ZqewpjQoa1OrnGgV" alt="google maps"
+            class="icon-png">
+          <span>Google Maps</span>
+        </a>
+      </div>
+
+      <div class="footer-column">
+        <h3>Layanan</h3>
+        <p style="margin:6px 0">Booking Servis</p>
+        <p style="margin:6px 0">Sparepart Vespa</p>
+        <p style="margin:6px 0">Vespa Second</p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      © 2026 Vespa Wahyu. All rights reserved.
+    </div>
+  </footer>
   <div class="navbox">
     <div class="nav">
       <button class="on" onclick="go('home',this)"><b>⌂</b>Beranda</button>
@@ -3039,69 +3078,6 @@
     </div>
   </div>
   <div class="toast" id="toast"></div>
-
-  <footer class="site-footer">
-    <div class="footer-container">
-      <div class="footer-column">
-        <h3>Vespa Wahyu</h3>
-        <p>Workshop • Parts • Service</p>
-        <p style="opacity:.72;font-size:13px;margin-top:8px">
-          Rawat scooter kamu dengan lebih mudah.
-        </p>
-      </div>
-
-      <div class="footer-column">
-        <h3>Social Media</h3>
-        <div class="social-icons">
-          <a href="https://www.instagram.com/" class="social-png-link" target="_blank" rel="noopener" title="Instagram"
-            class="footer-social-link">
-            <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBx6hjxeKIB4eyduqzWlxGgCr5kV3LptTIhNY7i" alt="instagram"
-              class="icon-png">
-            <span>Instagram</span>
-          </a>
-          <a href="https://web.whatsapp.com/" class="social-png-link" target="_blank" rel="noopener" title="WhatsApp"
-            class="footer-social-link">
-            <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBxt7p0KnP94yz5Hcih7UKAmX9o1kRV8SPb62n0" alt="whatsapp"
-              class="icon-png">
-            <span>WhatsApp</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="footer-column">
-        <h3>Lokasi</h3>
-        <a href="https://www.google.com/maps" class="social-png-link" target="_blank" rel="noopener" title="Google Maps"
-          class="footer-social-link">
-          <img src="https://dcpmtwbyp7.ufs.sh/f/75hB4NpFqzBx0AXf8LK0ftlMDhXz5cm7ZqewpjQoa1OrnGgV" alt="google maps"
-            class="icon-png">
-          <span>Google Maps</span>
-        </a>
-      </div>
-
-      <div class="footer-column">
-        <h3>Layanan</h3>
-        <a href="https://mustafasoge07.github.io/Project_Vespa_wahyu/" class="footer-social-link" target="_blank"
-          rel="noopener" title="Project Vespa Wahyu">
-          <p style="margin:6px 0">Booking Servis</p>
-        </a>
-
-        <a href="https://mustafasoge07.github.io/Project_Vespa_wahyu/" class="footer-social-link"
-          target="_blank" rel="noopener" title="Project Vespa Wahyu">
-          <p style="margin:6px 0">Sparepart Vespa</p>
-        </a>
-
-        <a href="https://mustafasoge07.github.io/Project_Vespa_wahyu/" class="footer-social-link"
-          target="_blank" rel="noopener" title="Project Vespa Wahyu">
-          <p style="margin:6px 0">Our Vespa</p>
-        </a>
-      </div>
-    </div>
-
-    <div class="footer-bottom">
-      © 2026 Vespa Wahyu. All rights reserved.
-    </div>
-  </footer>
-
   <script>
     let booking = null; const parts = [['V-Belt Sprint / Primavera', 'Sprint 150', 450000, 3], ['Roller CVT Set', 'Sprint 150', 180000, 6], ['Brake Pad Front', 'Primavera 150', 225000, 2], ['Engine Oil 4T', 'Semua model', 125000, 12], ['Oil Filter GTS', 'GTS 150', 95000, 0], ['Spark Plug', 'Semua model', 85000, 8]]; function go(id) { const target = document.getElementById(id); if (!target) { console.error('Page not found:', id); return } document.querySelectorAll('.page').forEach(x => x.classList.remove('on')); target.classList.add('on'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('on', x.dataset.p === id)); window.scrollTo({ top: 0, behavior: 'smooth' }) } bf.onsubmit = e => { e.preventDefault(); booking = { name: bn.value, phone: bp.value, plate: bpl.value.toUpperCase(), model: bm.value, date: bd.value, slot: bs.value }; booking.code = generateDocumentCode('BKG'); localStorage.setItem('vespa_booking', JSON.stringify(booking)); scode.textContent = booking.code; sinfo.innerHTML = '<b>' + booking.name + '</b><br>' + booking.model + ' · ' + booking.plate + '<br>' + booking.date + ' · ' + booking.slot.split('—')[0]; go('success') }; function bookTrack() { tc.value = booking?.code || ''; go('tracking'); track() } function track() { if (!tc.value.trim()) return toast('Masukkan kode booking / WO'); tr.style.display = 'block' } function ask(ok) { mt.textContent = ok ? 'Setujui pekerjaan?' : 'Tolak pekerjaan?'; mx.textContent = ok ? 'Anda menyetujui estimate Rp780.000.' : 'Estimate akan ditandai declined dan temuan tetap tercatat.'; my.onclick = () => { modal.classList.remove('on'); trackpill.textContent = ok ? 'DISETUJUI — MENUNGGU PENGERJAAN' : 'ESTIMASI DITOLAK'; toast(ok ? 'Estimate disetujui' : 'Estimate ditolak'); go('tracking') }; modal.classList.add('on') } function toast(s) { const x = document.getElementById('toast'); x.textContent = s; x.classList.add('on'); setTimeout(() => x.classList.remove('on'), 1800) } function rup(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n) } function render(a) { pg.innerHTML = a.map(p => '<div class="card"><div class="k">PART</div><h3>' + p[0] + '</h3><div class="muted">' + p[1] + '</div><div class="money" style="font-size:19px;margin-top:8px">' + rup(p[2]) + '</div><p>' + (p[3] ? '<span class="pill">Tersedia · ' + p[3] + '</span>' : '<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>') + '</p><button class="btn alt" onclick="toast(\'Hubungi workshop untuk ketersediaan\')">TANYA KETERSEDIAAN</button></div>').join('') } function filterParts() { let q = ps.value.toLowerCase(), m = pm.value; render(parts.filter(p => (p[0].toLowerCase().includes(q)) && (m === 'Semua model' || p[1] === m || p[1] === 'Semua model'))) } render(parts); try { booking = JSON.parse(localStorage.getItem('vespa_booking')) || null } catch (e) { } let d = new Date(); d.setDate(d.getDate() + 1); bd.min = d.toISOString().slice(0, 10);
 
@@ -3862,7 +3838,7 @@
       if (advMain && !document.getElementById('p-warranty')) {
         advMain.insertAdjacentHTML('beforeend', `
           <div id="p-warranty" class="panel">
-            <div class="head"><div><div class="k">Warranty / Comeback</div><h2>Warranty Case</h2></div><span class="pill">LOCAL DEMO</span></div>
+            <div class="head"><div><div class="k">Warranty / Comeback</div><h2>Warranty Case</h2></div><span class="pill">SERVICE CASE</span></div>
             <div class="card form">
               <div class="field"><label>Service / Invoice Ref</label><input id="wfWarrantyRef" value="INV-260923-041"></div>
               <div class="field"><label>Tipe</label><select id="wfWarrantyType"><option>Warranty</option><option>Comeback</option><option>Goodwill Review</option></select></div>
@@ -10090,8 +10066,8 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
         await v7RtRestoreRoute(v7RtReadView());
 
         v7EStartAutoRefresh();
-        v7RtStartStaffRealtime();
-        v7RtSaveView();
+        if (typeof v7RtStartStaffRealtime === 'function') v7RtStartStaffRealtime();
+        if (typeof v7RtSaveView === 'function') v7RtSaveView();
 
         v7RtBadge('', '● STAFF LIVE');
         console.info('[REALTIME_SESSION_FIX] session restored', v7EStaff());
@@ -10198,8 +10174,8 @@ Saya ingin melanjutkan pembicaraan mengenai unit tersebut.`;
     v7ERouteStaff = function () {
       v7RtRouteStaffBase();
       setTimeout(() => {
-        v7RtStartStaffRealtime();
-        v7RtSaveView();
+        if (typeof v7RtStartStaffRealtime === 'function') v7RtStartStaffRealtime();
+        if (typeof v7RtSaveView === 'function') v7RtSaveView();
         v7RtObserveView();
       }, 250);
     };
