@@ -1263,7 +1263,6 @@
     }
   </style>
 
-
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#17653f">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -3098,7 +3097,9 @@
     </div>
   </footer>
 
-  
+
+
+
   <script>
     let booking = null; const parts = [['V-Belt Sprint / Primavera', 'Sprint 150', 450000, 3], ['Roller CVT Set', 'Sprint 150', 180000, 6], ['Brake Pad Front', 'Primavera 150', 225000, 2], ['Engine Oil 4T', 'Semua model', 125000, 12], ['Oil Filter GTS', 'GTS 150', 95000, 0], ['Spark Plug', 'Semua model', 85000, 8]]; function go(id) { const target = document.getElementById(id); if (!target) { console.error('Page not found:', id); return } document.querySelectorAll('.page').forEach(x => x.classList.remove('on')); target.classList.add('on'); document.querySelectorAll('.nav button').forEach(x => x.classList.toggle('on', x.dataset.p === id)); window.scrollTo({ top: 0, behavior: 'smooth' }) } bf.onsubmit = e => { e.preventDefault(); booking = { name: bn.value, phone: bp.value, plate: bpl.value.toUpperCase(), model: bm.value, date: bd.value, slot: bs.value }; booking.code = generateDocumentCode('BKG'); localStorage.setItem('vespa_booking', JSON.stringify(booking)); scode.textContent = booking.code; sinfo.innerHTML = '<b>' + booking.name + '</b><br>' + booking.model + ' · ' + booking.plate + '<br>' + booking.date + ' · ' + booking.slot.split('—')[0]; go('success') }; function track() { if (!tc.value.trim()) return toast('Masukkan kode booking / WO'); tr.style.display = 'block' } function ask(ok) { mt.textContent = ok ? 'Setujui pekerjaan?' : 'Tolak pekerjaan?'; mx.textContent = ok ? 'Anda menyetujui estimate Rp780.000.' : 'Estimate akan ditandai declined dan temuan tetap tercatat.'; my.onclick = () => { modal.classList.remove('on'); trackpill.textContent = ok ? 'DISETUJUI — MENUNGGU PENGERJAAN' : 'ESTIMASI DITOLAK'; toast(ok ? 'Estimate disetujui' : 'Estimate ditolak'); go('tracking') }; modal.classList.add('on') } function toast(s) { const x = document.getElementById('toast'); x.textContent = s; x.classList.add('on'); setTimeout(() => x.classList.remove('on'), 1800) } function rup(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n) } function render(a) { pg.innerHTML = a.map(p => '<div class="card"><div class="k">PART</div><h3>' + p[0] + '</h3><div class="muted">' + p[1] + '</div><div class="money" style="font-size:19px;margin-top:8px">' + rup(p[2]) + '</div><p>' + (p[3] ? '<span class="pill">Tersedia · ' + p[3] + '</span>' : '<span class="pill" style="background:#fff0ef;color:#a33a32">Out of stock</span>') + '</p><button class="btn alt" onclick="toast(\'Hubungi workshop untuk ketersediaan\')">TANYA KETERSEDIAAN</button></div>').join('') } function filterParts() { let q = ps.value.toLowerCase(), m = pm.value; render(parts.filter(p => (p[0].toLowerCase().includes(q)) && (m === 'Semua model' || p[1] === m || p[1] === 'Semua model'))) } render(parts); try { booking = JSON.parse(localStorage.getItem('vespa_booking')) || null } catch (e) { } let d = new Date(); d.setDate(d.getDate() + 1); bd.min = d.toISOString().slice(0, 10);
 
@@ -3479,7 +3480,7 @@
     // [MEDIA_FIT] ===== PREVIEW FOTO UPLOAD OWNER =====
     let pendingUnitPhotos = [];
 
-    async // [MEDIA_FIT] ===== SELESAI PREVIEW FOTO UPLOAD OWNER =====
+    // [MEDIA_FIT] ===== SELESAI PREVIEW FOTO UPLOAD OWNER =====
 
     function renderOwnerUnits() {
       const tb = document.getElementById('ownerUnitRows'); if (!tb) return;
@@ -9669,7 +9670,7 @@
         await v7RtRestoreRoute(v7RtReadView());
 
         v7EStartAutoRefresh();
-        v7RtStartStaffRealtime();
+        if (typeof v7RtStartStaffRealtime === 'function') v7RtStartStaffRealtime();
         v7RtSaveView();
 
         v7RtBadge('', '● STAFF LIVE');
@@ -10316,7 +10317,7 @@
       }).join('') || '<div class="card">Belum ada kendaraan READY FOR PICKUP.</div>'}`;
     }
 
-    async /* Override advisor render to keep payment/release remote. */
+    /* Override advisor render to keep payment/release remote. */
     const v7GAdvisorRenderBase = v7ERenderAdvisorRemote;
     v7ERenderAdvisorRemote = function () {
       v7GAdvisorRenderBase();
